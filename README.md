@@ -11,9 +11,9 @@
 5. [自定义算子开发](#develop)
 6. [参与贡献](#contribute)
 7. [参考文档](#doc)
-   
+
 ## <a id="study"></a>1.  学习资源
- 
+
 - [编译与构建](docs/编译与构建.md)：SiP库的编译命令说明。
 - [API文档](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/900/API/SiP/SIP_0000.html)：介绍了SiP库的接口和相关术语。
 - [问题报告](https://gitcode.com/cann/sip/issues)：通过issue提交发现的问题。
@@ -48,7 +48,7 @@ Ascend Signal Processing Boost（昇腾信号处理加速库，下文简称为Si
    - cmake >= 3.16.0
    - pigz（安装后可提升打包速度，建议版本 >= 2.4）
    - dos2unix
-   - numpy 
+   - numpy
    - googletest（仅执行UT时依赖，建议版本 [release-1.11.0](https://github.com/google/googletest/releases/tag/release-1.11.0)）
 
 上述依赖可通过项目脚本一键安装，操作步骤如下：
@@ -124,6 +124,13 @@ source /usr/local/Ascend/cann/set_env.sh
 
     ```sh
     cd ${sip_root_path}
+    bash build.sh
+    ```
+
+    编译前请根据目标硬件修改[`configs/build_config.json`](configs/build_config.json)中的芯片架构配置，将不支持的芯片架构设置为`false`。默认配置同时启用`ascend910b`和`ascend950`，若运行环境仅支持其中一种芯片，需关闭不支持的架构，否则编译会失败。也可通过环境变量`BUILD_CONFIG_FILE`指定自定义配置文件路径：
+
+    ```sh
+    export BUILD_CONFIG_FILE=/path/to/your/build_config.json
     bash build.sh
     ```
 
@@ -292,7 +299,7 @@ SiP不推荐用户直接将样例作为业务代码，也不保证此种做法�
 详细步骤可参考[从开发一个简单算子出发](docs/从开发一个简单算子出发.md)
 
 ## <a id="contribute"></a>6. 参与贡献
- 
+
 1. fork仓库
 2. 修改并提交代码
 3. 新建Pull-Request
