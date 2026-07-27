@@ -116,7 +116,7 @@ AspbStatus asdBlasCgerc(
       <td>表示y向量中复数元素的个数，矩阵A的列数。</td>
     </tr>
     <tr>
-      <td>alpha（std::complex&ltfloat&gt *）</td>
+      <td>alpha（std::complex&ltfloat&gt &）</td>
       <td>输入</td>
       <td><ul><li>公式中的alpha，输入的复数标量。</li><li>数据类型支持COMPLEX64。</li></ul></td>
     </tr>
@@ -143,7 +143,7 @@ AspbStatus asdBlasCgerc(
     </tr>
     <tr>
       <td>A（aclTensor *）</td>
-      <td>输入</td>
+      <td>输入/输出</td>
       <td><ul><li>对应公式中的'A'。</li><li>数据类型支持COMPLEX64。</li><li>数据格式支持ND。</li><li>shape为[m，n]。</li></ul></td>
     </tr>
     <tr>

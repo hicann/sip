@@ -180,7 +180,7 @@ AspbStatus asdBlasHCgemvBatched(
     <tr>
       <td>batchCount（int64_t）</td>
       <td>输入</td>
-      <td>批次数量。取值范围为[2 - 314496]。</td>
+      <td>批次数量。取值范围为[2,314496]。</td>
     </tr>
     </tbody>
     </table>

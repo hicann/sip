@@ -135,7 +135,7 @@ AspbStatus asdBlasHCmatinvBatched(
       <td><ul><li>输入的矩阵，对应公式中的'A'。</li><li>行主序。</li><li>数据类型支持COMPLEX32。</li><li>数据格式支持ND。</li><li>shape为[batch,n,n]。</li></ul></td>
     </tr>
     <tr>
-      <td>lda（ int64_t）</td>
+      <td>lda（int64_t）</td>
       <td>输入</td>
       <td>A左右相邻元素间的内存地址偏移量（当前约束为n）。</td>
     </tr>

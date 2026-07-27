@@ -182,7 +182,7 @@ AspbStatus asdFftExecR2C(
       <td>output（const aclTensor *）</td>
       <td>输出</td>
       <td><ul><li>对应公式中的'y'。</li><li>数据类型支持FLOAT32。</li><li>数据格式支持ND。</li>
-      <li>输入的shape为（batchSize，fftSizeX，fftSizeY）。</li></ul></td>
+      <li>输出的shape为（batchSize，fftSizeX，fftSizeY）。</li></ul></td>
     </tr>
     </tbody>
     </table>
@@ -222,7 +222,7 @@ AspbStatus asdFftExecR2C(
       <td>output（const aclTensor *）</td>
       <td>输出</td>
       <td><ul><li>对应公式中的'y'。</li><li>数据类型支持COMPLEX64。</li><li>数据格式支持ND。</li>
-      <li>输入的shape为（batchSize，fftSizeX，fftSizeY/2+1）。</li></ul></td>
+      <li>输出的shape为（batchSize，fftSizeX，fftSizeY/2+1）。</li></ul></td>
     </tr>
     </tbody>
     </table>

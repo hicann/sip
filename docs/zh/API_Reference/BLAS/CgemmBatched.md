@@ -30,7 +30,7 @@ asdBlasCgemmBatched：用于计算两批复数矩阵的乘积。
 输入“inTensorC[i]”为：\
 [   [ 3+i, 3+2i ],
     [ 3+3i, 3+4i ]  ]\
-输入“transa”为： N，输入“transb”为：T。\
+输入“transa”为：ASDBLAS_OP_N，输入“transb”为：ASDBLAS_OP_N。\
 输入“m”为：2，输入“n”为： 2，输入“k”为：2，输入“alpha”为：1+i，“beta”为：2+2i。\
 输入“lda”为： 2，输入“ldb”为：2，输入“ldc”为：2。\
 输入“batchCount”为：2。\
@@ -175,7 +175,7 @@ AspbStatus asdBlasCgemmBatched(
     <tr>
       <td>beta（std::complex&lt;float&gt; &）</td>
       <td>输入</td>
-      <td>对应公式中的beta，复数标量，用于乘以矩阵C。取值必须为 0+0j。。</td>
+      <td>对应公式中的beta，复数标量，用于乘以矩阵C。取值必须为 0+0j。</td>
     </tr>
     <tr>
       <td>batchCount（int64_t）</td>

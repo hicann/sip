@@ -132,7 +132,7 @@ AspbStatus asdBlasCmatinvBatched(
     <tr>
       <td>A（aclTensor *）</td>
       <td>输入</td>
-      <td><ul><li>输入的矩阵，对应公式中的'A'。</li><li>行主序。</li><li>数据类型支持COMPLEX64。</li><li>数据格式支持ND。</li><li>shape为[batchCount ,m, n]。</li></ul></td>
+      <td><ul><li>输入的矩阵，对应公式中的'A'。</li><li>行主序。</li><li>数据类型支持COMPLEX64。</li><li>数据格式支持ND。</li><li>shape为[batchCount ,n, n]。</li></ul></td>
     </tr>
     <tr>
       <td>lda（ int64_t）</td>

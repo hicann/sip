@@ -141,7 +141,7 @@ AspbStatus rsInterpolationBySinc(
       <td>量化点数。</td>
     </tr>
     <tr>
-      <td>length（int）</td>
+      <td>interpLength（int）</td>
       <td>输入</td>
       <td>插值长度。</td>
     </tr>
@@ -151,7 +151,7 @@ AspbStatus rsInterpolationBySinc(
       <td>npu执行流。</td>
     </tr>
     <tr>
-      <td>workspace（void *）</td>
+      <td>workSpace（void *）</td>
       <td>输入</td>
       <td>workspace的地址。</td>
     </tr>

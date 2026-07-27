@@ -1,10 +1,10 @@
 # SiP加速库
 
 - [简介](overview.md)
-- [安装部署](installtion_guide.md)
+- [安装部署](installation_guide.md)
 - [算子使用指导](operator_usage_guide.md)
 - [API参考](./API_reference.md)
-  - [头文件和库文件说明](../../头文件和库文件说明.md)
+  - [头文件和库文件说明](../../header_files_library_files.md)
   - [base](./base.md)
     - [swapLast2Axes](../API_Reference/base/swapLast2Axes.md)
     - [asdMul](../API_Reference/base/asdMul.md)

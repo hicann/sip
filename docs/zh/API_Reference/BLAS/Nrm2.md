@@ -128,7 +128,7 @@ AspbStatus asdBlasScnrm2(
     <tr>
       <td>x（aclTensor *）</td>
       <td>输入</td>
-      <td><ul><li>对应公式中的'x'。</li><li>asdBlasSnrm2支持的数据类型支持FLOAT32。</li><li>asdBlasScnrm2支持的数据类型支持COMPLEX64。</li><li>数据格式支持ND。</li><li>shape为[n]。</li></ul></td>
+      <td><ul><li>对应公式中的'x'。</li><li>asdBlasSnrm2支持的数据类型为FLOAT32。</li><li>asdBlasScnrm2支持的数据类型为COMPLEX64。</li><li>数据格式支持ND。</li><li>shape为[n]。</li></ul></td>
     </tr>
     <tr>
       <td>incx（int64_t）</td>
