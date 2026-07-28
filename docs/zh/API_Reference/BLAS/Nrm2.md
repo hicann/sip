@@ -36,7 +36,7 @@ asdBlasScnrm2：用于计算复数向量的欧氏范数。
   result=||x||_{2}= {\sqrt{\sum _{i=1}^n|x_{i}|^2}}
   $$
   其中，$x_{i}$表示向量x中的第i个元素，$x_{i}$是复数元素。
-  
+
 $$
 |x_{i}|^2=x_{i}\_real^2+x_{i}\_image^2
 $$
@@ -56,19 +56,19 @@ AspbStatus asdBlasMakeNrm2Plan(
 
 ```Cpp
 AspbStatus asdBlasSnrm2(
-  asdBlasHandle       handle, 
-  const int64_t       n, 
-  aclTensor *         x, 
-  const int64_t       incx, 
+  asdBlasHandle       handle,
+  const int64_t       n,
+  aclTensor *         x,
+  const int64_t       incx,
   aclTensor *         result)
 ```
 
 ```Cpp
 AspbStatus asdBlasScnrm2(
-  asdBlasHandle       handle, 
-  const int64_t       n, 
-  aclTensor *         x, 
-  const int64_t       incx, 
+  asdBlasHandle       handle,
+  const int64_t       n,
+  aclTensor *         x,
+  const int64_t       incx,
   aclTensor *         result)
 ```
 
@@ -256,13 +256,13 @@ int main(int argc, char **argv)
     int64_t xSize = 8;
     int64_t ySize = 1;
     std::vector<float> tensorInXData;
-    tensorInXData.reserve(xSize);
+    tensorInXData.resize(xSize);
     for (int64_t i = 0; i < xSize; i++) {
         tensorInXData[i] = 1.0 + i;
     }
 
     std::vector<float> tensorOutYData;
-    tensorOutYData.reserve(ySize);
+    tensorOutYData.resize(ySize);
 
     std::cout << "------- input x -------" << std::endl;
     for (int64_t i = 0; i < xSize; i++) {
@@ -422,13 +422,13 @@ int main(int argc, char **argv)
     int64_t ySize = 1;
 
     std::vector<std::complex<float>> tensorInXData;
-    tensorInXData.reserve(xSize);
+    tensorInXData.resize(xSize);
     for (int64_t i = 0; i < xSize; i++) {
         tensorInXData[i] = {(float)(2.0 + i), (float)(3.0 + i)};
     }
 
     std::vector<float> tensorOutYData;
-    tensorOutYData.reserve(ySize);
+    tensorOutYData.resize(ySize);
 
     std::cout << "------- input x -------" << std::endl;
     for (int64_t i = 0; i < xSize; i++) {

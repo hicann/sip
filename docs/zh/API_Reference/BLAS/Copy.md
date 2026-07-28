@@ -50,20 +50,20 @@ AspbStatus asdBlasMakeCopyPlan(
 
 ```Cpp
 AspbStatus asdBlasScopy(
-  asdBlasHandle     handle, 
-  const int64_t     n, 
-  aclTensor *       x, 
-  const int64_t     incx, 
+  asdBlasHandle     handle,
+  const int64_t     n,
+  aclTensor *       x,
+  const int64_t     incx,
   aclTensor *       y,
   const int64_t     incy)
 ```
 
 ```Cpp
 AspbStatus asdBlasCcopy(
-  asdBlasHandle     handle, 
-  const int64_t     n, 
-  aclTensor *       x, 
-  const int64_t     incx, 
+  asdBlasHandle     handle,
+  const int64_t     n,
+  aclTensor *       x,
+  const int64_t     incx,
   aclTensor *       y,
   const int64_t     incy)
 ```
@@ -259,13 +259,13 @@ int main(int argc, char **argv)
     int64_t ySize = 7;
 
     std::vector<float> tensorInXData;
-    tensorInXData.reserve(xSize);
+    tensorInXData.resize(xSize);
     for (int64_t i = 0; i < xSize; i++) {
         tensorInXData[i] = 1.0 + i;
     }
 
     std::vector<float> tensorOurtYData;
-    tensorOurtYData.reserve(ySize);
+    tensorOurtYData.resize(ySize);
 
     std::cout << "------- input x -------" << std::endl;
     for (int64_t i = 0; i < xSize; i++) {
@@ -441,13 +441,13 @@ int main(int argc, char **argv)
     int64_t ySize = 6;
 
     std::vector<std::complex<float>> tensorInXData;
-    tensorInXData.reserve(xSize);
+    tensorInXData.resize(xSize);
     for (int64_t i = 0; i < xSize; i++) {
         tensorInXData[i] = {(float)(1.0 + i), (float)(2.0 + i)};
     }
 
     std::vector<std::complex<float>> tensorOutYData;
-    tensorOutYData.reserve(ySize);
+    tensorOutYData.resize(ySize);
 
     std::cout << "------- input TensorIn -------" << std::endl;
     printTensor(tensorInXData.data(), xSize);

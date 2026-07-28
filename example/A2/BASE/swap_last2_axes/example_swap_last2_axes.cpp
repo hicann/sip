@@ -37,7 +37,7 @@ using namespace AsdSip;
         printf(message, ##__VA_ARGS__); \
     } while (0)
 
-int64_t GetShapeSize(const std::vector<int64_t> &shape)
+int64_t GetShapeSize(const std::vector<int64_t>& shape)
 {
     int64_t shapeSize = 1;
     for (auto i : shape) {
@@ -46,7 +46,7 @@ int64_t GetShapeSize(const std::vector<int64_t> &shape)
     return shapeSize;
 }
 
-int Init(int32_t deviceId, aclrtStream *stream)
+int Init(int32_t deviceId, aclrtStream* stream)
 {
     // 固定写法，acl初始化
     auto ret = aclInit(nullptr);
@@ -59,8 +59,8 @@ int Init(int32_t deviceId, aclrtStream *stream)
 }
 
 template <typename T>
-int CreateAclTensor(const std::vector<T> &hostData, const std::vector<int64_t> &shape, void **deviceAddr,
-    aclDataType dataType, aclTensor **tensor)
+int CreateAclTensor(const std::vector<T>& hostData, const std::vector<int64_t>& shape, void** deviceAddr,
+                    aclDataType dataType, aclTensor** tensor)
 {
     auto size = GetShapeSize(shape) * sizeof(T) * 2;
     // 调用aclrtMalloc申请device侧内存
@@ -77,19 +77,12 @@ int CreateAclTensor(const std::vector<T> &hostData, const std::vector<int64_t> &
     }
 
     // 调用aclCreateTensor接口创建aclTensor
-    *tensor = aclCreateTensor(shape.data(),
-        shape.size(),
-        dataType,
-        strides.data(),
-        0,
-        aclFormat::ACL_FORMAT_ND,
-        shape.data(),
-        shape.size(),
-        *deviceAddr);
+    *tensor = aclCreateTensor(shape.data(), shape.size(), dataType, strides.data(), 0, aclFormat::ACL_FORMAT_ND,
+                              shape.data(), shape.size(), *deviceAddr);
     return 0;
 }
 
-void printTensor(const float *tensorData, size_t row, size_t col)
+void printTensor(const float* tensorData, size_t row, size_t col)
 {
     for (size_t r = 0; r < row; ++r) {
         for (size_t c = 0; c < col; ++c) {
@@ -100,7 +93,7 @@ void printTensor(const float *tensorData, size_t row, size_t col)
     }
 }
 
-int main(int argc, char **argv)
+int main(int argc, char** argv)
 {
     int deviceId = 0;
 
@@ -113,25 +106,25 @@ int main(int argc, char **argv)
     const int64_t tensorSize = row * col * 2;
 
     std::vector<float> tensorInData;
-    tensorInData.reserve(tensorSize);
+    tensorInData.resize(tensorSize);
     for (int64_t i = 0; i < tensorSize; i++) {
         tensorInData[i] = 0.0 + i;
     }
     std::vector<float> tensorOutData;
-    tensorOutData.reserve(tensorSize);
+    tensorOutData.resize(tensorSize);
 
     std::vector<int64_t> inShape = {row, col};
     std::vector<int64_t> outShape = {col, row};
-    aclTensor *input = nullptr;
-    aclTensor *output = nullptr;
-    void *inputDeviceAddr = nullptr;
-    void *outputDeviceAddr = nullptr;
+    aclTensor* input = nullptr;
+    aclTensor* output = nullptr;
+    void* inputDeviceAddr = nullptr;
+    void* outputDeviceAddr = nullptr;
     ret = CreateAclTensor(tensorInData, inShape, &inputDeviceAddr, aclDataType::ACL_COMPLEX64, &input);
     CHECK_RET(ret == ::ACL_SUCCESS, return ret);
     ret = CreateAclTensor(tensorOutData, outShape, &outputDeviceAddr, aclDataType::ACL_COMPLEX64, &output);
     CHECK_RET(ret == ::ACL_SUCCESS, return ret);
 
-    void *workspace = nullptr;
+    void* workspace = nullptr;
     size_t lwork = 0;
     swapLast2AxesGetWorkspaceSize(lwork);
     std::cout << "lwork = " << lwork << std::endl;
@@ -145,12 +138,10 @@ int main(int argc, char **argv)
     ret = aclrtSynchronizeStream(stream);
     CHECK_RET(ret == ::ACL_SUCCESS, LOG_PRINT("aclrtSynchronizeStream failed. ERROR: %d\n", ret); return ret);
 
-    ret = aclrtMemcpy(tensorOutData.data(),
-        tensorSize * sizeof(float),
-        outputDeviceAddr,
-        tensorSize * sizeof(float),
-        ACL_MEMCPY_DEVICE_TO_HOST);
-    CHECK_RET(ret == ::ACL_SUCCESS, LOG_PRINT("copy output tensor from device to host failed. ERROR: %d\n", ret); return ret);
+    ret = aclrtMemcpy(tensorOutData.data(), tensorSize * sizeof(float), outputDeviceAddr, tensorSize * sizeof(float),
+                      ACL_MEMCPY_DEVICE_TO_HOST);
+    CHECK_RET(ret == ::ACL_SUCCESS, LOG_PRINT("copy output tensor from device to host failed. ERROR: %d\n", ret);
+              return ret);
 
     std::cout << "row = " << row << ", col = " << col << std::endl;
     std::cout << "------- Input ------- " << std::endl;

@@ -40,7 +40,7 @@ using namespace AsdSip;
         printf(message, ##__VA_ARGS__); \
     } while (0)
 
-int64_t GetShapeSize(const std::vector<int64_t> &shape)
+int64_t GetShapeSize(const std::vector<int64_t>& shape)
 {
     int64_t shapeSize = 1;
     for (auto i : shape) {
@@ -49,7 +49,7 @@ int64_t GetShapeSize(const std::vector<int64_t> &shape)
     return shapeSize;
 }
 
-int Init(int32_t deviceId, aclrtStream *stream)
+int Init(int32_t deviceId, aclrtStream* stream)
 {
     // 固定写法，acl初始化
     auto ret = aclInit(nullptr);
@@ -62,8 +62,8 @@ int Init(int32_t deviceId, aclrtStream *stream)
 }
 
 template <typename T>
-int CreateAclTensor(const std::vector<T> &hostData, const std::vector<int64_t> &shape, void **deviceAddr,
-    aclDataType dataType, aclTensor **tensor)
+int CreateAclTensor(const std::vector<T>& hostData, const std::vector<int64_t>& shape, void** deviceAddr,
+                    aclDataType dataType, aclTensor** tensor)
 {
     auto size = GetShapeSize(shape) * sizeof(T);
     // 调用aclrtMalloc申请device侧内存
@@ -80,19 +80,12 @@ int CreateAclTensor(const std::vector<T> &hostData, const std::vector<int64_t> &
     }
 
     // 调用aclCreateTensor接口创建aclTensor
-    *tensor = aclCreateTensor(shape.data(),
-        shape.size(),
-        dataType,
-        strides.data(),
-        0,
-        aclFormat::ACL_FORMAT_ND,
-        shape.data(),
-        shape.size(),
-        *deviceAddr);
+    *tensor = aclCreateTensor(shape.data(), shape.size(), dataType, strides.data(), 0, aclFormat::ACL_FORMAT_ND,
+                              shape.data(), shape.size(), *deviceAddr);
     return 0;
 }
 
-void printTensor(const std::complex<float> *tensorData, int64_t rows, int64_t cols)
+void printTensor(const std::complex<float>* tensorData, int64_t rows, int64_t cols)
 {
     for (int64_t i = 0; i < rows; i++) {
         for (int64_t j = 0; j < cols; j++) {
@@ -102,7 +95,7 @@ void printTensor(const std::complex<float> *tensorData, int64_t rows, int64_t co
     }
 }
 
-int main(int argc, char **argv)
+int main(int argc, char** argv)
 {
     int deviceId = 0;
 
@@ -115,7 +108,7 @@ int main(int argc, char **argv)
     int64_t matSize = m * n;
 
     std::vector<std::complex<float>> tensorInMatData;
-    tensorInMatData.reserve(matSize);
+    tensorInMatData.resize(matSize);
     for (int64_t i = 0; i < m; i++) {
         for (int64_t j = 0; j < n; j++) {
             tensorInMatData[n * i + j] = (std::complex<float>){2.0, -2.0};
@@ -124,14 +117,14 @@ int main(int argc, char **argv)
 
     int64_t vecSize = m;
     std::vector<std::complex<float>> tensorInVecData;
-    tensorInVecData.reserve(vecSize);
+    tensorInVecData.resize(vecSize);
     for (int64_t i = 0; i < vecSize; i++) {
         tensorInVecData[i] = (std::complex<float>){3.0, -4.0};
     }
 
     int64_t resultSize = m * n;
     std::vector<std::complex<float>> resultData;
-    resultData.reserve(resultSize);
+    resultData.resize(resultSize);
 
     std::cout << "------- input mat -------" << std::endl;
     printTensor(tensorInMatData.data(), m, n);
@@ -143,12 +136,12 @@ int main(int argc, char **argv)
     std::vector<int64_t> vecShape = {m};
     std::vector<int64_t> resultShape = {m, n};
 
-    aclTensor *inputMat = nullptr;
-    aclTensor *inputVec = nullptr;
-    aclTensor *outputResult = nullptr;
-    void *inputMatDeviceAddr = nullptr;
-    void *inputVecDeviceAddr = nullptr;
-    void *outputResultDeviceAddr = nullptr;
+    aclTensor* inputMat = nullptr;
+    aclTensor* inputVec = nullptr;
+    aclTensor* outputResult = nullptr;
+    void* inputMatDeviceAddr = nullptr;
+    void* inputVecDeviceAddr = nullptr;
+    void* outputResultDeviceAddr = nullptr;
     ret = CreateAclTensor(tensorInMatData, matShape, &inputMatDeviceAddr, aclDataType::ACL_COMPLEX64, &inputMat);
     CHECK_RET(ret == ::ACL_SUCCESS, return ret);
     ret = CreateAclTensor(tensorInVecData, vecShape, &inputVecDeviceAddr, aclDataType::ACL_COMPLEX64, &inputVec);
@@ -160,7 +153,7 @@ int main(int argc, char **argv)
     asdBlasCreate(handle);
 
     size_t lwork = 0;
-    void *buffer = nullptr;
+    void* buffer = nullptr;
     asdBlasMakeColwiseMulPlan(handle);
     asdBlasGetWorkspaceSize(handle, lwork);
     std::cout << "lwork = " << lwork << std::endl;
@@ -177,11 +170,8 @@ int main(int argc, char **argv)
     asdBlasDestroy(handle);
     buffer = nullptr;
 
-    ret = aclrtMemcpy(resultData.data(),
-        resultSize * sizeof(std::complex<float>),
-        outputResultDeviceAddr,
-        resultSize * sizeof(std::complex<float>),
-        ACL_MEMCPY_DEVICE_TO_HOST);
+    ret = aclrtMemcpy(resultData.data(), resultSize * sizeof(std::complex<float>), outputResultDeviceAddr,
+                      resultSize * sizeof(std::complex<float>), ACL_MEMCPY_DEVICE_TO_HOST);
     CHECK_RET(ret == ::ACL_SUCCESS, LOG_PRINT("copy result from device to host failed. ERROR: %d\n", ret); return ret);
 
     std::cout << "------- result -------" << std::endl;

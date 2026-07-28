@@ -29,7 +29,7 @@ using namespace AsdSip;
 
 #define DINTER_CORE_SIZE 528
 
-static void genTab(float *tab, int tabSize)
+static void genTab(float* tab, int tabSize)
 {
     static float DINTER_CORE_33x16[DINTER_CORE_SIZE];
     for (int i = 0; i < DINTER_CORE_SIZE; ++i) {
@@ -62,7 +62,7 @@ static void genTab(float *tab, int tabSize)
         printf(message, ##__VA_ARGS__); \
     } while (0)
 
-int64_t GetShapeSize(const std::vector<int64_t> &shape)
+int64_t GetShapeSize(const std::vector<int64_t>& shape)
 {
     int64_t shapeSize = 1;
     for (auto i : shape) {
@@ -71,7 +71,7 @@ int64_t GetShapeSize(const std::vector<int64_t> &shape)
     return shapeSize;
 }
 
-int Init(int32_t deviceId, aclrtStream *stream)
+int Init(int32_t deviceId, aclrtStream* stream)
 {
     // 固定写法，acl初始化
     auto ret = aclInit(nullptr);
@@ -84,8 +84,8 @@ int Init(int32_t deviceId, aclrtStream *stream)
 }
 
 template <typename T>
-int CreateAclTensor(const std::vector<T> &hostData, const std::vector<int64_t> &shape, void **deviceAddr,
-    aclDataType dataType, aclTensor **tensor)
+int CreateAclTensor(const std::vector<T>& hostData, const std::vector<int64_t>& shape, void** deviceAddr,
+                    aclDataType dataType, aclTensor** tensor)
 {
     auto size = GetShapeSize(shape) * sizeof(T);
     // 调用aclrtMalloc申请device侧内存
@@ -102,19 +102,12 @@ int CreateAclTensor(const std::vector<T> &hostData, const std::vector<int64_t> &
     }
 
     // 调用aclCreateTensor接口创建aclTensor
-    *tensor = aclCreateTensor(shape.data(),
-        shape.size(),
-        dataType,
-        strides.data(),
-        0,
-        aclFormat::ACL_FORMAT_ND,
-        shape.data(),
-        shape.size(),
-        *deviceAddr);
+    *tensor = aclCreateTensor(shape.data(), shape.size(), dataType, strides.data(), 0, aclFormat::ACL_FORMAT_ND,
+                              shape.data(), shape.size(), *deviceAddr);
     return 0;
 }
 
-int main(int argc, char **argv)
+int main(int argc, char** argv)
 {
     int deviceId = 0;
 
@@ -125,60 +118,60 @@ int main(int argc, char **argv)
     int batch = 1;
     int signalLength = 64;
     int interpLength = signalLength;
-    const int64_t tabSize = (33 * 2) * (16 * 2 + 8) * 4;  // 2 ：虚实系数，8：补零，4：不补0，补2,4,6个零
+    const int64_t tabSize = (33 * 2) * (16 * 2 + 8) * 4; // 2 ：虚实系数，8：补零，4：不补0，补2,4,6个零
     const unsigned long inSize = batch * signalLength;
     const unsigned long posSize = batch * interpLength;
     const unsigned long tabIndexSize = batch * interpLength;
     const unsigned long outSize = batch * interpLength;
 
-    float *tabDate = new float[tabSize]();
+    float* tabDate = new float[tabSize]();
     genTab(tabDate, tabSize);
     std::vector<float> tab(tabDate, tabDate + tabSize);
     std::vector<complex<float>> inSignal;
-    inSignal.reserve(inSize);
+    inSignal.resize(inSize);
     for (long long ii = 0; ii < signalLength; ++ii) {
         inSignal[ii] = complex<float>(ii, ii);
     }
     std::vector<int32_t> intpPos;
-    intpPos.reserve(posSize);
+    intpPos.resize(posSize);
     for (long long ii = 0; ii < interpLength; ++ii) {
         intpPos[ii] = ii;
     }
     std::vector<int16_t> tabIndex;
-    tabIndex.reserve(tabIndexSize);
+    tabIndex.resize(tabIndexSize);
     for (long long ii = 0; ii < interpLength; ++ii) {
         tabIndex[ii] = ii % 33;
     }
     std::vector<complex<float>> outSignal;
-    outSignal.reserve(outSize);
+    outSignal.resize(outSize);
     for (long long ii = 0; ii < interpLength; ++ii) {
         outSignal[ii] = complex<float>(0, 0);
     }
 
-    aclTensor *tensorIn = nullptr;
-    aclTensor *tensorTab = nullptr;
-    aclTensor *tensorPos = nullptr;
-    aclTensor *tensorTabIndex = nullptr;
-    aclTensor *tensorOut = nullptr;
-    void *tensorInDeviceAddr = nullptr;
-    void *tensorTabDeviceAddr = nullptr;
-    void *tensorPosDeviceAddr = nullptr;
-    void *tensorTabIndexDeviceAddr = nullptr;
-    void *tensorOutDeviceAddr = nullptr;
+    aclTensor* tensorIn = nullptr;
+    aclTensor* tensorTab = nullptr;
+    aclTensor* tensorPos = nullptr;
+    aclTensor* tensorTabIndex = nullptr;
+    aclTensor* tensorOut = nullptr;
+    void* tensorInDeviceAddr = nullptr;
+    void* tensorTabDeviceAddr = nullptr;
+    void* tensorPosDeviceAddr = nullptr;
+    void* tensorTabIndexDeviceAddr = nullptr;
+    void* tensorOutDeviceAddr = nullptr;
     ret = CreateAclTensor(inSignal, {batch, signalLength}, &tensorInDeviceAddr, aclDataType::ACL_COMPLEX64, &tensorIn);
     CHECK_RET(ret == ::ACL_SUCCESS, return ret);
     ret = CreateAclTensor(tab, {1, tabSize}, &tensorTabDeviceAddr, aclDataType::ACL_FLOAT, &tensorTab);
     CHECK_RET(ret == ::ACL_SUCCESS, return ret);
     ret = CreateAclTensor(intpPos, {batch, interpLength}, &tensorPosDeviceAddr, aclDataType::ACL_INT32, &tensorPos);
     CHECK_RET(ret == ::ACL_SUCCESS, return ret);
-    ret = CreateAclTensor(
-        tabIndex, {batch, interpLength}, &tensorTabIndexDeviceAddr, aclDataType::ACL_INT16, &tensorTabIndex);
+    ret = CreateAclTensor(tabIndex, {batch, interpLength}, &tensorTabIndexDeviceAddr, aclDataType::ACL_INT16,
+                          &tensorTabIndex);
     CHECK_RET(ret == ::ACL_SUCCESS, return ret);
-    ret =
-        CreateAclTensor(outSignal, {batch, interpLength}, &tensorOutDeviceAddr, aclDataType::ACL_COMPLEX64, &tensorOut);
+    ret = CreateAclTensor(outSignal, {batch, interpLength}, &tensorOutDeviceAddr, aclDataType::ACL_COMPLEX64,
+                          &tensorOut);
     CHECK_RET(ret == ::ACL_SUCCESS, return ret);
 
-    void *workspace = nullptr;
+    void* workspace = nullptr;
     size_t workspaceSize = 0;
     rsInterpolationBySincGetWorkspaceSize(workspaceSize);
     if (workspaceSize > 0) {
@@ -186,17 +179,14 @@ int main(int argc, char **argv)
         CHECK_RET(ret == ::ACL_SUCCESS, LOG_PRINT("allocate workspace failed. ERROR: %d\n", ret); return ret);
     }
 
-    ASD_STATUS_CHECK(rsInterpolationBySinc(
-        tensorIn, tensorTab, tensorPos, tensorTabIndex, tensorOut, 16, 32, interpLength, stream, workspace));
+    ASD_STATUS_CHECK(rsInterpolationBySinc(tensorIn, tensorTab, tensorPos, tensorTabIndex, tensorOut, 16, 32,
+                                           interpLength, stream, workspace));
 
     ret = aclrtSynchronizeStream(stream);
     CHECK_RET(ret == ::ACL_SUCCESS, LOG_PRINT("aclrtSynchronizeStream failed. ERROR: %d\n", ret); return ret);
 
-    ret = aclrtMemcpy(outSignal.data(),
-        outSize * sizeof(std::complex<float>),
-        tensorOutDeviceAddr,
-        outSize * sizeof(std::complex<float>),
-        ACL_MEMCPY_DEVICE_TO_HOST);
+    ret = aclrtMemcpy(outSignal.data(), outSize * sizeof(std::complex<float>), tensorOutDeviceAddr,
+                      outSize * sizeof(std::complex<float>), ACL_MEMCPY_DEVICE_TO_HOST);
     CHECK_RET(ret == ::ACL_SUCCESS, LOG_PRINT("copy result from device to host failed. ERROR: %d\n", ret); return ret);
 
     for (long long ii = 0; ii < interpLength; ++ii) {

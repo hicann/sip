@@ -20,7 +20,7 @@ asdBlasCgemvBatched：用于计算批量复数矩阵与向量的乘积。
 
   $$
   y= alpha * op(A)*x + beta * y\\
-  
+
   $$
 
   其中，op表示矩阵A做“共轭转置”或者“非转置”的操作。\
@@ -36,29 +36,29 @@ asdBlasCgemvBatched：用于计算批量复数矩阵与向量的乘积。
 输入“batchCount”为：2。\
 调用“asdBlasCgemvBatched”算子后，输出“y[i]”为：\
 [-1+5i,-5+9i]
- 
+
 ## 函数原型
 
 ```Cpp
 AspbStatus asdBlasMakeCgemvBatchedPlan(
-  asdBlasHandle        handle, 
-  asdBlasOperation_t   trans, 
+  asdBlasHandle        handle,
+  asdBlasOperation_t   trans,
   const int64_t        m)
 ```
 
 ```Cpp
 AspbStatus asdBlasCgemvBatched(
-  asdBlasHandle                    handle, 
-  asdBlasOperation_t               trans, 
-  const int64_t                    m, 
+  asdBlasHandle                    handle,
+  asdBlasOperation_t               trans,
+  const int64_t                    m,
   const int64_t                    n,
-  const std::complex<float> &      alpha, 
-  aclTensor *                      A, 
-  const int64_t                    lda, 
+  const std::complex<float> &      alpha,
+  aclTensor *                      A,
+  const int64_t                    lda,
   aclTensor *                      x,
-  const int64_t                    incx, 
-  const std::complex<float> &      beta, 
-  aclTensor *                      y, 
+  const int64_t                    incx,
+  const std::complex<float> &      beta,
+  aclTensor *                      y,
   const int64_t                    incy,
   const int64_t                    batchCount)
 ```
@@ -315,7 +315,7 @@ int main(int argc, char **argv)
     int64_t xSize = batch * n;
     int64_t ySize = batch * m;
     std::vector<std::complex<float>> tensorInAData;
-    tensorInAData.reserve(aSize);
+    tensorInAData.resize(aSize);
     for (int64_t b = 0; b < batch; b++) {
         for (int64_t i = 0; i < m; i++) {
             for (int64_t j = 0; j < n; j++) {
@@ -324,14 +324,14 @@ int main(int argc, char **argv)
         }
     }
     std::vector<std::complex<float>> tensorInXData;
-    tensorInXData.reserve(xSize);
+    tensorInXData.resize(xSize);
     for (int64_t b = 0; b < batch; b++) {
         for (int64_t i = 0; i < n; i++) {
             tensorInXData[b * n + i] = std::complex<float>(i + 1.0f, 2.0f);
         }
     }
     std::vector<std::complex<float>> tensorInYData;
-    tensorInYData.reserve(ySize);
+    tensorInYData.resize(ySize);
     for (int64_t b = 0; b < batch; b++) {
         for (int64_t i = 0; i < m; i++) {
             tensorInYData[b * m + i] = std::complex<float>(1.0f, 1.0f);

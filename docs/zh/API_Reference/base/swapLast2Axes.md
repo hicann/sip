@@ -53,8 +53,8 @@ AsdSip::AspbStatus swapLast2AxesGetWorkspaceSize(
 
 ```Cpp
 AsdSip::AspbStatus swapLast2Axes(
-  const aclTensor *    inTensor, 
-  aclTensor *          outTensor, 
+  const aclTensor *    inTensor,
+  aclTensor *          outTensor,
   void *               stream,
   void *               workspace = nullptr)
 ```
@@ -86,7 +86,7 @@ AsdSip::AspbStatus swapLast2Axes(
     </tr>
   </tbody>
   </table>
-  
+
 - **返回值**：
 
   返回状态码，具体参见[SiP返回码](../../context/SiP返回码.md)。
@@ -131,7 +131,7 @@ AsdSip::AspbStatus swapLast2Axes(
     </tr>
   </tbody>
   </table>
-  
+
 - **返回值**：
 
   返回状态码，具体参见[SiP返回码](../../context/SiP返回码.md)。
@@ -250,12 +250,12 @@ int main(int argc, char **argv)
     const int64_t tensorSize = row * col * 2;
 
     std::vector<float> tensorInData;
-    tensorInData.reserve(tensorSize);
+    tensorInData.resize(tensorSize);
     for (int64_t i = 0; i < tensorSize; i++) {
         tensorInData[i] = 0.0 + i;
     }
     std::vector<float> tensorOutData;
-    tensorOutData.reserve(tensorSize);
+    tensorOutData.resize(tensorSize);
 
     std::vector<int64_t> inShape = {row, col};
     std::vector<int64_t> outShape = {col, row};

@@ -43,25 +43,25 @@ asdBlasHCmatinvBatched：对复数矩阵进行求逆。
 -0.0417-0.0417i,0.208+0.208i,-0.0417-0.0417i,-0.0417-0.0417i\
 -0.0417-0.0417i,-0.0417-0.0417i,0.208+0.208i,-0.0417-0.0417i\
 -0.0417-0.0417i,-0.0417-0.0417i,-0.0417-0.0417i,0.208+0.208i]
- 
+
 ## 函数原型
 
 ```Cpp
 AspbStatus asdBlasMakeHCmatinvBatchedPlan(
-  asdBlasHandle        handle, 
-  const int64_t        n, 
+  asdBlasHandle        handle,
+  const int64_t        n,
   const int64_t        batchSize)
 ```
 
 ```Cpp
 AspbStatus asdBlasHCmatinvBatched(
-  asdBlasHandle                    handle,  
-  const int64_t                    n, 
-  aclTensor *                      A, 
-  const int64_t                    lda, 
+  asdBlasHandle                    handle,
+  const int64_t                    n,
+  aclTensor *                      A,
+  const int64_t                    lda,
   aclTensor *                      Ainv,
-  const int64_t                    lda_inv, 
-  aclTensor *                      info, 
+  const int64_t                    lda_inv,
+  aclTensor *                      info,
   const int64_t                    batchSize)
 ```
 
@@ -161,7 +161,7 @@ AspbStatus asdBlasHCmatinvBatched(
     </tr>
     </tbody>
     </table>
-    
+
 - **返回值**：
 
   返回状态码，具体参见[SiP返回码](../../context/SiP返回码.md)。
@@ -290,9 +290,9 @@ int main(int argc, char **argv)
     std::vector<std::complex<op::fp16_t>> tensorInAData;
     std::vector<std::complex<op::fp16_t>> tensorInAinvData;
     std::vector<int32_t> tensorInInfoData;
-    tensorInAData.reserve(tensorASize);
-    tensorInAinvData.reserve(tensorASize);
-    tensorInInfoData.reserve(batchSize);
+    tensorInAData.resize(tensorASize);
+    tensorInAinvData.resize(tensorASize);
+    tensorInInfoData.resize(batchSize);
 
     for (int32_t batchIdx = 0; batchIdx < batchSize; batchIdx++) {
         for (int32_t i = 0; i < n; i++) {

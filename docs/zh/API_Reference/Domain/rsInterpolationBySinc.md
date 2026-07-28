@@ -37,7 +37,7 @@ rsInterpolationBySinc：实现带batch的一维复数向量插值计算，返回
   pos[1] = 1.6 → outputTensor[1] = [2 + i , 2 + i] · [ 0.5 , 0.5 ] = 2 + i\
 调用“rsInterpolationBySinc”算子后，输出“outputTensor”为：\
   [ 1 + i , 2 + i ]
- 
+
 ## 函数原型
 
 若需使用“rsInterpolationBySinc”算子，需先调用“rsInterpolationBySincGetWorkspaceSize”接口获取计算所需workspace大小以及包含了算子计算流程的执行器，再调用“rsInterpolationBySinc”接口执行计算。
@@ -49,15 +49,15 @@ AspbStatus rsInterpolationBySincGetWorkspaceSize(
 
 ```Cpp
 AspbStatus rsInterpolationBySinc(
-  const aclTensor *          inputTensor, 
+  const aclTensor *          inputTensor,
   const aclTensor *          sincTab,
-  const aclTensor *          posFloor, 
+  const aclTensor *          posFloor,
   const aclTensor *          posToTabIndex,
-  aclTensor *                outputTensor, 
-  int                        interpNum, 
-  int                        quantNum, 
+  aclTensor *                outputTensor,
+  int                        interpNum,
+  int                        quantNum,
   int                        interpLength,
-  void *                     stream, 
+  void *                     stream,
   void *                     workSpace = nullptr)
 
 ```
@@ -160,7 +160,7 @@ AspbStatus rsInterpolationBySinc(
 - **返回值**：
 
   返回状态码，具体参见[SiP返回码](../../context/SiP返回码.md)。
-  
+
 ## 约束说明
 
 rsInterpolationBySinc：
@@ -317,22 +317,22 @@ int main(int argc, char **argv)
     genTab(tabDate, tabSize);
     std::vector<float> tab(tabDate, tabDate + tabSize);
     std::vector<complex<float>> inSignal;
-    inSignal.reserve(inSize);
+    inSignal.resize(inSize);
     for (long long ii = 0; ii < signalLength; ++ii) {
         inSignal[ii] = complex<float>(ii, ii);
     }
     std::vector<int32_t> intpPos;
-    intpPos.reserve(posSize);
+    intpPos.resize(posSize);
     for (long long ii = 0; ii < interpLength; ++ii) {
         intpPos[ii] = ii;
     }
     std::vector<int16_t> tabIndex;
-    tabIndex.reserve(tabIndexSize);
+    tabIndex.resize(tabIndexSize);
     for (long long ii = 0; ii < interpLength; ++ii) {
         tabIndex[ii] = ii % 33;
     }
     std::vector<complex<float>> outSignal;
-    outSignal.reserve(outSize);
+    outSignal.resize(outSize);
     for (long long ii = 0; ii < interpLength; ++ii) {
         outSignal[ii] = complex<float>(0, 0);
     }

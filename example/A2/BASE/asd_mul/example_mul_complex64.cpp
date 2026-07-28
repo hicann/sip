@@ -38,7 +38,7 @@ using namespace AsdSip;
         printf(message, ##__VA_ARGS__); \
     } while (0)
 
-int64_t GetShapeSize(const std::vector<int64_t> &shape)
+int64_t GetShapeSize(const std::vector<int64_t>& shape)
 {
     int64_t shapeSize = 1;
     for (auto i : shape) {
@@ -47,7 +47,7 @@ int64_t GetShapeSize(const std::vector<int64_t> &shape)
     return shapeSize;
 }
 
-int Init(int32_t deviceId, aclrtStream *stream)
+int Init(int32_t deviceId, aclrtStream* stream)
 {
     // 固定写法，acl初始化
     auto ret = aclInit(nullptr);
@@ -60,8 +60,8 @@ int Init(int32_t deviceId, aclrtStream *stream)
 }
 
 template <typename T>
-int CreateAclTensor(const std::vector<T> &hostData, const std::vector<int64_t> &shape, void **deviceAddr,
-    aclDataType dataType, aclTensor **tensor)
+int CreateAclTensor(const std::vector<T>& hostData, const std::vector<int64_t>& shape, void** deviceAddr,
+                    aclDataType dataType, aclTensor** tensor)
 {
     auto size = GetShapeSize(shape) * sizeof(T);
     // 调用aclrtMalloc申请device侧内存
@@ -78,19 +78,12 @@ int CreateAclTensor(const std::vector<T> &hostData, const std::vector<int64_t> &
     }
 
     // 调用aclCreateTensor接口创建aclTensor
-    *tensor = aclCreateTensor(shape.data(),
-        shape.size(),
-        dataType,
-        strides.data(),
-        0,
-        aclFormat::ACL_FORMAT_ND,
-        shape.data(),
-        shape.size(),
-        *deviceAddr);
+    *tensor = aclCreateTensor(shape.data(), shape.size(), dataType, strides.data(), 0, aclFormat::ACL_FORMAT_ND,
+                              shape.data(), shape.size(), *deviceAddr);
     return 0;
 }
 
-void printTensor(const std::complex<float> *tensorData, int64_t nums)
+void printTensor(const std::complex<float>* tensorData, int64_t nums)
 {
     for (int64_t i = 0; i < nums; i++) {
         std::cout << tensorData[i] << " ";
@@ -98,7 +91,7 @@ void printTensor(const std::complex<float> *tensorData, int64_t nums)
     std::cout << std::endl;
 }
 
-int main(int argc, char **argv)
+int main(int argc, char** argv)
 {
     int deviceId = 0;
 
@@ -111,8 +104,8 @@ int main(int argc, char **argv)
     int64_t vecSize = n;
     std::vector<std::complex<float>> tensorInXData;
     std::vector<std::complex<float>> tensorInYData;
-    tensorInXData.reserve(vecSize);
-    tensorInYData.reserve(vecSize);
+    tensorInXData.resize(vecSize);
+    tensorInYData.resize(vecSize);
     for (int64_t i = 0; i < vecSize; i++) {
         tensorInXData[i] = {(float)(1.0 + i), (float)(1.0 + i)};
     }
@@ -130,12 +123,12 @@ int main(int argc, char **argv)
     std::vector<int64_t> yShape = {vecSize};
     std::vector<int64_t> zShape = {vecSize};
 
-    aclTensor *inputX = nullptr;
-    aclTensor *inputY = nullptr;
-    aclTensor *outputZ = nullptr;
-    void *inputXDeviceAddr = nullptr;
-    void *inputYDeviceAddr = nullptr;
-    void *outputZDeviceAddr = nullptr;
+    aclTensor* inputX = nullptr;
+    aclTensor* inputY = nullptr;
+    aclTensor* outputZ = nullptr;
+    void* inputXDeviceAddr = nullptr;
+    void* inputYDeviceAddr = nullptr;
+    void* outputZDeviceAddr = nullptr;
     ret = CreateAclTensor(tensorInXData, xShape, &inputXDeviceAddr, aclDataType::ACL_COMPLEX64, &inputX);
     CHECK_RET(ret == ::ACL_SUCCESS, return ret);
     ret = CreateAclTensor(tensorInYData, yShape, &inputYDeviceAddr, aclDataType::ACL_COMPLEX64, &inputY);
@@ -148,11 +141,8 @@ int main(int argc, char **argv)
     ret = aclrtSynchronizeStream(stream);
     CHECK_RET(ret == ::ACL_SUCCESS, LOG_PRINT("aclrtSynchronizeStream failed. ERROR: %d\n", ret); return ret);
 
-    ret = aclrtMemcpy(tensorOutZData.data(),
-        vecSize * sizeof(std::complex<float>),
-        outputZDeviceAddr,
-        vecSize * sizeof(std::complex<float>),
-        ACL_MEMCPY_DEVICE_TO_HOST);
+    ret = aclrtMemcpy(tensorOutZData.data(), vecSize * sizeof(std::complex<float>), outputZDeviceAddr,
+                      vecSize * sizeof(std::complex<float>), ACL_MEMCPY_DEVICE_TO_HOST);
     CHECK_RET(ret == ::ACL_SUCCESS, LOG_PRINT("copy z from device to host failed. ERROR: %d\n", ret); return ret);
 
     std::cout << "------- Output -------" << std::endl;

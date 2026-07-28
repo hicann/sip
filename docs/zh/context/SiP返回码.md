@@ -228,18 +228,18 @@ int main(int argc, char **argv)
     int64_t xSize = 8;
     int64_t ySize = 8;
     std::vector<std::complex<float>> tensorInXData;
-    tensorInXData.reserve(xSize);
+    tensorInXData.resize(xSize);
     for (int64_t i = 0; i < xSize; i++) {
         tensorInXData[i] = {2.0, (float)(1.0 + i)};
     }
     std::vector<std::complex<float>> tensorInYData;
-    tensorInYData.reserve(ySize);
+    tensorInYData.resize(ySize);
     for (int64_t i = 0; i < ySize; i++) {
         tensorInYData[i] = {3.0, 4.0};
     }
     int64_t resultSize = 1;
     std::vector<std::complex<float>> resultData;
-    resultData.reserve(resultSize);
+    resultData.resize(resultSize);
     std::cout << "------- input TensorInX -------" << std::endl;
     printTensor(tensorInXData.data(), xSize);
     std::cout << "------- input TensorInY -------" << std::endl;

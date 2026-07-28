@@ -44,21 +44,21 @@ asdBlasCtrmv：单精度复数矩阵向量乘法算子，用于计算一个复�
 
 ```Cpp
 AspbStatus asdBlasMakeCtrmvPlan(
-  asdBlasHandle      handle, 
-  asdBlasFillMode_t  uplo, 
+  asdBlasHandle      handle,
+  asdBlasFillMode_t  uplo,
   int64_t            n)
 ```
 
 ```Cpp
 AspbStatus asdBlasCtrmv(
-  asdBlasHandle      handle, 
-  asdBlasFillMode_t  uplo, 
-  asdBlasOperation_t trans, 
+  asdBlasHandle      handle,
+  asdBlasFillMode_t  uplo,
+  asdBlasOperation_t trans,
   asdBlasDiagType_t  diag,
-  const int64_t      n, 
-  aclTensor *        A, 
-  const int64_t      lda, 
-  aclTensor *        x, 
+  const int64_t      n,
+  aclTensor *        A,
+  const int64_t      lda,
+  aclTensor *        x,
   const int64_t      incx)
 ```
 
@@ -279,14 +279,14 @@ int main(int argc, char **argv)
 
     int64_t tensorXSize = 4;
     std::vector<std::complex<float>> tensorInXData;
-    tensorInXData.reserve(tensorXSize);
+    tensorInXData.resize(tensorXSize);
     for (int64_t i = 0; i < tensorXSize; i++) {
         tensorInXData[i] = {(float)(1.0 * i), (float)(1.0 * i)};
     }
 
     int64_t tensorASize = n * n;
     std::vector<std::complex<float>> tensorInAData;
-    tensorInAData.reserve(tensorASize);
+    tensorInAData.resize(tensorASize);
     for (int64_t i = 0; i < n; i++) {
         for (int64_t j = 0; j < n; j++) {
             tensorInAData[n * i + j] = {0.0, 0.0};

@@ -40,7 +40,7 @@ using namespace AsdSip;
         printf(message, ##__VA_ARGS__); \
     } while (0)
 
-int64_t GetShapeSize(const std::vector<int64_t> &shape)
+int64_t GetShapeSize(const std::vector<int64_t>& shape)
 {
     int64_t shapeSize = 1;
     for (auto i : shape) {
@@ -49,7 +49,7 @@ int64_t GetShapeSize(const std::vector<int64_t> &shape)
     return shapeSize;
 }
 
-int Init(int32_t deviceId, aclrtStream *stream)
+int Init(int32_t deviceId, aclrtStream* stream)
 {
     // 固定写法，acl初始化
     auto ret = aclInit(nullptr);
@@ -62,8 +62,8 @@ int Init(int32_t deviceId, aclrtStream *stream)
 }
 
 template <typename T>
-int CreateAclTensor(const std::vector<T> &hostData, const std::vector<int64_t> &shape, void **deviceAddr,
-    aclDataType dataType, aclTensor **tensor)
+int CreateAclTensor(const std::vector<T>& hostData, const std::vector<int64_t>& shape, void** deviceAddr,
+                    aclDataType dataType, aclTensor** tensor)
 {
     auto size = GetShapeSize(shape) * sizeof(T);
     // 调用aclrtMalloc申请device侧内存
@@ -80,21 +80,14 @@ int CreateAclTensor(const std::vector<T> &hostData, const std::vector<int64_t> &
     }
 
     // 调用aclCreateTensor接口创建aclTensor
-    *tensor = aclCreateTensor(shape.data(),
-        shape.size(),
-        dataType,
-        strides.data(),
-        0,
-        aclFormat::ACL_FORMAT_ND,
-        shape.data(),
-        shape.size(),
-        *deviceAddr);
+    *tensor = aclCreateTensor(shape.data(), shape.size(), dataType, strides.data(), 0, aclFormat::ACL_FORMAT_ND,
+                              shape.data(), shape.size(), *deviceAddr);
     return 0;
 }
 
-void printTensor(const std::complex<op::fp16_t> *tensorData, int64_t batch, int64_t rows, int64_t cols)
+void printTensor(const std::complex<op::fp16_t>* tensorData, int64_t batch, int64_t rows, int64_t cols)
 {
-    for(int64_t b = 0; b < batch; b++) {
+    for (int64_t b = 0; b < batch; b++) {
         for (int64_t i = 0; i < rows; i++) {
             for (int64_t j = 0; j < cols; j++) {
                 auto data = tensorData[b * rows * cols + i * cols + j];
@@ -106,7 +99,7 @@ void printTensor(const std::complex<op::fp16_t> *tensorData, int64_t batch, int6
     }
 }
 
-int main(int argc, char **argv)
+int main(int argc, char** argv)
 {
     int deviceId = 0;
 
@@ -128,7 +121,7 @@ int main(int argc, char **argv)
     int64_t xSize = batch * n;
     int64_t ySize = batch * m;
     std::vector<std::complex<op::fp16_t>> tensorInAData;
-    tensorInAData.reserve(aSize);
+    tensorInAData.resize(aSize);
     for (int64_t b = 0; b < batch; b++) {
         for (int64_t i = 0; i < m; i++) {
             for (int64_t j = 0; j < n; j++) {
@@ -137,14 +130,14 @@ int main(int argc, char **argv)
         }
     }
     std::vector<std::complex<op::fp16_t>> tensorInXData;
-    tensorInXData.reserve(xSize);
+    tensorInXData.resize(xSize);
     for (int64_t b = 0; b < batch; b++) {
         for (int64_t i = 0; i < n; i++) {
             tensorInXData[b * n + i] = std::complex<op::fp16_t>(i + 1.0f, 2.0f);
         }
     }
     std::vector<std::complex<op::fp16_t>> tensorInYData;
-    tensorInYData.reserve(ySize);
+    tensorInYData.resize(ySize);
     for (int64_t b = 0; b < batch; b++) {
         for (int64_t i = 0; i < m; i++) {
             tensorInYData[b * m + i] = std::complex<op::fp16_t>(1.0f, 1.0f);
@@ -152,8 +145,8 @@ int main(int argc, char **argv)
     }
 
     std::cout << "trans = " << static_cast<int32_t>(trans) << std::endl;
-    std::cout << "alpha = "  << "(" << (float)alpha.real() << "," << (float)alpha.imag() << ")" << std::endl;
-    std::cout << "beta = "  << "(" << (float)beta.real() << "," << (float)beta.imag() << ")" << std::endl;
+    std::cout << "alpha = " << "(" << (float)alpha.real() << "," << (float)alpha.imag() << ")" << std::endl;
+    std::cout << "beta = " << "(" << (float)beta.real() << "," << (float)beta.imag() << ")" << std::endl;
     std::cout << "------- input TensorInA -------" << std::endl;
     printTensor(tensorInAData.data(), batch, m, n);
     std::cout << "------- input TensorInX -------" << std::endl;
@@ -164,12 +157,12 @@ int main(int argc, char **argv)
     std::vector<int64_t> aShape = {batch, m, n};
     std::vector<int64_t> xShape = {batch, n};
     std::vector<int64_t> yShape = {batch, m};
-    aclTensor *inputA = nullptr;
-    aclTensor *inputX = nullptr;
-    aclTensor *inputY = nullptr;
-    void *inputADeviceAddr = nullptr;
-    void *inputXDeviceAddr = nullptr;
-    void *inputYDeviceAddr = nullptr;
+    aclTensor* inputA = nullptr;
+    aclTensor* inputX = nullptr;
+    aclTensor* inputY = nullptr;
+    void* inputADeviceAddr = nullptr;
+    void* inputXDeviceAddr = nullptr;
+    void* inputYDeviceAddr = nullptr;
     ret = CreateAclTensor(tensorInAData, aShape, &inputADeviceAddr, aclDataType::ACL_COMPLEX32, &inputA);
     CHECK_RET(ret == ::ACL_SUCCESS, return ret);
     ret = CreateAclTensor(tensorInXData, xShape, &inputXDeviceAddr, aclDataType::ACL_COMPLEX32, &inputX);
@@ -181,7 +174,7 @@ int main(int argc, char **argv)
     asdBlasCreate(handle);
 
     size_t lwork = 0;
-    void *buffer = nullptr;
+    void* buffer = nullptr;
     asdBlasMakeHCgemvBatchedPlan(handle, trans, m);
     asdBlasGetWorkspaceSize(handle, lwork);
     std::cout << "lwork = " << lwork << std::endl;
@@ -192,16 +185,14 @@ int main(int argc, char **argv)
     asdBlasSetWorkspace(handle, buffer);
     asdBlasSetStream(handle, stream);
 
-    ASD_STATUS_CHECK(asdBlasHCgemvBatched(handle, trans, m, n, alpha, inputA, lda, inputX, incx, beta, inputY, incy, batch));
+    ASD_STATUS_CHECK(
+        asdBlasHCgemvBatched(handle, trans, m, n, alpha, inputA, lda, inputX, incx, beta, inputY, incy, batch));
 
     asdBlasSynchronize(handle);
     asdBlasDestroy(handle);
 
-    ret = aclrtMemcpy(tensorInYData.data(),
-        ySize * sizeof(std::complex<op::fp16_t>),
-        inputYDeviceAddr,
-        ySize * sizeof(std::complex<op::fp16_t>),
-        ACL_MEMCPY_DEVICE_TO_HOST);
+    ret = aclrtMemcpy(tensorInYData.data(), ySize * sizeof(std::complex<op::fp16_t>), inputYDeviceAddr,
+                      ySize * sizeof(std::complex<op::fp16_t>), ACL_MEMCPY_DEVICE_TO_HOST);
     CHECK_RET(ret == ::ACL_SUCCESS, LOG_PRINT("copy y from device to host failed. ERROR: %d\n", ret); return ret);
 
     std::cout << "------- output TensorInY -------" << std::endl;

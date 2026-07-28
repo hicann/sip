@@ -29,7 +29,7 @@ asdBlasStrmv：单精度接口，用于计算一个三角矩阵与一个向量�
 
   示例：\
   输入“A”为：\
- [   [ 1, 2 ], 
+ [   [ 1, 2 ],
     [ 3, 4 ]  ]\
   输入“x”为：\
  [1,2]\
@@ -42,23 +42,23 @@ asdBlasStrmv：单精度接口，用于计算一个三角矩阵与一个向量�
 
 ```Cpp
 AspbStatus asdBlasMakeStrmvPlan(
-  asdBlasHandle           handle, 
-  asdBlasFillMode_t       uplo, 
-  asdBlasOperation_t      trans, 
+  asdBlasHandle           handle,
+  asdBlasFillMode_t       uplo,
+  asdBlasOperation_t      trans,
   int64_t                 n)
 
 ```
 
 ```Cpp
 AspbStatus asdBlasStrmv(
-  asdBlasHandle         handle, 
-  asdBlasFillMode_t     uplo, 
-  asdBlasOperation_t    trans, 
+  asdBlasHandle         handle,
+  asdBlasFillMode_t     uplo,
+  asdBlasOperation_t    trans,
   asdBlasDiagType_t     diag,
-  const int64_t         n, 
-  aclTensor*            A, 
-  const int64_t         lda, 
-  aclTensor*            x, 
+  const int64_t         n,
+  aclTensor*            A,
+  const int64_t         lda,
+  aclTensor*            x,
   const int64_t         incx)
 ```
 
@@ -172,7 +172,7 @@ AspbStatus asdBlasStrmv(
     </table>
 - **返回值**：
 
-  返回状态码，具体参见[SiP返回码](../../context/SiP返回码.md)。    
+  返回状态码，具体参见[SiP返回码](../../context/SiP返回码.md)。
 
 ## 约束说明
 
@@ -294,7 +294,7 @@ int main(int argc, char **argv)
     const int64_t tensorXSize = n;
 
     std::vector<float> tensorInAData;
-    tensorInAData.reserve(tensorASize);
+    tensorInAData.resize(tensorASize);
     for (int64_t i = 0; i < n; i++) {
         for (int64_t j = 0; j < i + 1; j++) {
             tensorInAData[n * i + j] = 1.0 + i * n + j;
@@ -305,7 +305,7 @@ int main(int argc, char **argv)
     }
 
     std::vector<float> tensorInXData;
-    tensorInXData.reserve(tensorXSize);
+    tensorInXData.resize(tensorXSize);
     for (int64_t i = 0; i < n; i++) {
         tensorInXData[i] = 1.0;
     }

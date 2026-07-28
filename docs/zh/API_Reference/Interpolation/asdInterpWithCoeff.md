@@ -43,10 +43,10 @@ AspbStatus asdInterpWithCoeffGetWorkspaceSize(
 
 ```Cpp
 AspbStatus asdInterpWithCoeff(
-  const aclTensor *    x, 
-  const aclTensor *    coefficient, 
-  aclTensor *          y, 
-  void *               stream, 
+  const aclTensor *    x,
+  const aclTensor *    coefficient,
+  aclTensor *          y,
+  void *               stream,
   void *               workSpace = nullptr)
 ```
 
@@ -128,7 +128,7 @@ AspbStatus asdInterpWithCoeff(
 - **返回值**：
 
   返回状态码，具体参见[SiP返回码](../../context/SiP返回码.md)。
-  
+
 ## 约束说明
 
 无
@@ -210,21 +210,21 @@ int main(int argc, char **argv)
 
     int64_t xSize = batch * nRs * totalSubcarrier * 2;
     std::vector<float> tensorInXData;
-    tensorInXData.reserve(xSize);
+    tensorInXData.resize(xSize);
     for (int64_t i = 0; i < xSize; i++) {
         tensorInXData[i] = 1.0 + i;
     }
 
     int64_t coeffSize = batch * (nSignal - nRs) * nRs * 2;
     std::vector<float> coeffData;
-    coeffData.reserve(xSize);
+    coeffData.resize(xSize);
     for (int64_t i = 0; i < coeffSize; i++) {
         coeffData[i] = 1;
     }
 
     int64_t resultSize = batch * (nSignal - nRs) * totalSubcarrier * 2;
     std::vector<float> resultData;
-    resultData.reserve(resultSize);
+    resultData.resize(resultSize);
     for (int64_t i = 0; i < resultSize; i++) {
         resultData[i] = 2;
     }

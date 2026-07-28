@@ -36,11 +36,11 @@
 
 ```Cpp
 AspbStatus asdMul(
-  int                 n, 
-  const aclTensor *   x, 
-  const aclTensor *   y, 
-  aclTensor *         z, 
-  void *              stream, 
+  int                 n,
+  const aclTensor *   x,
+  const aclTensor *   y,
+  aclTensor *         z,
+  void *              stream,
   void *              workspace = nullptr)
 ```
 
@@ -382,8 +382,8 @@ int main(int argc, char **argv)
     int64_t vecSize = n;
     std::vector<std::complex<float>> tensorInXData;
     std::vector<std::complex<float>> tensorInYData;
-    tensorInXData.reserve(vecSize);
-    tensorInYData.reserve(vecSize);
+    tensorInXData.resize(vecSize);
+    tensorInYData.resize(vecSize);
     for (int64_t i = 0; i < vecSize; i++) {
         tensorInXData[i] = {(float)(1.0 + i), (float)(1.0 + i)};
     }

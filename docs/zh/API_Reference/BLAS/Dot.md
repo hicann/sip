@@ -68,34 +68,34 @@ AspbStatus asdBlasMakeDotPlan(
 
 ```Cpp
 AspbStatus asdBlasSdot(
-  asdBlasHandle      handle, 
-  const int64_t      n, 
-  aclTensor *        x, 
-  const int64_t      incx, 
+  asdBlasHandle      handle,
+  const int64_t      n,
+  aclTensor *        x,
+  const int64_t      incx,
   aclTensor *        y,
-  const int64_t      incy, 
+  const int64_t      incy,
   aclTensor *        result)
 ```
 
 ```Cpp
 AspbStatus asdBlasCdotu(
-  asdBlasHandle      handle, 
-  const int64_t      n, 
-  aclTensor *        x, 
-  const int64_t      incx, 
+  asdBlasHandle      handle,
+  const int64_t      n,
+  aclTensor *        x,
+  const int64_t      incx,
   aclTensor *        y,
-  const int64_t      incy, 
+  const int64_t      incy,
   aclTensor *        result)
 ```
 
 ```Cpp
 AspbStatus asdBlasCdotc(
-  asdBlasHandle         handle, 
-  const int64_t         n, 
-  aclTensor *           x, 
-  const int64_t         incx, 
+  asdBlasHandle         handle,
+  const int64_t         n,
+  aclTensor *           x,
+  const int64_t         incx,
   aclTensor *           y,
-  const int64_t         incy, 
+  const int64_t         incy,
   aclTensor *           result)
 ```
 
@@ -295,21 +295,21 @@ int main(int argc, char **argv)
 
     int64_t xSize = 5;
     std::vector<float> tensorInXData;
-    tensorInXData.reserve(xSize);
+    tensorInXData.resize(xSize);
     for (int64_t i = 0; i < xSize; i++) {
         tensorInXData[i] = 1.0 + i;
     }
 
     int64_t ySize = 5;
     std::vector<float> tensorInYData;
-    tensorInYData.reserve(xSize);
+    tensorInYData.resize(xSize);
     for (int64_t i = 0; i < ySize; i++) {
         tensorInYData[i] = 10.0 + i;
     }
 
     int64_t resultSize = 1;
     std::vector<float> resultData;
-    resultData.reserve(resultSize);
+    resultData.resize(resultSize);
 
     std::cout << "------- input x -------" << std::endl;
     for (int64_t i = 0; i < xSize; i++) {
@@ -513,20 +513,20 @@ int main(int argc, char **argv)
     int64_t ySize = 8;
 
     std::vector<std::complex<float>> tensorInXData;
-    tensorInXData.reserve(xSize);
+    tensorInXData.resize(xSize);
     for (int64_t i = 0; i < xSize; i++) {
         tensorInXData[i] = {2.0, (float)(1.0 + i)};
     }
 
     std::vector<std::complex<float>> tensorInYData;
-    tensorInYData.reserve(ySize);
+    tensorInYData.resize(ySize);
     for (int64_t i = 0; i < ySize; i++) {
         tensorInYData[i] = {3.0, 4.0};
     }
 
     int64_t resultSize = 1;
     std::vector<std::complex<float>> resultData;
-    resultData.reserve(resultSize);
+    resultData.resize(resultSize);
 
     std::cout << "------- input TensorInX -------" << std::endl;
     printTensor(tensorInXData.data(), xSize);
@@ -712,19 +712,19 @@ int main(int argc, char **argv)
     int64_t ySize = 8;
 
     std::vector<std::complex<float>> tensorInXData;
-    tensorInXData.reserve(xSize);
+    tensorInXData.resize(xSize);
     for (int64_t i = 0; i < xSize; i++) {
         tensorInXData[i] = {2.0, (float)(1.0 + i)};
     }
     std::vector<std::complex<float>> tensorInYData;
-    tensorInYData.reserve(ySize);
+    tensorInYData.resize(ySize);
     for (int64_t i = 0; i < ySize; i++) {
         tensorInYData[i] = {3.0, 4.0};
     }
 
     int64_t resultSize = 1;
     std::vector<std::complex<float>> resultData;
-    resultData.reserve(resultSize);
+    resultData.resize(resultSize);
 
     std::cout << "------- input TensorInX -------" << std::endl;
     printTensor(tensorInXData.data(), xSize);

@@ -65,27 +65,27 @@ AspbStatus asdBlasMakeCalPlan(asdBlasHandle handle)
 
 ```Cpp
 AspbStatus asdBlasSscal(
-  asdBlasHandle   handle, 
-  const int64_t   n, 
-  const float &   alpha, 
-  aclTensor *     x, 
+  asdBlasHandle   handle,
+  const int64_t   n,
+  const float &   alpha,
+  aclTensor *     x,
   const int64_t   incx)
 ```
 
 ```Cpp
 AspbStatus asdBlasCsscal(
-  asdBlasHandle   handle, 
-  const int64_t   n, 
-  const float &   alpha, 
-  aclTensor *     x, 
+  asdBlasHandle   handle,
+  const int64_t   n,
+  const float &   alpha,
+  aclTensor *     x,
   const int64_t   incx)
 ```
 
 ```Cpp
 AspbStatus asdBlasCscal(
-  asdBlasHandle               handle, 
-  const int64_t               n, 
-  const std::complex<float> & alpha, 
+  asdBlasHandle               handle,
+  const int64_t               n,
+  const std::complex<float> & alpha,
   aclTensor *                 x,
   const int64_t               incx)
 ```
@@ -321,7 +321,7 @@ int main(int argc, char **argv)
 
     int64_t xSize = 7;
     std::vector<float> tensorInXData;
-    tensorInXData.reserve(xSize);
+    tensorInXData.resize(xSize);
     for (int64_t i = 0; i < xSize; i++) {
         tensorInXData[i] = 1.0 + i;
     }
@@ -492,7 +492,7 @@ int main(int argc, char **argv)
 
     int64_t xSize = 5;
     std::vector<std::complex<float>> tensorInXData;
-    tensorInXData.reserve(xSize);
+    tensorInXData.resize(xSize);
     for (int64_t i = 0; i < xSize; i++) {
         tensorInXData[i] = {(float)(1.0 + i), (float)(2.0 + i)};
     }
@@ -650,7 +650,7 @@ int main(int argc, char **argv)
 
     int64_t xSize = 5;
     std::vector<std::complex<float>> tensorInXData;
-    tensorInXData.reserve(xSize);
+    tensorInXData.resize(xSize);
     for (int64_t i = 0; i < xSize; i++) {
         tensorInXData[i] = {(float)(1.0 + i), (float)(2.0 + i)};
     }

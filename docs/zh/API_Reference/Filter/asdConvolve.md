@@ -29,15 +29,15 @@
             调用“asdConvolve”算子后，输出“result”为：
             [[4.+4.j, 7.+7.j],
             [4.+4.j, 7.+7.j]]
- 
+
 ## 函数原型
 
 ```Cpp
 AspbStatus asdConvolve(
-  const aclTensor *    signal, 
-  const aclTensor *    kernel, 
-  aclTensor *          output, 
-  asdConvolveMode_t    mode, 
+  const aclTensor *    signal,
+  const aclTensor *    kernel,
+  aclTensor *          output,
+  asdConvolveMode_t    mode,
   void *stream, void * workspace)
 ```
 
@@ -92,7 +92,7 @@ AspbStatus asdConvolve(
 - **返回值**：
 
   返回状态码，具体参见[SiP返回码](../../context/SiP返回码.md)。
-  
+
 ## 约束说明
 
 无
@@ -212,10 +212,10 @@ int main(int argc, char **argv)
     int64_t batchCount = 2; // 768
 
     std::vector<std::complex<half>> tensorSignalData;
-    tensorSignalData.reserve(signalLen * batchCount);
+    tensorSignalData.resize(signalLen * batchCount);
 
     std::vector<half> tensorKernelData;
-    tensorKernelData.reserve(kernelLen);
+    tensorKernelData.resize(kernelLen);
 
     for (int64_t i = 0; i < signalLen * batchCount; i++) {
         tensorSignalData[i] = {(half)1.0, (half)1.0};
@@ -227,7 +227,7 @@ int main(int argc, char **argv)
     }
 
     std::vector<std::complex<half>> tensorOutData;
-    tensorOutData.reserve(signalLen * batchCount);
+    tensorOutData.resize(signalLen * batchCount);
 
     for (int64_t i = 0; i < signalLen * batchCount; i++) {
         tensorOutData[i] = {(half)-1.0, (half)-1.0};

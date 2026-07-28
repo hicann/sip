@@ -18,7 +18,7 @@ asdBlasMakeCgercPlan：初始化该句柄对应的Cgerc算子配置。\
 asdBlasCgerc：复数向量乘以另一个复数向量的共轭转置后，加在一个矩阵上。
 - 计算公式：
   $$
-  A= alpha * x *y^H + A\\ 
+  A= alpha * x *y^H + A\\
   $$
   示例：\
 输入“x”为：\
@@ -33,7 +33,7 @@ asdBlasCgerc：复数向量乘以另一个复数向量的共轭转置后，加�
 调用“asdBlasCgerc”算子后，输出“A”为：\
 [ [4.0 + 5.0j, 7.0 + 6.0j], \
   [7.0 + 7.0j, 12.0 + 8.0j] ]
- 
+
 ## 函数原型
 
 ```Cpp
@@ -44,14 +44,14 @@ AspbStatus asdBlasMakeCgercPlan(
 
 ```Cpp
 AspbStatus asdBlasCgerc(
-  asdBlasHandle               handle, 
-  const int64_t               m, 
-  const int64_t               n, 
+  asdBlasHandle               handle,
+  const int64_t               m,
+  const int64_t               n,
   const std::complex<float> & alpha,
-  aclTensor *                 x, 
-  const int64_t               incx, 
-  aclTensor *                 y, 
-  const int64_t               incy, 
+  aclTensor *                 x,
+  const int64_t               incx,
+  aclTensor *                 y,
+  const int64_t               incy,
   aclTensor *                 A,
   const int64_t               lda)
 ```
@@ -104,7 +104,7 @@ AspbStatus asdBlasCgerc(
       <td>输入</td>
       <td>算子的句柄</td>
     </tr>
-    
+
     <tr>
       <td>m（int64_t）</td>
       <td>输入</td>
@@ -135,7 +135,7 @@ AspbStatus asdBlasCgerc(
       <td>输入</td>
       <td><ul><li>输入向量，对应公式中的'y'。</li><li>数据类型支持COMPLEX64。</li><li>数据格式支持ND。</li><li>shape为[n]。</li></ul></td>
     </tr>
-    
+
     <tr>
       <td>incy（int64_t）</td>
       <td>输入</td>
@@ -281,11 +281,11 @@ int main(int argc, char **argv)
     int64_t xSize = m;
     int64_t ySize = n;
     std::vector<std::complex<float>> tensorInAData;
-    tensorInAData.reserve(aSize);
+    tensorInAData.resize(aSize);
     std::vector<std::complex<float>> tensorInXData;
-    tensorInXData.reserve(xSize);
+    tensorInXData.resize(xSize);
     std::vector<std::complex<float>> tensorInYData;
-    tensorInYData.reserve(ySize);
+    tensorInYData.resize(ySize);
 
     for (int64_t i = 0; i < m; i++) {
         for (int64_t j = 0; j < n; j++) {

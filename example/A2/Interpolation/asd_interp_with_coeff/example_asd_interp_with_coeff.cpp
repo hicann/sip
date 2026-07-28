@@ -17,7 +17,7 @@
 
 using namespace AsdSip;
 
-int64_t GetShapeSize(const std::vector<int64_t> &shape)
+int64_t GetShapeSize(const std::vector<int64_t>& shape)
 {
     int64_t shapeSize = 1;
     for (auto i : shape) {
@@ -26,7 +26,7 @@ int64_t GetShapeSize(const std::vector<int64_t> &shape)
     return shapeSize;
 }
 
-int Init(int32_t deviceId, aclrtStream *stream)
+int Init(int32_t deviceId, aclrtStream* stream)
 {
     // 固定写法，acl初始化
     aclInit(nullptr);
@@ -36,8 +36,8 @@ int Init(int32_t deviceId, aclrtStream *stream)
 }
 
 template <typename T>
-int CreateAclTensor(const std::vector<T> &hostData, const std::vector<int64_t> &shape, void **deviceAddr,
-    aclDataType dataType, aclTensor **tensor)
+int CreateAclTensor(const std::vector<T>& hostData, const std::vector<int64_t>& shape, void** deviceAddr,
+                    aclDataType dataType, aclTensor** tensor)
 {
     auto size = GetShapeSize(shape) * sizeof(T) * 2; // 2 : complex
     // 调用aclrtMalloc申请device侧内存
@@ -52,23 +52,16 @@ int CreateAclTensor(const std::vector<T> &hostData, const std::vector<int64_t> &
     }
 
     // 调用aclCreateTensor接口创建aclTensor
-    *tensor = aclCreateTensor(shape.data(),
-        shape.size(),
-        dataType,
-        strides.data(),
-        0,
-        aclFormat::ACL_FORMAT_ND,
-        shape.data(),
-        shape.size(),
-        *deviceAddr);
+    *tensor = aclCreateTensor(shape.data(), shape.size(), dataType, strides.data(), 0, aclFormat::ACL_FORMAT_ND,
+                              shape.data(), shape.size(), *deviceAddr);
     return 0;
 }
 
-int main(int argc, char **argv)
+int main(int argc, char** argv)
 {
     // 设置算子使用的device id
     int deviceId = 0;
-    //（固定写法）创建执行流
+    // （固定写法）创建执行流
     aclrtStream stream;
     Init(deviceId, &stream);
 
@@ -80,21 +73,21 @@ int main(int argc, char **argv)
 
     int64_t xSize = batch * nRs * totalSubcarrier * 2;
     std::vector<float> tensorInXData;
-    tensorInXData.reserve(xSize);
+    tensorInXData.resize(xSize);
     for (int64_t i = 0; i < xSize; i++) {
         tensorInXData[i] = 1.0 + i;
     }
 
     int64_t coeffSize = batch * (nSignal - nRs) * nRs * 2;
     std::vector<float> coeffData;
-    coeffData.reserve(xSize);
+    coeffData.resize(xSize);
     for (int64_t i = 0; i < coeffSize; i++) {
         coeffData[i] = 1;
     }
 
     int64_t resultSize = batch * (nSignal - nRs) * totalSubcarrier * 2;
     std::vector<float> resultData;
-    resultData.reserve(resultSize);
+    resultData.resize(resultSize);
     for (int64_t i = 0; i < resultSize; i++) {
         resultData[i] = 2;
     }
@@ -128,18 +121,20 @@ int main(int argc, char **argv)
     std::cout << std::endl;
 
     // 创造输入/输出tensor
-    aclTensor *inputX = nullptr;
-    aclTensor *inputCoeff = nullptr;
-    aclTensor *result = nullptr;
-    void *inputXDeviceAddr = nullptr;
-    void *inputYDeviceAddr = nullptr;
-    void *resultDeviceAddr = nullptr;
-    CreateAclTensor(tensorInXData, {batch, nRs, totalSubcarrier}, &inputXDeviceAddr, aclDataType::ACL_COMPLEX64, &inputX);
-    CreateAclTensor(coeffData, {batch, nSignal-nRs, nRs}, &inputYDeviceAddr, aclDataType::ACL_COMPLEX64, &inputCoeff);
-    CreateAclTensor(resultData, {batch, nSignal-nRs, totalSubcarrier}, &resultDeviceAddr, aclDataType::ACL_COMPLEX64, &result);
+    aclTensor* inputX = nullptr;
+    aclTensor* inputCoeff = nullptr;
+    aclTensor* result = nullptr;
+    void* inputXDeviceAddr = nullptr;
+    void* inputYDeviceAddr = nullptr;
+    void* resultDeviceAddr = nullptr;
+    CreateAclTensor(tensorInXData, {batch, nRs, totalSubcarrier}, &inputXDeviceAddr, aclDataType::ACL_COMPLEX64,
+                    &inputX);
+    CreateAclTensor(coeffData, {batch, nSignal - nRs, nRs}, &inputYDeviceAddr, aclDataType::ACL_COMPLEX64, &inputCoeff);
+    CreateAclTensor(resultData, {batch, nSignal - nRs, totalSubcarrier}, &resultDeviceAddr, aclDataType::ACL_COMPLEX64,
+                    &result);
 
     size_t lwork = 0;
-    void *buffer = nullptr;
+    void* buffer = nullptr;
     AsdSip::asdInterpWithCoeffGetWorkspaceSize(lwork);
     if (lwork > 0) {
         aclrtMalloc(&buffer, static_cast<int64_t>(lwork), ACL_MEM_MALLOC_HUGE_FIRST);
@@ -147,11 +142,8 @@ int main(int argc, char **argv)
     asdInterpWithCoeff(inputX, inputCoeff, result, stream, buffer);
     aclrtSynchronizeStream(stream);
     // 将输出tensor的Device侧数据复制到Host侧内存上
-    aclrtMemcpy(resultData.data(),
-        resultSize * sizeof(float),
-        resultDeviceAddr,
-        resultSize * sizeof(float),
-        ACL_MEMCPY_DEVICE_TO_HOST);
+    aclrtMemcpy(resultData.data(), resultSize * sizeof(float), resultDeviceAddr, resultSize * sizeof(float),
+                ACL_MEMCPY_DEVICE_TO_HOST);
 
     std::cout << "------- result -------" << std::endl;
     for (int64_t i = 0; i < nSignal - nRs; i++) {

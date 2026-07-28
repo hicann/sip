@@ -20,7 +20,7 @@ asdBlasCgemv：一个矩阵向量乘法，用于计算复数矩阵A与复数向�
 
   $$
   y= alpha * op(A)*x + beta * y\\
-  
+
   $$
 
   其中，op(A)= $A\ \text{or}  A^T\  \text{or}\ A^H $ ，
@@ -37,32 +37,32 @@ asdBlasCgemv：一个矩阵向量乘法，用于计算复数矩阵A与复数向�
 调用“asdBlasMakeCgemvPlan”生成plan。\
 调用“asdBlasCgemv”算子后，输出“y”为：\
 [ -10+8i,-17+9i ]
- 
+
 ## 函数原型
 
 ```Cpp
 AspbStatus asdBlasMakeCgemvPlan(
-  asdBlasHandle        handle, 
-  asdBlasOperation_t   trans, 
-  const int64_t        m, 
+  asdBlasHandle        handle,
+  asdBlasOperation_t   trans,
+  const int64_t        m,
   const int64_t        n,
-  aclTensor *          y, 
+  aclTensor *          y,
   const int64_t        incy)
 ```
 
 ```Cpp
 AspbStatus asdBlasCgemv(
-  asdBlasHandle               handle, 
-  asdBlasOperation_t          trans, 
-  const int64_t m, 
+  asdBlasHandle               handle,
+  asdBlasOperation_t          trans,
+  const int64_t m,
   const int64_t n,
-  const std::complex<float> * alpha, 
-  aclTensor *                 A, 
-  const int64_t               lda, 
+  const std::complex<float> * alpha,
+  aclTensor *                 A,
+  const int64_t               lda,
   aclTensor *                 x,
-  const int64_t               incx, 
-  const std::complex<float> * beta, 
-  aclTensor *                 y, 
+  const int64_t               incx,
+  const std::complex<float> * beta,
+  aclTensor *                 y,
   const int64_t               incy)
 ```
 
@@ -324,19 +324,19 @@ int main(int argc, char **argv)
     int64_t xSize = n;
     int64_t ySize = m;
     std::vector<std::complex<float>> tensorInAData;
-    tensorInAData.reserve(aSize);
+    tensorInAData.resize(aSize);
     for (int64_t i = 0; i < m; i++) {
         for (int64_t j = 0; j < n; j++) {
             tensorInAData[i * n + j] = std::complex<float>(i + 0.0, i + 0.0);
         }
     }
     std::vector<std::complex<float>> tensorInXData;
-    tensorInXData.reserve(xSize);
+    tensorInXData.resize(xSize);
     for (int64_t i = 0; i < n; i++) {
         tensorInXData[i] = std::complex<float>(i + 1.0, 2 + 0.0);
     }
     std::vector<std::complex<float>> tensorInYData;
-    tensorInYData.reserve(ySize);
+    tensorInYData.resize(ySize);
     for (int64_t i = 0; i < m; i++) {
         tensorInYData[i] = std::complex<float>(1.0, 1.0);
     }

@@ -22,14 +22,14 @@ using namespace Mki;
 constexpr uint64_t BASE_COL_BLOCK = 128;
 constexpr uint64_t NUM_TWO = 2;
 
-AsdSip::AspbStatus ConvolveTiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
+AsdSip::AspbStatus ConvolveTiling(const LaunchParam& launchParam, KernelInfo& kernelInfo)
 {
-    void *tilingData = kernelInfo.GetTilingHostAddr();
+    void* tilingData = kernelInfo.GetTilingHostAddr();
 
-    ConvolveTilingData *tilingDataPtr = reinterpret_cast<ConvolveTilingData *>(tilingData);
+    ConvolveTilingData* tilingDataPtr = reinterpret_cast<ConvolveTilingData*>(tilingData);
 
     ASDSIP_CHECK(tilingData != nullptr, "tilingDataPtr should not be empty",
-              return AsdSip::ErrorType::ACL_ERROR_INVALID_PARAM);
+                 return AsdSip::ErrorType::ACL_ERROR_INVALID_PARAM);
 
     uint32_t cubeCoreNum = PlatformInfo::Instance().GetCoreNum(CoreType::CORE_TYPE_CUBE);
     if (cubeCoreNum == 0) {
@@ -46,11 +46,13 @@ AsdSip::AspbStatus ConvolveTiling(const LaunchParam &launchParam, KernelInfo &ke
     tilingDataPtr->batchCount = param.batchCount;
     tilingDataPtr->dataType = param.dataType;
 
-    uint64_t workspaceSize = workspaceColNum * workspaceRowNum;
+    // dataType: 0 = complex64 (sizeof(std::complex<float>) = 8), 1 = complex32 (sizeof(std::complex<half>) = 4)
+    uint64_t dtypeSize = (param.dataType == 0) ? sizeof(float) * NUM_TWO : sizeof(float);
+    uint64_t workspaceSize = workspaceColNum * workspaceRowNum * dtypeSize;
     kernelInfo.SetBlockDim(cubeCoreNum);
     kernelInfo.GetScratchSizes() = {workspaceSize};
     ASDSIP_LOG(DEBUG) << "KernelInfo:\n" << kernelInfo.ToString();
 
     return AsdSip::ErrorType::ACL_SUCCESS;
 }
-}
+} // namespace AsdSip

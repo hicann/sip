@@ -40,7 +40,7 @@ using namespace AsdSip;
         printf(message, ##__VA_ARGS__); \
     } while (0)
 
-int64_t GetShapeSize(const std::vector<int64_t> &shape)
+int64_t GetShapeSize(const std::vector<int64_t>& shape)
 {
     int64_t shapeSize = 1;
     for (auto i : shape) {
@@ -49,7 +49,7 @@ int64_t GetShapeSize(const std::vector<int64_t> &shape)
     return shapeSize;
 }
 
-int Init(int32_t deviceId, aclrtStream *stream)
+int Init(int32_t deviceId, aclrtStream* stream)
 {
     // 固定写法，acl初始化
     auto ret = aclInit(nullptr);
@@ -62,8 +62,8 @@ int Init(int32_t deviceId, aclrtStream *stream)
 }
 
 template <typename T>
-int CreateAclTensor(const std::vector<T> &hostData, const std::vector<int64_t> &shape, void **deviceAddr,
-    aclDataType dataType, aclTensor **tensor)
+int CreateAclTensor(const std::vector<T>& hostData, const std::vector<int64_t>& shape, void** deviceAddr,
+                    aclDataType dataType, aclTensor** tensor)
 {
     auto size = GetShapeSize(shape) * sizeof(T);
     // 调用aclrtMalloc申请device侧内存
@@ -80,15 +80,8 @@ int CreateAclTensor(const std::vector<T> &hostData, const std::vector<int64_t> &
     }
 
     // 调用aclCreateTensor接口创建aclTensor
-    *tensor = aclCreateTensor(shape.data(),
-        shape.size(),
-        dataType,
-        strides.data(),
-        0,
-        aclFormat::ACL_FORMAT_ND,
-        shape.data(),
-        shape.size(),
-        *deviceAddr);
+    *tensor = aclCreateTensor(shape.data(), shape.size(), dataType, strides.data(), 0, aclFormat::ACL_FORMAT_ND,
+                              shape.data(), shape.size(), *deviceAddr);
     return 0;
 }
 
@@ -101,10 +94,8 @@ void printTensor(std::vector<T> tensorData, int64_t tensorSize)
     std::cout << std::endl;
 }
 
-
-int main(int argc, char **argv)
+int main(int argc, char** argv)
 {
-
     int deviceId = 0;
 
     aclrtStream stream;
@@ -118,10 +109,10 @@ int main(int argc, char **argv)
     int64_t batchCount = 2;
 
     std::vector<std::complex<float>> tensorSignalData;
-    tensorSignalData.reserve(signalLen * batchCount);
+    tensorSignalData.resize(signalLen * batchCount);
 
     std::vector<float> tensorKernelData;
-    tensorKernelData.reserve(kernelLen);
+    tensorKernelData.resize(kernelLen);
 
     for (int64_t i = 0; i < signalLen * batchCount; i++) {
         tensorSignalData[i] = {1.0, 1.0};
@@ -132,38 +123,37 @@ int main(int argc, char **argv)
     }
 
     std::vector<std::complex<float>> tensorOutData;
-    tensorOutData.reserve(signalLen * batchCount);
+    tensorOutData.resize(signalLen * batchCount);
 
     for (int64_t i = 0; i < signalLen * batchCount; i++) {
-        tensorOutData[i] = {-1.0, -1.0} ;
+        tensorOutData[i] = {-1.0, -1.0};
     }
 
     std::vector<int64_t> signalShape = {batchCount, signalLen};
     std::vector<int64_t> kernelShape = {kernelLen};
     std::vector<int64_t> resultShape = {batchCount, signalLen};
 
-    aclTensor *signal = nullptr;
-    aclTensor *kernel = nullptr;
-    aclTensor *output = nullptr;
-    void *signalDeviceAddr = nullptr;
-    void *kernelDeviceAddr = nullptr;
-    void *outputDeviceAddr = nullptr;
+    aclTensor* signal = nullptr;
+    aclTensor* kernel = nullptr;
+    aclTensor* output = nullptr;
+    void* signalDeviceAddr = nullptr;
+    void* kernelDeviceAddr = nullptr;
+    void* outputDeviceAddr = nullptr;
 
-    ret = CreateAclTensor<std::complex<float>>(
-        tensorSignalData, signalShape, &signalDeviceAddr, aclDataType::ACL_COMPLEX64, &signal);
+    ret = CreateAclTensor<std::complex<float>>(tensorSignalData, signalShape, &signalDeviceAddr,
+                                               aclDataType::ACL_COMPLEX64, &signal);
     CHECK_RET(ret == ::ACL_SUCCESS, return ret);
 
-    ret = CreateAclTensor<float>(
-        tensorKernelData, kernelShape, &kernelDeviceAddr, aclDataType::ACL_FLOAT, &kernel);
+    ret = CreateAclTensor<float>(tensorKernelData, kernelShape, &kernelDeviceAddr, aclDataType::ACL_FLOAT, &kernel);
     CHECK_RET(ret == ::ACL_SUCCESS, return ret);
 
-    ret = CreateAclTensor<std::complex<float>>(
-        tensorOutData, resultShape, &outputDeviceAddr, aclDataType::ACL_COMPLEX64, &output);
+    ret = CreateAclTensor<std::complex<float>>(tensorOutData, resultShape, &outputDeviceAddr,
+                                               aclDataType::ACL_COMPLEX64, &output);
     CHECK_RET(ret == ::ACL_SUCCESS, return ret);
 
     size_t lwork = 0;
     AsdSip::asdConvolveGetWorkspaceSize(signalLen, kernelLen, lwork);
-    void *buffer = nullptr;
+    void* buffer = nullptr;
 
     std::cout << "lwork = " << lwork << std::endl;
     if (lwork > 0) {
@@ -174,7 +164,8 @@ int main(int argc, char **argv)
     auto convolve_func = [signal, kernel, output, stream, buffer]() {
         int IterNum = 1000;
         for (int i = 0; i < IterNum; i++) {
-            ASD_STATUS_CHECK(AsdSip::asdConvolve(signal, kernel, output, asdConvolveMode_t::ASD_CONVOLVE_SAME, stream, buffer));
+            ASD_STATUS_CHECK(
+                AsdSip::asdConvolve(signal, kernel, output, asdConvolveMode_t::ASD_CONVOLVE_SAME, stream, buffer));
         }
     };
 

@@ -32,7 +32,7 @@ asdBlasComplexMatDot：实现两个复数矩阵对应位置逐点相乘，返回
 调用“ComplexMatDot”算子后，输出“result”为：\
   [   [   1 +  3i,  -2 +  6i, -7 + 9i ],\
       [ -14 + 12i, -23 + 15i, -34 + 18i ]   ]
- 
+
 ## 函数原型
 
 ```Cpp
@@ -42,10 +42,10 @@ AspbStatus asdBlasMakeComplexMatDotPlan(
 
 ```Cpp
 AspbStatus asdBlasComplexMatDot(
-  asdBlasHandle      handle, 
-  const int64_t      m, 
-  const int64_t      n, 
-  aclTensor *        matx, 
+  asdBlasHandle      handle,
+  const int64_t      m,
+  const int64_t      n,
+  aclTensor *        matx,
   aclTensor *        maty,
   aclTensor *        result)
 ```
@@ -248,14 +248,14 @@ int main(int argc, char **argv)
 
     int64_t matSize = m * n;
     std::vector<std::complex<float>> tensorInMatXData;
-    tensorInMatXData.reserve(matSize);
+    tensorInMatXData.resize(matSize);
     for (int64_t i = 0; i < m; i++) {
         for (int64_t j = 0; j < n; j++) {
             tensorInMatXData[n * i + j] = {(float)(1.0 + i), (float)(1.0 + i)};
         }
     }
     std::vector<std::complex<float>> tensorInMatYData;
-    tensorInMatYData.reserve(matSize);
+    tensorInMatYData.resize(matSize);
     for (int64_t i = 0; i < m; i++) {
         for (int64_t j = 0; j < n; j++) {
             tensorInMatYData[n * i + j] = {(float)(2.0 + i), 3.0};

@@ -49,13 +49,13 @@ AspbStatus asdBlasMakeRotPlan(
 
 ```Cpp
 AspbStatus asdBlasCsrot(
-  asdBlasHandle     handle, 
-  const int64_t     n, 
-  aclTensor *       x, 
-  const int64_t     incx, 
+  asdBlasHandle     handle,
+  const int64_t     n,
+  aclTensor *       x,
+  const int64_t     incx,
   aclTensor *       y,
-  const int64_t     incy, 
-  const float &     c, 
+  const int64_t     incy,
+  const float &     c,
   const float &     s)
 ```
 
@@ -274,13 +274,13 @@ int main(int argc, char **argv)
     int64_t ySize = n;
 
     std::vector<std::complex<float>> tensorInXData;
-    tensorInXData.reserve(xSize);
+    tensorInXData.resize(xSize);
     for (int64_t i = 0; i < n; i++) {
         tensorInXData[i] = (std::complex<float>){2.0, 3.0};
     }
 
     std::vector<std::complex<float>> tensorInYData;
-    tensorInYData.reserve(ySize);
+    tensorInYData.resize(ySize);
     for (int64_t i = 0; i < n; i++) {
         tensorInYData[i] = (std::complex<float>){5.0, 6.0};
     }

@@ -176,21 +176,21 @@ int main(int argc, char **argv)
 
     int64_t xSize = 5;
     std::vector<float> tensorInXData;
-    tensorInXData.reserve(xSize);
+    tensorInXData.resize(xSize);
     for (int64_t i = 0; i < xSize; i++) {
         tensorInXData[i] = 1.0 + i;
     }
 
     int64_t ySize = 5;
     std::vector<float> tensorInYData;
-    tensorInYData.reserve(xSize);
+    tensorInYData.resize(xSize);
     for (int64_t i = 0; i < ySize; i++) {
         tensorInYData[i] = 10.0 + i;
     }
 
     int64_t resultSize = 1;
     std::vector<float> resultData;
-    resultData.reserve(resultSize);
+    resultData.resize(resultSize);
 
     std::cout << "------- input x -------" << std::endl;
     for (int64_t i = 0; i < xSize; i++) {

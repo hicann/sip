@@ -27,7 +27,7 @@ asdBlasColwiseMul：复数矩阵与复数向量按列逐点乘，返回一个和
 调用“asdBlasColwiseMul”算子后，输出“result”为：\
 [ [ 0+2i, 0+2i ],\
   [ 0+8i, 0+8i ] ]
- 
+
 ## 函数原型
 
 ```Cpp
@@ -38,10 +38,10 @@ AspbStatus asdBlasMakeColwiseMulPlan(
 
 ```Cpp
 AspbStatus asdBlasColwiseMul(
-  asdBlasHandle       handle, 
-  const int64_t       m, 
-  const int64_t       n, 
-  aclTensor *         mat, 
+  asdBlasHandle       handle,
+  const int64_t       m,
+  const int64_t       n,
+  aclTensor *         mat,
   aclTensor *         vec,
   aclTensor *         result)
 ```
@@ -241,7 +241,7 @@ int main(int argc, char **argv)
     int64_t matSize = m * n;
 
     std::vector<std::complex<float>> tensorInMatData;
-    tensorInMatData.reserve(matSize);
+    tensorInMatData.resize(matSize);
     for (int64_t i = 0; i < m; i++) {
         for (int64_t j = 0; j < n; j++) {
             tensorInMatData[n * i + j] = (std::complex<float>){2.0, -2.0};
@@ -250,14 +250,14 @@ int main(int argc, char **argv)
 
     int64_t vecSize = m;
     std::vector<std::complex<float>> tensorInVecData;
-    tensorInVecData.reserve(vecSize);
+    tensorInVecData.resize(vecSize);
     for (int64_t i = 0; i < vecSize; i++) {
         tensorInVecData[i] = (std::complex<float>){3.0, -4.0};
     }
 
     int64_t resultSize = m * n;
     std::vector<std::complex<float>> resultData;
-    resultData.reserve(resultSize);
+    resultData.resize(resultSize);
 
     std::cout << "------- input mat -------" << std::endl;
     printTensor(tensorInMatData.data(), m, n);

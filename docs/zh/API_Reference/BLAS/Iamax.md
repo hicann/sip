@@ -50,18 +50,18 @@ AspbStatus asdBlasMakeIamaxPlan(
 
 ```Cpp
 AspbStatus asdBlasIcamax(
-  asdBlasHandle     handle, 
-  const int64_t     n, 
-  aclTensor *       x, 
+  asdBlasHandle     handle,
+  const int64_t     n,
+  aclTensor *       x,
   const int64_t     incx,
   aclTensor *       result)
 ```
 
 ```Cpp
 AspbStatus asdBlasIsamax(
-  asdBlasHandle     handle, 
-  const int64_t     n, 
-  aclTensor *       x, 
+  asdBlasHandle     handle,
+  const int64_t     n,
+  aclTensor *       x,
   const int64_t     incx,
   aclTensor *       result)
 ```
@@ -249,7 +249,7 @@ int main(int argc, char **argv)
     int64_t xSize = n;
     int64_t ySize = 1;
     std::vector<float> tensorInXData;
-    tensorInXData.reserve(xSize);
+    tensorInXData.resize(xSize);
     for (int64_t i = 0; i < xSize; i++) {
         if (i < xSize / 2) {
             tensorInXData[i] = 1.0 * i;
@@ -259,7 +259,7 @@ int main(int argc, char **argv)
     }
 
     std::vector<int32_t> tensorOutYData;
-    tensorOutYData.reserve(ySize);
+    tensorOutYData.resize(ySize);
 
     std::cout << "------- input X -------" << std::endl;
     for (int64_t i = 0; i < xSize; i++) {
@@ -419,7 +419,7 @@ int main(int argc, char **argv)
     int64_t xSize = 6;
     int64_t ySize = 1;
     std::vector<std::complex<float>> tensorInXData;
-    tensorInXData.reserve(xSize);
+    tensorInXData.resize(xSize);
     for (int64_t i = 0; i < xSize; i++) {
         if (i < xSize / 2) {
             tensorInXData[i] = {(float)(1.0 * i), (float)(1.0 * i)};
@@ -429,7 +429,7 @@ int main(int argc, char **argv)
     }
 
     std::vector<int32_t> tensorOutYData;
-    tensorOutYData.reserve(ySize);
+    tensorOutYData.resize(ySize);
 
     std::cout << "n: " << n << std::endl;
     std::cout << "------- input x -------" << std::endl;
