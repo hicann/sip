@@ -9,12 +9,12 @@
 - 算子功能：执行批量3D快速傅里叶变换。
 - 计算公式：
     设有一个三维离散信号：
-    
+
      ![公式](../../../../docs/zh/API_Reference/figures/FFT_3D_1.png)
-    
+
     它的三维离散傅里叶变换定义为：\
       ![公式](../../../../docs/zh/API_Reference/figures/FFT_3D_2.png)
-    
+
     其中：\
      ![公式](../../../../docs/zh/API_Reference/figures/FFT_3D_3.png)
 
@@ -26,7 +26,7 @@
 
     ```sh
     source [CANN安装路径]/set_env.sh
-    ```  
+    ```
 
     默认：source /usr/local/Ascend/ascend-toolkit/set_env.sh
 
@@ -45,7 +45,7 @@
     - 由于编译过程需要联网下载依赖库，因此编译环境需要联网；
     - 该编译过程包括获取ascend-boost-comm（昇腾分布式通信加速库）组件并编译该组件，和编译信号加速库两个步骤。更多命令介绍可查看SiP仓库的[build.sh](../../../../build.sh)文件。
 
- - 更多编译命令说明请参考[编译与构建](../../../../docs/编译与构建.md)
+ - 更多编译命令说明请参考[编译与构建](../../../../docs/compilation_build.md)
 
 ### 运行demo
 

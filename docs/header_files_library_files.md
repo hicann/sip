@@ -51,4 +51,3 @@ AsdSip 接口统一位于 `AsdSip` 命名空间下，按功能分为以下几大
 | libmki.so / libmki_static.a | MKI 框架（3rdparty/mki） | **MKI 内核抽象框架库**。提供 Tensor、Kernel、Operation 等核心抽象，以及运行时调度能力。libasdsip_core.so 在发布模式下静态链接 libmki_static.a，在测试模式下动态链接 libmki.so。 |
 | libascendcl.so | CANN 软件包（$ASCEND_HOME_PATH/lib64） | **Ascend CL 运行时库**。提供 aclTensor 等基础数据类型和设备管理、内存管理、Stream 管理等运行时接口。AsdSip 公开头文件中引用了 acl/acl.h。 |
 | libaclnn.so | CANN 软件包（$ASCEND_HOME_PATH/lib64） | **Ascend NN 算子库**。提供 aclnn 系列算子接口，BLAS 模块中部分操作依赖 aclnn 头文件（aclnn/opdev/fp16_t.h、acl/acl_meta.h 等）。 |
-

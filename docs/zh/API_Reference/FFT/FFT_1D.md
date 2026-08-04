@@ -9,7 +9,7 @@
 |  <term>Atlas 训练系列产品</term>    |     ×    |
 |  <term>Atlas A3 训练系列产品/Atlas A3 推理系列产品</term>   |     √    |
 |  <term>Atlas A2 训练系列产品/Atlas A2 推理系列产品</term>     |     √    |
-|  <term>Ascend 950PR/Ascend 950DT</term>   |     asdFftExecC2C、asdFftExecC2R、asdFftExecR2C 支持  |
+|  <term>Ascend 950PR/Ascend 950DT</term>   |     √  |
 
 ## 功能说明
 
@@ -31,41 +31,41 @@ asdFftExecC2CSeparated：执行复数到复数的FFT变换，支持实部、虚�
 
 ```Cpp
 AspbStatus asdFftMakePlan1D(
-  asdFftHandle          handle, 
-  int64_t               fftSize, 
+  asdFftHandle          handle,
+  int64_t               fftSize,
   asdFftType            fftType,
-  asdFftDirection       direction, 
+  asdFftDirection       direction,
   int64_t               batchSize,
   asdFft1dDimType       dimType)
 ```
 
 ```Cpp
 AspbStatus asdFftExecC2C(
-  asdFftHandle           handle, 
-  const aclTensor *      input, 
+  asdFftHandle           handle,
+  const aclTensor *      input,
   const aclTensor *      output)
 ```
 
 ```Cpp
 AspbStatus asdFftExecC2R(
-  asdFftHandle           handle, 
-  const aclTensor *      input, 
+  asdFftHandle           handle,
+  const aclTensor *      input,
   const aclTensor *      output)
 ```
 
 ```Cpp
 AspbStatus asdFftExecR2C(
-  asdFftHandle           handle, 
-  const aclTensor *      input, 
+  asdFftHandle           handle,
+  const aclTensor *      input,
   const aclTensor *      output)
 ```
 
 ```Cpp
 AspbStatus asdFftExecC2CSeparated(
-  asdFftHandle           handle, 
-  const aclTensor *      inputReal, 
+  asdFftHandle           handle,
+  const aclTensor *      inputReal,
   const aclTensor *      inputImag,
-  const aclTensor *      outputReal, 
+  const aclTensor *      outputReal,
   const aclTensor *      outputImag)
 ```
 

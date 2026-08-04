@@ -22,7 +22,7 @@
 
     ```sh
     source [CANN安装路径]/set_env.sh
-    ```  
+    ```
 
     默认：source /usr/local/Ascend/ascend-toolkit/set_env.sh
 
@@ -41,13 +41,14 @@
     - 由于编译过程需要联网下载依赖库，因此编译环境需要联网；
     - 该编译过程包括获取ascend-boost-comm（昇腾分布式通信加速库）组件并编译该组件，以及编译信号加速库两个步骤。更多命令介绍可查看SiP仓库的[build.sh](../../../../build.sh)文件。
 
- - 更多编译命令说明请参考[编译与构建](../../../../docs/编译与构建.md)
+ - 更多编译命令说明请参考[编译与构建](../../../../docs/compilation_build.md)
 
 ### 运行demo
 
 - 进入 `example` 目录并执行构建脚本。
 
     ```sh
+
     cd  ${示例所在目录}
     bash build.sh
     ```
