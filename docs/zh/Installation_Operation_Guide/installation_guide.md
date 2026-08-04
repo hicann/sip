@@ -1,6 +1,6 @@
 # 安装部署
 
-请参考 **[安装CANN](https://www.hiascend.com/document/detail/zh/canncommercial/910/softwareinst/instg/instg_0089.html?OS=openEuler&InstallType=netyum)**，根据如下步骤安装信号处理加速库：
+请参考 **[安装CANN](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/latest/softwareinst/instg/instg_0000.html?OS=openEuler&InstallType=netyum)**，根据如下步骤安装信号处理加速库：
 
 - 安装Toolkit开发套件包。
 - 安装ops算子包。

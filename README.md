@@ -14,7 +14,7 @@
    
 ## <a id="study"></a>1.  学习资源
  
-- [编译与构建](docs/编译与构建.md)：SiP库的编译命令说明。
+- [编译与构建](./docs/compilation_build.md)：SiP库的编译命令说明。
 - [API文档](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/900/API/SiP/SIP_0000.html)：介绍了SiP库的接口和相关术语。
 - [问题报告](https://gitcode.com/cann/sip/issues)：通过issue提交发现的问题。
 
@@ -142,7 +142,7 @@ source /usr/local/Ascend/cann/set_env.sh
     - 由于编译过程需要联网下载依赖库，因此编译环境需要联网；
     - 该编译过程包括获取ascend-boost-comm（昇腾分布式通信加速库）组件并编译该组件，和编译信号加速库两个步骤。更多命令介绍可查看SiP仓库`build.sh`文件。
 
- - 更多编译命令说明请参考[编译与构建](docs/编译与构建.md)
+ - 更多编译命令说明请参考[编译与构建](./docs/compilation_build.md)
 
 ### 4.2  调用示例说明
 
@@ -288,7 +288,7 @@ SiP不推荐用户直接将样例作为业务代码，也不保证此种做法�
 
 ## <a id="develop"></a>5.  自定义算子开发
 
-详细步骤可参考[从开发一个简单算子出发](docs/从开发一个简单算子出发.md)
+详细步骤可参考[从开发一个简单算子出发](./docs/developing_a_simple_operator.md)
 
 ## <a id="contribute"></a>6. 参与贡献
  
@@ -296,7 +296,7 @@ SiP不推荐用户直接将样例作为业务代码，也不保证此种做法�
 2. 修改并提交代码
 3. 新建Pull-Request
 
-详细步骤可参考[贡献指南](docs/贡献指南.md)
+详细步骤可参考[贡献指南](./docs/contributing_guide.md)
 
 ## <a id="doc"></a>7.  参考文档
 
