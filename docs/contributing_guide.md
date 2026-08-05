@@ -19,7 +19,7 @@ SiP属于CANN开放项目，在参与贡献前，请了解[CANN开放项目行�
 
 在签署了CLA协议之后，就可以开始您的贡献之旅啦！贡献的方式有很多种，每一种贡献都将受到欢迎和重视。
 
-所有您发现的问题或想贡献的新想法都可以通过[Issue](#提交issue)进行反馈、讨论和跟踪，并在后续[贡献编码](#贡献编码) Pull-Request 合入后关闭关联Issue。
+所有您发现的问题或想贡献的新想法都可以通过[提交Issue/处理Issue任务](#提交issue处理issue任务)进行反馈、讨论和跟踪，并在后续[贡献编码](#贡献编码) Pull-Request 合入后关闭关联Issue。
 
 > 📝 **提示**
 >
@@ -28,37 +28,37 @@ SiP属于CANN开放项目，在参与贡献前，请了解[CANN开放项目行�
 ### 贡献分类
 
 - 算子bug修复
-   
+
   如果您在本仓库中发现了某些算子Bug，并想对其进行修复，欢迎您在仓库中新建Issue进行反馈和跟踪处理。
 
-  您可以按照下方[提交Issue/处理Issue任务](#提交issue)指引新建 `Bug-Report|缺陷反馈` 类Issue对Bug进行描述，
+  您可以按照下方[提交Issue/处理Issue任务](#提交issue处理issue任务)指引新建 `Bug-Report|缺陷反馈` 类Issue对Bug进行描述，
   然后在评论框中输入“/assign”或“/assign @yourself”将该Issue分配给您进行处理。
 
 - 算子优化
-   
+
   如果您对本仓库中某些算子实现有泛化性增强/性能优化思路，并想着手实现这些优化点，欢迎您对算子进行优化贡献。
 
-  您可以按照下方[提交Issue/处理Issue任务](#提交issue)指引新建 `Requirement|需求建议` 类Issue对优化点进行说明，并提供您的设计方案，
+  您可以按照下方[提交Issue/处理Issue任务](#提交issue处理issue任务)指引新建 `Requirement|需求建议` 类Issue对优化点进行说明，并提供您的设计方案，
   然后在评论框中输入“/assign”或“/assign @yourself”将该Issue分配给您进行跟踪优化。
 
 - 贡献新算子
-   
+
   如果您有全新的算子想基于昇腾芯片进行设计实现，欢迎您在Issue中提出新的想法和设计，并与昇腾团队成员进行交流讨论。
 
-  您可以按照下方[提交Issue/处理Issue任务](#提交issue)指引新建 `Requirement|需求建议` 类Issue提供您的新算子说明和设计方案，
+  您可以按照下方[提交Issue/处理Issue任务](#提交issue处理issue任务)指引新建 `Requirement|需求建议` 类Issue提供您的新算子说明和设计方案，
   昇腾团队成员会与您进行沟通确认，并为您的算子提供一个合适的`contrib`目录分类，您可以将您的新算子贡献到对应分类目录下。
 
   同时，您需要在提交的Issue中评论“/assign”或“/assign @yourself”，认领该Issue并在后续将新算子提交到代码仓库。
 
 - 文档纠错
-   
+
   如果您在仓库中发现某些算子文档描述错误，欢迎您在仓库中新建Issue进行反馈和修复。
 
-  您可以按照下方[提交Issue/处理Issue任务](#提交issue)指引新建 `Documentation|文档反馈` 类Issue指出对应文档中的问题，
+  您可以按照下方[提交Issue/处理Issue任务](#提交issue处理issue任务)指引新建 `Documentation|文档反馈` 类Issue指出对应文档中的问题，
   然后在评论框中输入“/assign”或“/assign @yourself”将该Issue分配给您纠正对应文档描述。
 
 - 帮助解决他人Issue
-   
+
   如果社区中他人遇到的问题您有合适的解决方法，欢迎您在Issue中发表评论交流，帮助他人解决问题和痛点，共同优化易用性。
 
   如果对应Issue需要进行代码修改，您可以在Issue评论框中输入“/assign”或“/assign @yourself”将该Issue分配给您，跟踪协助解决问题。
@@ -66,11 +66,11 @@ SiP属于CANN开放项目，在参与贡献前，请了解[CANN开放项目行�
 ### <a name="提交issue"></a>提交Issue/处理Issue任务
 
 - 找到Issue列表：
-  
+
   在[SiP](https://gitcode.com/cann/sip)项目Gitcode主页内，点击“Issues”，即可找到 Issue 列表。
 
 - 提交Issue
-  
+
   如果您准备向社区上报Bug或者提交需求，或者为社区贡献自己的意见或建议，请提交[Issue](https://gitcode.com/cann/sip/issues)。
 
 - 参与Issue讨论
@@ -84,7 +84,7 @@ SiP属于CANN开放项目，在参与贡献前，请了解[CANN开放项目行�
 ### 贡献编码
 
 1. 准备CANN开发环境
-  
+
    如果您想参与编码贡献，需要准备CANN开发环境，请参考[环境准备](../README.md#3--环境构建)。
 
 2. 了解SiP的开发注意事项
@@ -92,9 +92,9 @@ SiP属于CANN开放项目，在参与贡献前，请了解[CANN开放项目行�
    1）请参考[工具版本要求与安装](../README.md#315--基础工具版本要求与安装)，了解编码贡献的一些环境和工具要求。
 
    2）SiP软件编码遵循许可协议：CANN Open Software License Agreement Version 2.0，详细的协议说明请参见[LICENSE](../LICENSE)文件，如果您贡献代码到SiP源码仓，请遵循此协议。
-   
+
      请在新建的cpp、cc、h等源码文件头部增加如下声明：
-   
+
      ```txt
      /**
       * Copyright (c) 2025 [Name of the copyright owner] All rights reserved.
@@ -106,9 +106,9 @@ SiP属于CANN开放项目，在参与贡献前，请了解[CANN开放项目行�
       * See LICENSE in the root of the software repository for the full text of the License.
       */
      ```
-     
+
      请在新建的py、sh等文件头部增加如下声明：
-     
+
      ```txt
      # Copyright (c) 2025 [Name of the copyright owner] All rights reserved.
      # This program is free software, you can redistribute it and/or modify it under the terms and conditions of
@@ -121,15 +121,15 @@ SiP属于CANN开放项目，在参与贡献前，请了解[CANN开放项目行�
 
     - 如果您仅代表个人贡献，并且您个人拥有贡献内容的版权，请将第一行中的 `[Name of the copyright owner]` 替换为您的署名。
     - 如果您代表您的雇主贡献，或者您的雇主拥有您贡献内容的版权，请将第一行中的 `[Name of the copyright owner]` 替换为您的雇主的名称。
-      
+
       如果您对于贡献内容的版权归属存在任何疑问，请您咨询法律顾问或您雇主的法律团队。
-      
+
     - 第一行中`2025`为您创建或修改该文件的年份，请根据实际时间修改。
 
 3. 代码下载与贡献流程
-![代码贡献流程](./zh/API_Reference/figures/docs_images_contrib-flow.png)  
-   (1) 进行代码开发前，请先将所需SiP仓库fork到个人仓库，然后将个人仓库下载到本地。并在本地分支进行代码修改。    
-   (2) 代码验证满足贡献要求后，提交Pull-Request，将代码贡献到SiP，在[Pull-Request列表](https://gitcode.com/cann/sip/pulls)，可以找到提交的Pull-Request。  
-   (3) 在提交的Pull-Request的评论区，评论`compile`以触发编译。  
-   (4) 请注意查看门禁测试结果，若未通过，请根据问题提示进行本地代码修改；若通过，此PR会被分配给committer检视，请关注committer的检视意见。  
+![代码贡献流程](./zh/API_Reference/figures/docs_images_contrib-flow.png)
+   (1) 进行代码开发前，请先将所需SiP仓库fork到个人仓库，然后将个人仓库下载到本地。并在本地分支进行代码修改。
+   (2) 代码验证满足贡献要求后，提交Pull-Request，将代码贡献到SiP，在[Pull-Request列表](https://gitcode.com/cann/sip/pulls)，可以找到提交的Pull-Request。
+   (3) 在提交的Pull-Request的评论区，评论`compile`以触发编译。
+   (4) 请注意查看门禁测试结果，若未通过，请根据问题提示进行本地代码修改；若通过，此PR会被分配给committer检视，请关注committer的检视意见。
    (5) 当您的PR检视通过后，代码会合入SiP源码仓。
