@@ -8,12 +8,13 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
+#include <complex>
 #include <iostream>
 #include <vector>
-#include "asdsip.h"
-#include <complex>
+
 #include "acl/acl.h"
 #include "acl_meta.h"
+#include "asdsip.h"
 
 using namespace AsdSip;
 
@@ -152,7 +153,6 @@ int main(int argc, char** argv)
     ret = CreateAclTensor(tensorInXData, xShape, &inputXDeviceAddr, aclDataType::ACL_COMPLEX64, &inputX);
     CHECK_RET(ret == ::ACL_SUCCESS, return ret);
     ret = CreateAclTensor(tensorInYData, yShape, &inputYDeviceAddr, aclDataType::ACL_COMPLEX64, &inputY);
-    CHECK_RET(ret == ::ACL_SUCCESS, return ret);
     CHECK_RET(ret == ::ACL_SUCCESS, return ret);
     ret = CreateAclTensor(tensorInAData, aShape, &inputADeviceAddr, aclDataType::ACL_COMPLEX64, &inputA);
     CHECK_RET(ret == ::ACL_SUCCESS, return ret);

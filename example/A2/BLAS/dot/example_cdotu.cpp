@@ -8,14 +8,15 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
-#include <iostream>
-#include <vector>
 #include <cmath>
-#include <random>
 #include <complex>
-#include "asdsip.h"
+#include <iostream>
+#include <random>
+#include <vector>
+
 #include "acl/acl.h"
 #include "acl_meta.h"
+#include "asdsip.h"
 
 using namespace AsdSip;
 
@@ -93,14 +94,6 @@ int CreateAclTensor(const std::vector<T>& hostData, const std::vector<int64_t>& 
     *tensor = aclCreateTensor(shape.data(), shape.size(), dataType, strides.data(), 0, aclFormat::ACL_FORMAT_ND,
                               shape.data(), shape.size(), *deviceAddr);
     return 0;
-}
-
-void printTensor(std::vector<std::complex<float>> tensorData, int64_t tensorSize)
-{
-    for (int64_t i = 0; i < tensorSize; i++) {
-        std::cout << tensorData[i] << " ";
-    }
-    std::cout << std::endl;
 }
 
 int main(int argc, char** argv)
