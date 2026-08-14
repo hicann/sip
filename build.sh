@@ -197,7 +197,7 @@ function fn_run_unittest()
 
 function fn_build()
 {
-    # check dependcy mki
+    # check dependency mki
     MKI_PATH="${THIRD_PARTY_DIR}/mki"
     COMPILER_PATH="${THIRD_PARTY_DIR}/compiler"
     if [ ! -d "${MKI_PATH}" ] || [ ! -d "${COMPILER_PATH}" ]; then
@@ -215,7 +215,7 @@ function fn_build()
         cp -r ${THIRD_PARTY_DIR}/ascend-boost-comm/3rdparty/compiler ${THIRD_PARTY_DIR}/
     fi
 
-    # check dependcy catlass
+    # check dependency catlass
     CATLASS_PATH="${THIRD_PARTY_DIR}/catlass"
     if [ ! -d "${CATLASS_PATH}" ]; then
         echo "Third_party dir catlass does not exit!"
@@ -277,7 +277,7 @@ function fn_main()
         if [[ "$cfg_flag" == 1 ]];then
             arg1="--dev"
         else
-            echo "argument $1 is unknown, please type 'build.sh --help' for more imformation"
+            echo "argument $1 is unknown, please type 'build.sh --help' for more information"
             exit 1
         fi
     fi
@@ -343,6 +343,7 @@ function fn_main()
             ;;
         --clean)
             [[ -d "$OUTPUT_DIR" ]] && rm -rf $OUTPUT_DIR
+            [[ -d "$CACHE_DIR" ]] && rm -rf $CACHE_DIR
             [[ -d "$THIRD_PARTY_DIR" ]] && rm -rf $THIRD_PARTY_DIR
             echo "clear all build history."
             ;;
