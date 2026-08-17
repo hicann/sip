@@ -362,8 +362,7 @@ install_dos2unix() {
     if command -v dos2unix &> /dev/null; then
         echo "dos2unix installed successfully"
     else
-        echo "dos2unix installation failed"
-        exit 1
+        echo "dos2unix installation failed, can be ignored"
     fi
 }
 
