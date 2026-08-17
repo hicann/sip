@@ -394,7 +394,7 @@ install_git() {
 }
 
 install_googletest() {
-    local gtest_ver="release-1.11.0"
+    local gtest_ver="v1.14.0"
     local gtest_install_prefix="/usr/local"
     echo -e "\n==== Checking googletest ===="
 
@@ -422,7 +422,7 @@ install_googletest() {
     fi
 
     tar -xzf "${tmp_dir}/googletest.tar.gz" -C "${tmp_dir}"
-    local src_dir="${tmp_dir}/googletest-${gtest_ver#release-}"
+    local src_dir="${tmp_dir}/googletest-${gtest_ver#v}"
     if [[ ! -d "$src_dir" ]]; then
         src_dir=$(find "${tmp_dir}" -maxdepth 1 -type d -name "googletest*" | head -1)
     fi
@@ -453,7 +453,7 @@ main() {
     install_gcc
     install_cmake
     install_pigz
-    install_patch
+    # patch removed: no patch files in the repository build flow
     install_dos2unix
     install_git
     install_googletest
