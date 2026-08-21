@@ -12,7 +12,7 @@
 #include "blas_common.h"
 
 namespace AsdSip {
-AspbStatus asdBlasCreate(asdBlasHandle &handle)
+AspbStatus asdBlasCreate(asdBlasHandle& handle)
 {
     std::lock_guard<std::mutex> lock(blas_mtx);
     handle = BlasPlanCache::InitHandle();
@@ -20,13 +20,13 @@ AspbStatus asdBlasCreate(asdBlasHandle &handle)
     return ErrorType::ACL_SUCCESS;
 }
 
-AspbStatus asdBlasSetStream(asdBlasHandle handle, void *stream)
+AspbStatus asdBlasSetStream(asdBlasHandle handle, void* stream)
 {
     std::lock_guard<std::mutex> lock(blas_mtx);
-    ASDSIP_ECHECK(
-        BlasPlanCache::doesPlanExist(handle), "blas plan does not exist.", ErrorType::ACL_ERROR_INTERNAL_ERROR);
+    ASDSIP_ECHECK(BlasPlanCache::doesPlanExist(handle), "blas plan does not exist.",
+                  ErrorType::ACL_ERROR_INTERNAL_ERROR);
     ASDSIP_ECHECK(stream != nullptr, "stream is empty.", ErrorType::ACL_ERROR_INTERNAL_ERROR);
-    BlasPlan &plan = BlasPlanCache::getPlan(handle);
+    BlasPlan& plan = BlasPlanCache::getPlan(handle);
 
     plan.SetStream(stream);
     ASDSIP_LOG(INFO) << "Blas set stream success.";
@@ -41,7 +41,7 @@ AspbStatus asdBlasDestroy(asdBlasHandle handle)
         return ErrorType::ACL_ERROR_INVALID_PARAM;
     }
     BlasPlanCache::destroy_plan(handle);
-    delete static_cast<int *>(handle);
+    delete static_cast<int*>(handle);
     ASDSIP_LOG(INFO) << "BlasHandle destroy.";
     return ErrorType::ACL_SUCCESS;
 }
@@ -49,33 +49,33 @@ AspbStatus asdBlasDestroy(asdBlasHandle handle)
 AspbStatus asdBlasSynchronize(asdBlasHandle handle)
 {
     std::lock_guard<std::mutex> lock(blas_mtx);
-    ASDSIP_ECHECK(
-        BlasPlanCache::doesPlanExist(handle), "blas plan does not exist.", ErrorType::ACL_ERROR_INTERNAL_ERROR);
-    BlasPlan &plan = BlasPlanCache::getPlan(handle);
+    ASDSIP_ECHECK(BlasPlanCache::doesPlanExist(handle), "blas plan does not exist.",
+                  ErrorType::ACL_ERROR_INTERNAL_ERROR);
+    BlasPlan& plan = BlasPlanCache::getPlan(handle);
     Mki::MkiRtStreamSynchronize(plan.GetStream());
-    ASDSIP_LOG(INFO) << "Blas get synchronized.";
+    ASDSIP_LOG(INFO) << "Blas stream synchronized.";
     return ErrorType::ACL_SUCCESS;
 }
 
-AspbStatus asdBlasGetWorkspaceSize(asdBlasHandle handle, size_t &workspaceSize)
+AspbStatus asdBlasGetWorkspaceSize(asdBlasHandle handle, size_t& workspaceSize)
 {
     std::lock_guard<std::mutex> lock(blas_mtx);
-    ASDSIP_ECHECK(
-        BlasPlanCache::doesPlanExist(handle), "blas plan does not exist.", ErrorType::ACL_ERROR_INTERNAL_ERROR);
-    BlasPlan &plan = BlasPlanCache::getPlan(handle);
+    ASDSIP_ECHECK(BlasPlanCache::doesPlanExist(handle), "blas plan does not exist.",
+                  ErrorType::ACL_ERROR_INTERNAL_ERROR);
+    BlasPlan& plan = BlasPlanCache::getPlan(handle);
     workspaceSize = static_cast<size_t>(plan.GetWorkspaceSize());
     ASDSIP_LOG(INFO) << "Blas get workspaceSize success.";
     return ErrorType::ACL_SUCCESS;
 }
 
-AspbStatus asdBlasSetWorkspace(asdBlasHandle handle, void *workSpace)
+AspbStatus asdBlasSetWorkspace(asdBlasHandle handle, void* workSpace)
 {
     std::lock_guard<std::mutex> lock(blas_mtx);
-    ASDSIP_ECHECK(
-        BlasPlanCache::doesPlanExist(handle), "blas plan does not exist.", ErrorType::ACL_ERROR_INTERNAL_ERROR);
-    BlasPlan &plan = BlasPlanCache::getPlan(handle);
-    plan.SetWorkspace((uint8_t *)workSpace);
+    ASDSIP_ECHECK(BlasPlanCache::doesPlanExist(handle), "blas plan does not exist.",
+                  ErrorType::ACL_ERROR_INTERNAL_ERROR);
+    BlasPlan& plan = BlasPlanCache::getPlan(handle);
+    plan.SetWorkspace((uint8_t*)workSpace);
     ASDSIP_LOG(INFO) << "Blas set workspace success.";
     return ErrorType::ACL_SUCCESS;
 }
-}  // namespace AsdSip
+} // namespace AsdSip

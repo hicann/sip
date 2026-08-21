@@ -20,7 +20,7 @@ using namespace AsdSip;
         AsdSip::AspbStatus err_ = (err);                 \
         if (err_ != AsdSip::ErrorType::ACL_SUCCESS) {    \
             std::cout << "Execute failed." << std::endl; \
-            exit(-1);                                    \
+            return -1;                                   \
         }                                                \
     } while (0)
 
@@ -36,7 +36,7 @@ using namespace AsdSip;
         printf(message, ##__VA_ARGS__); \
     } while (0)
 
-int64_t GetShapeSize(const std::vector<int64_t> &shape)
+int64_t GetShapeSize(const std::vector<int64_t>& shape)
 {
     int64_t shapeSize = 1;
     for (auto i : shape) {
@@ -45,7 +45,7 @@ int64_t GetShapeSize(const std::vector<int64_t> &shape)
     return shapeSize;
 }
 
-int Init(int32_t deviceId, aclrtStream *stream)
+int Init(int32_t deviceId, aclrtStream* stream)
 {
     // 固定写法，acl初始化
     auto ret = aclInit(nullptr);
@@ -58,8 +58,8 @@ int Init(int32_t deviceId, aclrtStream *stream)
 }
 
 template <typename T>
-int CreateAclTensor(const std::vector<T> &hostData, const std::vector<int64_t> &shape, void **deviceAddr,
-    aclDataType dataType, aclTensor **tensor)
+int CreateAclTensor(const std::vector<T>& hostData, const std::vector<int64_t>& shape, void** deviceAddr,
+                    aclDataType dataType, aclTensor** tensor)
 {
     auto size = GetShapeSize(shape) * sizeof(T);
     // 调用aclrtMalloc申请device侧内存
@@ -76,15 +76,8 @@ int CreateAclTensor(const std::vector<T> &hostData, const std::vector<int64_t> &
     }
 
     // 调用aclCreateTensor接口创建aclTensor
-    *tensor = aclCreateTensor(shape.data(),
-        shape.size(),
-        dataType,
-        strides.data(),
-        0,
-        aclFormat::ACL_FORMAT_ND,
-        shape.data(),
-        shape.size(),
-        *deviceAddr);
+    *tensor = aclCreateTensor(shape.data(), shape.size(), dataType, strides.data(), 0, aclFormat::ACL_FORMAT_ND,
+                              shape.data(), shape.size(), *deviceAddr);
     return 0;
 }
 
@@ -96,9 +89,8 @@ void printTensor(std::vector<std::complex<float>> tensorData, int64_t tensorSize
     std::cout << std::endl;
 }
 
-int main(int argc, char **argv)
+int main(int argc, char** argv)
 {
-
     int deviceId = 0;
 
     aclrtStream stream;
@@ -129,24 +121,24 @@ int main(int argc, char **argv)
     std::vector<int64_t> vecShape = {vecSize};
     std::vector<int64_t> resultShape = {resultSize};
 
-    aclTensor *inVec = nullptr;
-    aclTensor *outResult = nullptr;
-    void *inpVecDeviceAddr = nullptr;
-    void *outResultDeviceAddr = nullptr;
+    aclTensor* inVec = nullptr;
+    aclTensor* outResult = nullptr;
+    void* inpVecDeviceAddr = nullptr;
+    void* outResultDeviceAddr = nullptr;
 
-    ret = CreateAclTensor<std::complex<float>>(
-        tensorInVecData, vecShape, &inpVecDeviceAddr, aclDataType::ACL_COMPLEX64, &inVec);
+    ret = CreateAclTensor<std::complex<float>>(tensorInVecData, vecShape, &inpVecDeviceAddr, aclDataType::ACL_COMPLEX64,
+                                               &inVec);
     CHECK_RET(ret == ::ACL_SUCCESS, return ret);
 
-    ret = CreateAclTensor<std::complex<float>>(
-        tensorResultData, resultShape, &outResultDeviceAddr, aclDataType::ACL_COMPLEX64, &outResult);
+    ret = CreateAclTensor<std::complex<float>>(tensorResultData, resultShape, &outResultDeviceAddr,
+                                               aclDataType::ACL_COMPLEX64, &outResult);
     CHECK_RET(ret == ::ACL_SUCCESS, return ret);
 
     asdBlasHandle handle;
     asdBlasCreate(handle);
 
     size_t lwork = 0;
-    void *buffer = nullptr;
+    void* buffer = nullptr;
     asdBlasMakeCaxpyPlan(handle);
     asdBlasGetWorkspaceSize(handle, lwork);
     std::cout << "lwork = " << lwork << std::endl;
@@ -162,11 +154,8 @@ int main(int argc, char **argv)
     asdBlasSynchronize(handle);
     asdBlasDestroy(handle);
 
-    ret = aclrtMemcpy(tensorResultData.data(),
-        resultSize * sizeof(std::complex<float>),
-        outResultDeviceAddr,
-        resultSize * sizeof(std::complex<float>),
-        ACL_MEMCPY_DEVICE_TO_HOST);
+    ret = aclrtMemcpy(tensorResultData.data(), resultSize * sizeof(std::complex<float>), outResultDeviceAddr,
+                      resultSize * sizeof(std::complex<float>), ACL_MEMCPY_DEVICE_TO_HOST);
     CHECK_RET(ret == ::ACL_SUCCESS, LOG_PRINT("copy result from device to host failed. ERROR: %d\n", ret); return ret);
 
     std::cout << "------- result -------" << std::endl;

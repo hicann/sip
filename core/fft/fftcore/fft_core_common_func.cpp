@@ -40,7 +40,7 @@ constexpr int64_t L2_CACHE_MAX_FLOAT_22 = (1 << 22);
 constexpr int64_t L2_CACHE_MAX_FLOAT_21 = (1 << 21);
 constexpr int64_t EVEN_THRESHOLD = 524288 / 2;
 
-void InitMem(void *dest, uint8_t ch, size_t count)
+void InitMem(void* dest, uint8_t ch, size_t count)
 {
     if (dest == nullptr) {
         ASDSIP_LOG(ERROR) << "dest is nullptr";
@@ -48,11 +48,11 @@ void InitMem(void *dest, uint8_t ch, size_t count)
     }
 
     for (size_t i = 0; i < count; i++) {
-        ((uint8_t *)dest)[i] = ch;
+        ((uint8_t*)dest)[i] = ch;
     }
 }
 
-int64_t GetAllWMatrixSize(std::vector<int64_t> &radixVec)
+int64_t GetAllWMatrixSize(std::vector<int64_t>& radixVec)
 {
     int64_t size = 0;
     int64_t tempN;
@@ -67,7 +67,7 @@ int64_t GetAllWMatrixSize(std::vector<int64_t> &radixVec)
     return size;
 }
 
-int64_t GetTMatrixCol(std::vector<int64_t> &radixVec, int64_t iter)
+int64_t GetTMatrixCol(std::vector<int64_t>& radixVec, int64_t iter)
 {
     int64_t col = 1;
     for (int64_t i = iter + 1; i < static_cast<int64_t>(radixVec.size()); ++i) {
@@ -76,7 +76,7 @@ int64_t GetTMatrixCol(std::vector<int64_t> &radixVec, int64_t iter)
     return col;
 }
 
-int64_t GetAllTMatrixSize(std::vector<int64_t> &radixVec)
+int64_t GetAllTMatrixSize(std::vector<int64_t>& radixVec)
 {
     int64_t size = 0;
     int64_t tempRow;
@@ -93,7 +93,7 @@ int64_t GetAllTMatrixSize(std::vector<int64_t> &radixVec)
     return size;
 }
 
-int64_t GetAllSMatrixSize(std::vector<int64_t> &radixVec)
+int64_t GetAllSMatrixSize(std::vector<int64_t>& radixVec)
 {
     int64_t size = 0;
     int64_t tempN;
@@ -111,7 +111,7 @@ int64_t GetAllSMatrixSize(std::vector<int64_t> &radixVec)
 }
 
 // 两处调用逻辑均保障n、factors[i]不会为0
-std::vector<int64_t> FindTwoRadix(std::vector<int64_t> &factors, int64_t n)
+std::vector<int64_t> FindTwoRadix(std::vector<int64_t>& factors, int64_t n)
 {
     if (n == 0) {
         n = 1;
@@ -121,7 +121,7 @@ std::vector<int64_t> FindTwoRadix(std::vector<int64_t> &factors, int64_t n)
     if (minN1 == 0) {
         minN1 = 1;
     }
-    float minRatio = std::max(n / std::pow(n1, 2), std::pow(n1, 2) / n);  // (n / n1) 为N2, 此处为比较N2比N1的最小值
+    float minRatio = std::max(n / std::pow(n1, 2), std::pow(n1, 2) / n); // (n / n1) 为N2, 此处为比较N2比N1的最小值
 
     int64_t fLen = static_cast<int64_t>(factors.size());
     for (int64_t i = 0; i < (1 << fLen); i++) {
@@ -144,7 +144,7 @@ std::vector<int64_t> FindTwoRadix(std::vector<int64_t> &factors, int64_t n)
     return radixList;
 }
 
-int64_t GetTwiddleMatrixLen(int64_t fftN, const std::vector<int64_t> &radixVecRef)
+int64_t GetTwiddleMatrixLen(int64_t fftN, const std::vector<int64_t>& radixVecRef)
 {
     int64_t n = fftN;
     int64_t dftMatrixLen = 0;
@@ -170,14 +170,14 @@ int64_t GetTwiddleMatrixLen(int64_t fftN, const std::vector<int64_t> &radixVecRe
     return dftMatrixLen;
 }
 
-}
+} // namespace
 
-AspbStatus InitWMatrixCommon(FFTCoreType coreType, std::vector<int64_t> &radixVec, int64_t n, bool forward,
-                             std::shared_ptr<AsdSip::FFTensor> &wMatrix)
+AspbStatus InitWMatrixCommon(FFTCoreType coreType, std::vector<int64_t>& radixVec, int64_t n, bool forward,
+                             std::shared_ptr<AsdSip::FFTensor>& wMatrix)
 {
-    std::function<AsdSip::FFTensor *()> func = [=]() mutable -> AsdSip::FFTensor* {
-        AsdSip::FFTensor *wMatrixPtr = new AsdSip::FFTensor;
-        AsdSip::FFTensor &wMatrix_ = *wMatrixPtr;
+    std::function<AsdSip::FFTensor*()> func = [=]() mutable -> AsdSip::FFTensor* {
+        AsdSip::FFTensor* wMatrixPtr = new AsdSip::FFTensor;
+        AsdSip::FFTensor& wMatrix_ = *wMatrixPtr;
 
         int64_t size = GetAllWMatrixSize(radixVec);
 
@@ -186,13 +186,13 @@ AspbStatus InitWMatrixCommon(FFTCoreType coreType, std::vector<int64_t> &radixVe
         wMatrix_.desc.dims = {size};
         wMatrix_.dataSize = sizeof(float) * size;
 
-        float *wMatrixHost = nullptr;
+        float* wMatrixHost = nullptr;
         try {
             wMatrixHost = new float[size];
-        } catch(std::bad_alloc& e) {
+        } catch (std::bad_alloc& e) {
             delete wMatrixPtr;
-            ASDSIP_LOG(ERROR) << "wMatrixHost nalloc failed: " << e.what();
-            throw std::runtime_error("wMatrixHost nalloc failed:");
+            ASDSIP_LOG(ERROR) << "wMatrixHost alloc failed: " << e.what();
+            throw std::runtime_error("wMatrixHost alloc failed:");
         }
         InitMem(wMatrixHost, 0, wMatrix_.dataSize);
 
@@ -213,24 +213,24 @@ AspbStatus InitWMatrixCommon(FFTCoreType coreType, std::vector<int64_t> &radixVe
                     int64_t i = k / tempNi;
                     int64_t j = k % tempNi;
                     *(wMatrixHost + offset + i * 2 * tempNi + j) = cos(-1.0 * K_2PI / tempNi * i * j);
-                    *(wMatrixHost + offset + i * 2 * tempNi + tempNi + j) =
-                        sin(-1.0 * K_2PI / tempNi * i * j) * (forward ? (-1.0) : (1.0));
-                    *(wMatrixHost + offset + (i + tempNi) * 2 * tempNi + j) =
-                        sin(1.0 * K_2PI / tempNi * i * j) * (forward ? (-1.0) : (1.0));
-                    *(wMatrixHost + offset + (i + tempNi) * 2 * tempNi + tempNi + j) =
-                        cos(-1.0 * K_2PI / tempNi * i * j);
+                    *(wMatrixHost + offset + i * 2 * tempNi + tempNi + j) = sin(-1.0 * K_2PI / tempNi * i * j) *
+                                                                            (forward ? (-1.0) : (1.0));
+                    *(wMatrixHost + offset + (i + tempNi) * 2 * tempNi + j) = sin(1.0 * K_2PI / tempNi * i * j) *
+                                                                              (forward ? (-1.0) : (1.0));
+                    *(wMatrixHost + offset + (i + tempNi) * 2 * tempNi + tempNi +
+                      j) = cos(-1.0 * K_2PI / tempNi * i * j);
                 }
             } else {
                 for (int64_t k = 0; k < tempNi * tempNi; ++k) {
                     int64_t i = k / tempNi;
                     int64_t j = k % tempNi;
                     *(wMatrixHost + offset + 2 * i * 2 * tempNi + j) = cos(-1.0 * K_2PI / tempNi * i * j);
-                    *(wMatrixHost + offset + 2 * i * 2 * tempNi + tempNi + j) =
-                        sin(-1.0 * K_2PI / tempNi * i * j) * (forward ? (-1.0) : (1.0));
-                    *(wMatrixHost + offset + (2 * i + 1) * 2 * tempNi + j) =
-                        sin(1.0 * K_2PI / tempNi * i * j) * (forward ? (-1.0) : (1.0));
-                    *(wMatrixHost + offset + (2 * i + 1) * 2 * tempNi + tempNi + j) =
-                        cos(-1.0 * K_2PI / tempNi * i * j);
+                    *(wMatrixHost + offset + 2 * i * 2 * tempNi + tempNi + j) = sin(-1.0 * K_2PI / tempNi * i * j) *
+                                                                                (forward ? (-1.0) : (1.0));
+                    *(wMatrixHost + offset + (2 * i + 1) * 2 * tempNi + j) = sin(1.0 * K_2PI / tempNi * i * j) *
+                                                                             (forward ? (-1.0) : (1.0));
+                    *(wMatrixHost + offset + (2 * i + 1) * 2 * tempNi + tempNi +
+                      j) = cos(-1.0 * K_2PI / tempNi * i * j);
                 }
             }
 
@@ -248,8 +248,8 @@ AspbStatus InitWMatrixCommon(FFTCoreType coreType, std::vector<int64_t> &radixVe
     return AsdSip::ErrorType::ACL_SUCCESS;
 }
 
-AspbStatus InitTMatrixCommon(FFTCoreType coreType, std::vector<int64_t> &radixVec, int64_t n,
-                             std::shared_ptr<AsdSip::FFTensor> &tMatrix)
+AspbStatus InitTMatrixCommon(FFTCoreType coreType, std::vector<int64_t>& radixVec, int64_t n,
+                             std::shared_ptr<AsdSip::FFTensor>& tMatrix)
 {
     if (n == RADIX_8K) {
         radixVec = {2, 64, 64};
@@ -258,9 +258,9 @@ AspbStatus InitTMatrixCommon(FFTCoreType coreType, std::vector<int64_t> &radixVe
         radixVec = {4, 64, 64};
     }
 
-    std::function<AsdSip::FFTensor *()> func = [=]() mutable -> AsdSip::FFTensor* {
-        AsdSip::FFTensor *tMatrixPtr = new AsdSip::FFTensor;
-        AsdSip::FFTensor &tMatrix_ = *tMatrixPtr;
+    std::function<AsdSip::FFTensor*()> func = [=]() mutable -> AsdSip::FFTensor* {
+        AsdSip::FFTensor* tMatrixPtr = new AsdSip::FFTensor;
+        AsdSip::FFTensor& tMatrix_ = *tMatrixPtr;
 
         tMatrix_.desc.dtype = TENSOR_DTYPE_FLOAT;
         tMatrix_.desc.format = TENSOR_FORMAT_ND;
@@ -269,13 +269,13 @@ AspbStatus InitTMatrixCommon(FFTCoreType coreType, std::vector<int64_t> &radixVe
         tMatrix_.desc.dims = {eleNum};
         tMatrix_.dataSize = sizeof(float) * eleNum;
 
-        float *tMatrixHost = nullptr;
+        float* tMatrixHost = nullptr;
         try {
             tMatrixHost = new float[eleNum];
-        } catch(std::bad_alloc& e) {
+        } catch (std::bad_alloc& e) {
             delete tMatrixPtr;
-            ASDSIP_LOG(ERROR) << "tMatrixHost nalloc failed: " << e.what();
-            throw std::runtime_error("tMatrixHost nalloc failed:.");
+            ASDSIP_LOG(ERROR) << "tMatrixHost alloc failed: " << e.what();
+            throw std::runtime_error("tMatrixHost alloc failed:.");
         }
         InitMem(tMatrixHost, 0, tMatrix_.dataSize);
 
@@ -292,8 +292,8 @@ AspbStatus InitTMatrixCommon(FFTCoreType coreType, std::vector<int64_t> &radixVe
             for (int64_t i = 0; i < tempRow; ++i) {
                 for (int64_t j = 0; j < tempCol; ++j) {
                     *((tMatrixHost + offset) + 2 * i * tempCol + j) = cos(-1.0 * K_2PI / (tempRow * tempCol) * i * j);
-                    *((tMatrixHost + offset) + (2 * i + 1) * tempCol + j) =
-                        sin(-1.0 * K_2PI / (tempRow * tempCol) * i * j);
+                    *((tMatrixHost + offset) + (2 * i + 1) * tempCol +
+                      j) = sin(-1.0 * K_2PI / (tempRow * tempCol) * i * j);
                 }
             }
 
@@ -316,12 +316,12 @@ AspbStatus InitTMatrixCommon(FFTCoreType coreType, std::vector<int64_t> &radixVe
     return AsdSip::ErrorType::ACL_SUCCESS;
 }
 
-AspbStatus InitSMatrixCommon(FFTCoreType coreType, std::vector<int64_t> &radixVec, int64_t n, bool forward,
-                             std::shared_ptr<AsdSip::FFTensor> &sMatrix)
+AspbStatus InitSMatrixCommon(FFTCoreType coreType, std::vector<int64_t>& radixVec, int64_t n, bool forward,
+                             std::shared_ptr<AsdSip::FFTensor>& sMatrix)
 {
-    std::function<AsdSip::FFTensor *()> func = [=]() mutable -> AsdSip::FFTensor* {
-        AsdSip::FFTensor *sMatrixPtr = new AsdSip::FFTensor;
-        AsdSip::FFTensor &sMatrix_ = *sMatrixPtr;
+    std::function<AsdSip::FFTensor*()> func = [=]() mutable -> AsdSip::FFTensor* {
+        AsdSip::FFTensor* sMatrixPtr = new AsdSip::FFTensor;
+        AsdSip::FFTensor& sMatrix_ = *sMatrixPtr;
 
         int64_t size = GetAllSMatrixSize(radixVec);
 
@@ -330,13 +330,13 @@ AspbStatus InitSMatrixCommon(FFTCoreType coreType, std::vector<int64_t> &radixVe
         sMatrix_.desc.dims = {size};
         sMatrix_.dataSize = sizeof(float) * size;
 
-        float *sMatrixHost = nullptr;
+        float* sMatrixHost = nullptr;
         try {
             sMatrixHost = new float[size];
-        } catch(std::bad_alloc& e) {
+        } catch (std::bad_alloc& e) {
             delete sMatrixPtr;
-            ASDSIP_LOG(ERROR) << "sMatrixHost nalloc failed: " << e.what();
-            throw std::runtime_error("sMatrixHost nalloc failed:.");
+            ASDSIP_LOG(ERROR) << "sMatrixHost alloc failed: " << e.what();
+            throw std::runtime_error("sMatrixHost alloc failed:.");
         }
         InitMem(sMatrixHost, 0, sMatrix_.dataSize);
 
@@ -355,14 +355,15 @@ AspbStatus InitSMatrixCommon(FFTCoreType coreType, std::vector<int64_t> &radixVe
                 for (int64_t m = 0; m < tempN * tempN; ++m) {
                     int64_t j = m / tempN;
                     int64_t k = m % tempN;
-                    *((sMatrixHost + offset) + i * 4 * tempN * tempN + 2 * j * 2 * tempN + k) =
-                        cos(-K_2PI * (i + j * tempRepeat) * k / (tempRepeat * tempN));
-                    *((sMatrixHost + offset) + i * 4 * tempN * tempN + 2 * j * 2 * tempN + k + tempN) =
-                        sin(-K_2PI * (i + j * tempRepeat) * k / (tempRepeat * tempN)) * (forward ? (-1.0) : (1.0));
-                    *((sMatrixHost + offset) + i * 4 * tempN * tempN + (2 * j + 1) * 2 * tempN + k) =
-                        sin(-K_2PI * (i + j * tempRepeat) * k / (tempRepeat * tempN)) * (forward ? (1.0) : (-1.0));
-                    *((sMatrixHost + offset) + i * 4 * tempN * tempN + (2 * j + 1) * 2 * tempN + k + tempN) =
-                        cos(-K_2PI * (i + j * tempRepeat) * k / (tempRepeat * tempN));
+                    *((sMatrixHost + offset) + i * 4 * tempN * tempN + 2 * j * 2 * tempN +
+                      k) = cos(-K_2PI * (i + j * tempRepeat) * k / (tempRepeat * tempN));
+                    *((sMatrixHost + offset) + i * 4 * tempN * tempN + 2 * j * 2 * tempN + k +
+                      tempN) = sin(-K_2PI * (i + j * tempRepeat) * k / (tempRepeat * tempN)) *
+                               (forward ? (-1.0) : (1.0));
+                    *((sMatrixHost + offset) + i * 4 * tempN * tempN + (2 * j + 1) * 2 * tempN +
+                      k) = sin(-K_2PI * (i + j * tempRepeat) * k / (tempRepeat * tempN)) * (forward ? (1.0) : (-1.0));
+                    *((sMatrixHost + offset) + i * 4 * tempN * tempN + (2 * j + 1) * 2 * tempN + k +
+                      tempN) = cos(-K_2PI * (i + j * tempRepeat) * k / (tempRepeat * tempN));
                 }
             }
 
@@ -383,8 +384,8 @@ AspbStatus InitSMatrixCommon(FFTCoreType coreType, std::vector<int64_t> &radixVe
 
 // inputIndexDevice && outputIndexDevices
 AspbStatus InitInputOutputIndex(FFTCoreType coreType, int64_t fftN, int parity,
-                                std::shared_ptr<AsdSip::FFTensor> &inputIndex,
-                                std::shared_ptr<AsdSip::FFTensor> &outputIndex)
+                                std::shared_ptr<AsdSip::FFTensor>& inputIndex,
+                                std::shared_ptr<AsdSip::FFTensor>& outputIndex)
 {
     int64_t n = fftN * 2;
     int64_t biasc = BIASC_SIZE;
@@ -395,17 +396,17 @@ AspbStatus InitInputOutputIndex(FFTCoreType coreType, int64_t fftN, int parity,
     bool isR2c = coreType == FFTCoreType::kDftR2C || coreType == FFTCoreType::kFftR2C;
     bool isDft = coreType == FFTCoreType::kDftR2C || coreType == FFTCoreType::kDftC2R;
 
-    std::function<AsdSip::FFTensor *()> input_index_func = [=]() -> AsdSip::FFTensor* {
-        AsdSip::FFTensor *_input_index_ptr = new AsdSip::FFTensor;
-        AsdSip::FFTensor &_input_index = *_input_index_ptr;
+    std::function<AsdSip::FFTensor*()> input_index_func = [=]() -> AsdSip::FFTensor* {
+        AsdSip::FFTensor* _input_index_ptr = new AsdSip::FFTensor;
+        AsdSip::FFTensor& _input_index = *_input_index_ptr;
 
-        uint32_t *_input_index_host = nullptr;
+        uint32_t* _input_index_host = nullptr;
         try {
             _input_index_host = new uint32_t[biasc * 4];
-        } catch(std::bad_alloc& e) {
+        } catch (std::bad_alloc& e) {
             delete _input_index_ptr;
-            ASDSIP_LOG(ERROR) << "_input_index_host nalloc failed: " << e.what();
-            throw std::runtime_error("_input_index_host nalloc failed:.");
+            ASDSIP_LOG(ERROR) << "_input_index_host alloc failed: " << e.what();
+            throw std::runtime_error("_input_index_host alloc failed:.");
         }
         InitMem(_input_index_host, 0, biasc * 4 * sizeof(uint32_t));
 
@@ -413,7 +414,8 @@ AspbStatus InitInputOutputIndex(FFTCoreType coreType, int64_t fftN, int parity,
             if (isDft) {
                 for (uint32_t i = 0; i < BIASC_SIZE; i++) {
                     *(_input_index_host + RADIX_8K + 2 * i) = static_cast<uint32_t>((i) * sizeof(float));
-                    *(_input_index_host + RADIX_8K + 2 * i + 1) = static_cast<uint32_t>((BIASC_SIZE + i) * sizeof(float));
+                    *(_input_index_host + RADIX_8K + 2 * i +
+                      1) = static_cast<uint32_t>((BIASC_SIZE + i) * sizeof(float));
                 }
             }
             if (indexSize == bias) {
@@ -421,9 +423,10 @@ AspbStatus InitInputOutputIndex(FFTCoreType coreType, int64_t fftN, int parity,
                     for (uint32_t i = 0; i < indexSize; i++) {
                         *(_input_index_host + i) = static_cast<uint32_t>((bias - 1 - i) * sizeof(float));
                     }
-                    uint32_t remainSize = (n - 2) % biasc;  // 超过 4096长度的尾块处理
+                    uint32_t remainSize = (n - 2) % biasc; // 超过 4096长度的尾块处理
                     for (uint32_t i = 0; i < remainSize / 2; i++) {
-                        *(_input_index_host + indexSize + i) = static_cast<uint32_t>((remainSize / 2 - 1 - i) * sizeof(float));
+                        *(_input_index_host + indexSize +
+                          i) = static_cast<uint32_t>((remainSize / 2 - 1 - i) * sizeof(float));
                     }
                     for (uint32_t i = (remainSize / 2); i < indexSize; i++) {
                         *(_input_index_host + indexSize + i) = static_cast<uint32_t>((0) * sizeof(float));
@@ -446,35 +449,39 @@ AspbStatus InitInputOutputIndex(FFTCoreType coreType, int64_t fftN, int parity,
             }
         } else {
             if (parity == 1) {
-                if ((fftN / 2 * 2 > BIASC_SIZE)) {  // 需要分多次进行C2R的共轭操作
+                if ((fftN / 2 * 2 > BIASC_SIZE)) { // 需要分多次进行C2R的共轭操作
                     uint32_t idx_size = biasc;
                     for (uint32_t i = 0; i < idx_size / 2; i++) {
                         *(_input_index_host + i * 2) = static_cast<uint32_t>((idx_size - i * 2) * sizeof(float));
-                        *(_input_index_host + i * 2 + 1) = static_cast<uint32_t>((idx_size - i * 2 + 1) * sizeof(float));
+                        *(_input_index_host + i * 2 +
+                          1) = static_cast<uint32_t>((idx_size - i * 2 + 1) * sizeof(float));
                     }
 
                     for (uint32_t i = 0; i < idx_size / 2; i++) {
-                        *(_input_index_host + idx_size + i * 2) = static_cast<uint32_t>((idx_size - i * 2 - 2) * sizeof(float));
-                        *(_input_index_host + idx_size + i * 2 + 1) =
-                            static_cast<uint32_t>((idx_size - i * 2 - 1) * sizeof(float));
+                        *(_input_index_host + idx_size +
+                          i * 2) = static_cast<uint32_t>((idx_size - i * 2 - 2) * sizeof(float));
+                        *(_input_index_host + idx_size + i * 2 +
+                          1) = static_cast<uint32_t>((idx_size - i * 2 - 1) * sizeof(float));
                     }
                     uint32_t idx_remain = (fftN / 2 * 2) % biasc;
                     uint32_t idx_remain_padding = (idx_remain + 63) / 64 * 64;
                     for (uint32_t i = 0; i < idx_remain / 2; i++) {
-                        *(_input_index_host + idx_size * 2 + i * 2) =
-                            static_cast<uint32_t>((idx_remain - i * 2 - 2) * sizeof(float));
-                        *(_input_index_host + idx_size * 2 + i * 2 + 1) =
-                            static_cast<uint32_t>((idx_remain - i * 2 - 1) * sizeof(float));
+                        *(_input_index_host + idx_size * 2 +
+                          i * 2) = static_cast<uint32_t>((idx_remain - i * 2 - 2) * sizeof(float));
+                        *(_input_index_host + idx_size * 2 + i * 2 +
+                          1) = static_cast<uint32_t>((idx_remain - i * 2 - 1) * sizeof(float));
                     }
                     for (uint32_t i = 0; i < (idx_remain_padding - idx_remain); i++) {
                         *(_input_index_host + idx_size * 2 + idx_remain + i) = 0;
                     }
                 } else {
-                    uint32_t idx_size = (fftN / 2) * 2;  // 与算子逻辑一致
+                    uint32_t idx_size = (fftN / 2) * 2; // 与算子逻辑一致
                     uint32_t idx_padding = (idx_size + 63) / 64 * 64;
                     for (uint32_t i = 0; i < idx_size / 2; i++) {
-                        *(_input_index_host + i * 2) = static_cast<uint32_t>((idx_size + 2 - i * 2 - 2) * sizeof(float));
-                        *(_input_index_host + i * 2 + 1) = static_cast<uint32_t>((idx_size + 2 - i * 2 - 1) * sizeof(float));
+                        *(_input_index_host +
+                          i * 2) = static_cast<uint32_t>((idx_size + 2 - i * 2 - 2) * sizeof(float));
+                        *(_input_index_host + i * 2 +
+                          1) = static_cast<uint32_t>((idx_size + 2 - i * 2 - 1) * sizeof(float));
                     }
                     for (uint32_t i = 0; i < (idx_padding - idx_size); i++) {
                         *(_input_index_host + idx_size + i) = 0;
@@ -486,15 +493,16 @@ AspbStatus InitInputOutputIndex(FFTCoreType coreType, int64_t fftN, int parity,
                         for (uint32_t i = 0; i < indexSize; i++) {
                             *(_input_index_host + i) = static_cast<uint32_t>((bias - 1 - i) * sizeof(float));
                         }
-                        uint32_t remainSize = (n + 2) % biasc;  // 超过 4096长度的尾块处理
+                        uint32_t remainSize = (n + 2) % biasc; // 超过 4096长度的尾块处理
                         for (uint32_t i = 0; i < remainSize / 2; i++) {
-                            *(_input_index_host + indexSize + i) = static_cast<uint32_t>((remainSize / 2 - 1 - i) * sizeof(float));
+                            *(_input_index_host + indexSize +
+                              i) = static_cast<uint32_t>((remainSize / 2 - 1 - i) * sizeof(float));
                         }
                         for (uint32_t i = (remainSize / 2); i < indexSize; i++) {
                             *(_input_index_host + indexSize + i) = static_cast<uint32_t>((0) * sizeof(float));
                         }
                     } else {
-                        if (n == BIASC_SIZE) {  // 此分支只有C2R 4096会走到
+                        if (n == BIASC_SIZE) { // 此分支只有C2R 4096会走到
                             for (int i = 0; i < (n / 2); i++) {
                                 *(_input_index_host + i) = (n / 2 - i - 1) * sizeof(float);
                             }
@@ -533,17 +541,17 @@ AspbStatus InitInputOutputIndex(FFTCoreType coreType, int64_t fftN, int parity,
     AsdSip::CoeffKey input_index_key = {coreType, INPUT_MARK, {parity == 1 ? fftN : fftN * 2}, 0};
     inputIndex = FFTensorCache::getCoeff(input_index_key, input_index_func);
 
-    std::function<AsdSip::FFTensor *()> output_index_func = [=]() -> AsdSip::FFTensor* {
-        AsdSip::FFTensor *_output_index_ptr = new AsdSip::FFTensor;
-        AsdSip::FFTensor &_output_index = *_output_index_ptr;
+    std::function<AsdSip::FFTensor*()> output_index_func = [=]() -> AsdSip::FFTensor* {
+        AsdSip::FFTensor* _output_index_ptr = new AsdSip::FFTensor;
+        AsdSip::FFTensor& _output_index = *_output_index_ptr;
 
-        uint32_t *_output_index_host = nullptr;
+        uint32_t* _output_index_host = nullptr;
         try {
             _output_index_host = new uint32_t[outIndexSize];
-        } catch(std::bad_alloc& e) {
+        } catch (std::bad_alloc& e) {
             delete _output_index_ptr;
-            ASDSIP_LOG(ERROR) << "_output_index_host nalloc failed: " << e.what();
-            throw std::runtime_error("_output_index_host nalloc failed:.");
+            ASDSIP_LOG(ERROR) << "_output_index_host alloc failed: " << e.what();
+            throw std::runtime_error("_output_index_host alloc failed:.");
         }
         InitMem(_output_index_host, 0, outIndexSize * sizeof(uint32_t));
 
@@ -568,7 +576,7 @@ AspbStatus InitInputOutputIndex(FFTCoreType coreType, int64_t fftN, int parity,
 
 // inputADevice && inputBDevice
 AspbStatus InitABTable(FFTCoreType coreType, int64_t fftN, bool forward, int parity,
-                       std::shared_ptr<AsdSip::FFTensor> &aTable, std::shared_ptr<AsdSip::FFTensor> &bTable)
+                       std::shared_ptr<AsdSip::FFTensor>& aTable, std::shared_ptr<AsdSip::FFTensor>& bTable)
 {
     int32_t tableSize = 0;
 
@@ -594,19 +602,19 @@ AspbStatus InitABTable(FFTCoreType coreType, int64_t fftN, bool forward, int par
         factor = -1.0;
     }
 
-    std::function<AsdSip::FFTensor *()> a_table_func = [=, &cosTable, &sinTable]() -> AsdSip::FFTensor* {
-        AsdSip::FFTensor *aTablePtr = new AsdSip::FFTensor;
-        AsdSip::FFTensor &aTableRef = *aTablePtr;
+    std::function<AsdSip::FFTensor*()> a_table_func = [=, &cosTable, &sinTable]() -> AsdSip::FFTensor* {
+        AsdSip::FFTensor* aTablePtr = new AsdSip::FFTensor;
+        AsdSip::FFTensor& aTableRef = *aTablePtr;
 
-        float *_a_table_host = nullptr;
+        float* _a_table_host = nullptr;
 
         if (parity == 0) {
             try {
                 _a_table_host = new float[tableSize * 2];
-            } catch(std::bad_alloc& e) {
+            } catch (std::bad_alloc& e) {
                 delete aTablePtr;
-                ASDSIP_LOG(ERROR) << "_a_table_host nalloc failed: " << e.what();
-                throw std::runtime_error("_a_table_host nalloc failed:.");
+                ASDSIP_LOG(ERROR) << "_a_table_host alloc failed: " << e.what();
+                throw std::runtime_error("_a_table_host alloc failed:.");
             }
             InitMem(_a_table_host, 0, sizeof(float) * tableSize * 2);
 
@@ -632,19 +640,19 @@ AspbStatus InitABTable(FFTCoreType coreType, int64_t fftN, bool forward, int par
     AsdSip::CoeffKey a_table_key = {coreType, A_MARK, {parity == 1 ? fftN : fftN * 2}, 0};
     aTable = FFTensorCache::getCoeff(a_table_key, a_table_func);
 
-    std::function<AsdSip::FFTensor *()> b_table_func = [=, &cosTable, &sinTable]() -> AsdSip::FFTensor* {
-        AsdSip::FFTensor *_b_table_ptr = new AsdSip::FFTensor;
-        AsdSip::FFTensor &_b_table = *_b_table_ptr;
+    std::function<AsdSip::FFTensor*()> b_table_func = [=, &cosTable, &sinTable]() -> AsdSip::FFTensor* {
+        AsdSip::FFTensor* _b_table_ptr = new AsdSip::FFTensor;
+        AsdSip::FFTensor& _b_table = *_b_table_ptr;
 
-        float *_b_table_host = nullptr;
+        float* _b_table_host = nullptr;
 
         if (parity == 0) {
             try {
                 _b_table_host = new float[tableSize * 2];
-            } catch(std::bad_alloc& e) {
+            } catch (std::bad_alloc& e) {
                 delete _b_table_ptr;
-                ASDSIP_LOG(ERROR) << "_b_table_host nalloc failed: " << e.what();
-                throw std::runtime_error("_b_table_host nalloc failed:.");
+                ASDSIP_LOG(ERROR) << "_b_table_host alloc failed: " << e.what();
+                throw std::runtime_error("_b_table_host alloc failed:.");
             }
             InitMem(_b_table_host, 0, sizeof(float) * tableSize * 2);
 
@@ -673,7 +681,7 @@ AspbStatus InitABTable(FFTCoreType coreType, int64_t fftN, bool forward, int par
     return AsdSip::ErrorType::ACL_SUCCESS;
 }
 
-void InitMixRadixLong(int64_t fftN, std::vector<int64_t> &radixVecRef)
+void InitMixRadixLong(int64_t fftN, std::vector<int64_t>& radixVecRef)
 {
     std::vector<int64_t> radixArr;
     for (int64_t i = RADIX_ADDR_START; i >= RADIX_ADDR_END; i--) {
@@ -765,7 +773,7 @@ void InitMixRadixLong(int64_t fftN, std::vector<int64_t> &radixVecRef)
     radixVecRef = radixList;
 }
 
-void InitMixRadixShort(int64_t fftN, std::vector<int64_t> &radixVecRef)
+void InitMixRadixShort(int64_t fftN, std::vector<int64_t>& radixVecRef)
 {
     int64_t n = fftN;
     std::vector<int64_t> radixList = {};
@@ -826,21 +834,21 @@ void InitMixRadixShort(int64_t fftN, std::vector<int64_t> &radixVecRef)
     radixVecRef = radixList;
 }
 
-AspbStatus InitMixRadixList(FFTCoreType coreType, int64_t fftN, bool forward, std::vector<int64_t> &radixVecRef,
-                            std::shared_ptr<AsdSip::FFTensor> &radixList)
+AspbStatus InitMixRadixList(FFTCoreType coreType, int64_t fftN, bool forward, std::vector<int64_t>& radixVecRef,
+                            std::shared_ptr<AsdSip::FFTensor>& radixList)
 {
-    int64_t *radixListRefPtr = static_cast<int64_t *>(radixVecRef.data());
+    int64_t* radixListRefPtr = static_cast<int64_t*>(radixVecRef.data());
     size_t radixListLen = radixVecRef.size();
 
-    std::function<AsdSip::FFTensor *()> func = [=]() mutable -> AsdSip::FFTensor* {
-        AsdSip::FFTensor *radixListPtr = new AsdSip::FFTensor;
-        AsdSip::FFTensor &radixList_ = *radixListPtr;
+    std::function<AsdSip::FFTensor*()> func = [=]() mutable -> AsdSip::FFTensor* {
+        AsdSip::FFTensor* radixListPtr = new AsdSip::FFTensor;
+        AsdSip::FFTensor& radixList_ = *radixListPtr;
 
-        int32_t *radixListHost = new(std::nothrow) int32_t[radixListLen];
+        int32_t* radixListHost = new (std::nothrow) int32_t[radixListLen];
         if (radixListHost == nullptr) {
             delete radixListPtr;
-            ASDSIP_LOG(ERROR) << "radixListHost nalloc failed: ";
-            throw std::runtime_error("radixListHost nalloc failed:.");
+            ASDSIP_LOG(ERROR) << "radixListHost alloc failed: ";
+            throw std::runtime_error("radixListHost alloc failed:.");
         }
         InitMem(radixListHost, 0, sizeof(int32_t) * radixListLen);
 
@@ -848,8 +856,11 @@ AspbStatus InitMixRadixList(FFTCoreType coreType, int64_t fftN, bool forward, st
             radixListHost[i] = radixListRefPtr[i];
         }
 
-        radixList_.desc = {
-            Mki::TensorDType::TENSOR_DTYPE_INT32, Mki::TensorFormat::TENSOR_FORMAT_ND, {static_cast<int64_t>(radixListLen)}, {}, 0};
+        radixList_.desc = {Mki::TensorDType::TENSOR_DTYPE_INT32,
+                           Mki::TensorFormat::TENSOR_FORMAT_ND,
+                           {static_cast<int64_t>(radixListLen)},
+                           {},
+                           0};
         radixList_.hostData = radixListHost;
         radixList_.dataSize = sizeof(int32_t) * radixListLen;
 
@@ -865,22 +876,22 @@ AspbStatus InitMixRadixList(FFTCoreType coreType, int64_t fftN, bool forward, st
 namespace {
 
 AspbStatus InitMixRadixForwardTwiddleMatrix(FFTCoreType coreType, int64_t fftN, int64_t batchSize,
-                                            std::vector<int64_t> &radixVecRef,
-                                            std::shared_ptr<AsdSip::FFTensor> &dftMatrixArray)
+                                            std::vector<int64_t>& radixVecRef,
+                                            std::shared_ptr<AsdSip::FFTensor>& dftMatrixArray)
 {
     int64_t dftMatrixLen = GetTwiddleMatrixLen(fftN, radixVecRef);
-    int64_t *radixListPtr = static_cast<int64_t *>(radixVecRef.data());
+    int64_t* radixListPtr = static_cast<int64_t*>(radixVecRef.data());
     int64_t radixListLen = static_cast<int64_t>(radixVecRef.size());
 
-    std::function<AsdSip::FFTensor *()> funcMultiSteplen = [=]() mutable -> AsdSip::FFTensor* {
-        AsdSip::FFTensor *dftMatrixArrayPtr = new AsdSip::FFTensor;
-        AsdSip::FFTensor &dftMatrixArray_ = *dftMatrixArrayPtr;
+    std::function<AsdSip::FFTensor*()> funcMultiSteplen = [=]() mutable -> AsdSip::FFTensor* {
+        AsdSip::FFTensor* dftMatrixArrayPtr = new AsdSip::FFTensor;
+        AsdSip::FFTensor& dftMatrixArray_ = *dftMatrixArrayPtr;
 
-        float *matrixArrayHost = new(std::nothrow) float[dftMatrixLen];
+        float* matrixArrayHost = new (std::nothrow) float[dftMatrixLen];
         if (matrixArrayHost == nullptr) {
             delete dftMatrixArrayPtr;
-            ASDSIP_LOG(ERROR) << "matrixArrayHost nalloc failed: ";
-            throw std::runtime_error("matrixArrayHost nalloc failed:.");
+            ASDSIP_LOG(ERROR) << "matrixArrayHost alloc failed: ";
+            throw std::runtime_error("matrixArrayHost alloc failed:.");
         }
         InitMem(matrixArrayHost, 0, dftMatrixLen * sizeof(float));
 
@@ -899,15 +910,15 @@ AspbStatus InitMixRadixForwardTwiddleMatrix(FFTCoreType coreType, int64_t fftN, 
         return dftMatrixArrayPtr;
     };
 
-    std::function<AsdSip::FFTensor *()> funcOneSteplen = [=]() mutable -> AsdSip::FFTensor* {
-        AsdSip::FFTensor *dftMatrixArrayPtr = new AsdSip::FFTensor;
-        AsdSip::FFTensor &dftMatrixArray_ = *dftMatrixArrayPtr;
+    std::function<AsdSip::FFTensor*()> funcOneSteplen = [=]() mutable -> AsdSip::FFTensor* {
+        AsdSip::FFTensor* dftMatrixArrayPtr = new AsdSip::FFTensor;
+        AsdSip::FFTensor& dftMatrixArray_ = *dftMatrixArrayPtr;
 
-        float *dftMatrixArrayHost = new(std::nothrow) float[dftMatrixLen];
+        float* dftMatrixArrayHost = new (std::nothrow) float[dftMatrixLen];
         if (dftMatrixArrayHost == nullptr) {
             delete dftMatrixArrayPtr;
-            ASDSIP_LOG(ERROR) << "dftMatrixArrayHost nalloc failed: ";
-            throw std::runtime_error("dftMatrixArrayHost nalloc failed:.");
+            ASDSIP_LOG(ERROR) << "dftMatrixArrayHost alloc failed: ";
+            throw std::runtime_error("dftMatrixArrayHost alloc failed:.");
         }
         InitMem(dftMatrixArrayHost, 0, dftMatrixLen * sizeof(float));
 
@@ -932,18 +943,18 @@ AspbStatus InitMixRadixForwardTwiddleMatrix(FFTCoreType coreType, int64_t fftN, 
 }
 
 AspbStatus InitMixRadixInverseTwiddleMatrix(FFTCoreType coreType, int64_t fftN, int64_t batchSize,
-                                            std::vector<int64_t> &radixVecRef,
-                                            std::shared_ptr<AsdSip::FFTensor> &dftMatrixArrayInverse)
+                                            std::vector<int64_t>& radixVecRef,
+                                            std::shared_ptr<AsdSip::FFTensor>& dftMatrixArrayInverse)
 {
     int64_t dftMatrixLen = GetTwiddleMatrixLen(fftN, radixVecRef);
-    int64_t *radixListPtr = static_cast<int64_t *>(radixVecRef.data());
+    int64_t* radixListPtr = static_cast<int64_t*>(radixVecRef.data());
     int64_t radixListLen = static_cast<int64_t>(radixVecRef.size());
 
-    std::function<AsdSip::FFTensor *()> funcMultiSteplen = [=]() mutable -> AsdSip::FFTensor* {
-        AsdSip::FFTensor *dftMatrixArrayInversePtr = new AsdSip::FFTensor;
-        AsdSip::FFTensor &dftMatrixArrayInverse_ = *dftMatrixArrayInversePtr;
+    std::function<AsdSip::FFTensor*()> funcMultiSteplen = [=]() mutable -> AsdSip::FFTensor* {
+        AsdSip::FFTensor* dftMatrixArrayInversePtr = new AsdSip::FFTensor;
+        AsdSip::FFTensor& dftMatrixArrayInverse_ = *dftMatrixArrayInversePtr;
 
-        float *dftMatrixArrayInverseHost = new(std::nothrow) float[dftMatrixLen];
+        float* dftMatrixArrayInverseHost = new (std::nothrow) float[dftMatrixLen];
         if (dftMatrixArrayInverseHost == nullptr) {
             delete dftMatrixArrayInversePtr;
             ASDSIP_LOG(ERROR) << "dftMatrixArrayInverseHost malloc failed: ";
@@ -965,11 +976,11 @@ AspbStatus InitMixRadixInverseTwiddleMatrix(FFTCoreType coreType, int64_t fftN, 
         return dftMatrixArrayInversePtr;
     };
 
-    std::function<AsdSip::FFTensor *()> funcOneSteplen = [=]() mutable -> AsdSip::FFTensor* {
-        AsdSip::FFTensor *dftMatrixArrayInversePtr = new AsdSip::FFTensor;
-        AsdSip::FFTensor &dftMatrixArrayInverse_ = *dftMatrixArrayInversePtr;
+    std::function<AsdSip::FFTensor*()> funcOneSteplen = [=]() mutable -> AsdSip::FFTensor* {
+        AsdSip::FFTensor* dftMatrixArrayInversePtr = new AsdSip::FFTensor;
+        AsdSip::FFTensor& dftMatrixArrayInverse_ = *dftMatrixArrayInversePtr;
 
-        float *dftMatrixArrayInverseHost = new(std::nothrow) float[dftMatrixLen];
+        float* dftMatrixArrayInverseHost = new (std::nothrow) float[dftMatrixLen];
         if (dftMatrixArrayInverseHost == nullptr) {
             delete dftMatrixArrayInversePtr;
             ASDSIP_LOG(ERROR) << "dftMatrixArrayInverseHost malloc failed: ";
@@ -996,11 +1007,11 @@ AspbStatus InitMixRadixInverseTwiddleMatrix(FFTCoreType coreType, int64_t fftN, 
     return AsdSip::ErrorType::ACL_SUCCESS;
 }
 
-}
+} // namespace
 
 AspbStatus InitMixRadixTwiddleMatrix(FFTCoreType coreType, int64_t fftN, int64_t batchSize, bool forward,
-                                     std::vector<int64_t> &radixVecRef,
-                                     std::shared_ptr<AsdSip::FFTensor> &twiddleMatrixArray)
+                                     std::vector<int64_t>& radixVecRef,
+                                     std::shared_ptr<AsdSip::FFTensor>& twiddleMatrixArray)
 {
     if (forward) {
         return InitMixRadixForwardTwiddleMatrix(coreType, fftN, batchSize, radixVecRef, twiddleMatrixArray);
@@ -1011,7 +1022,7 @@ AspbStatus InitMixRadixTwiddleMatrix(FFTCoreType coreType, int64_t fftN, int64_t
 
 namespace {
 
-int64_t GetTwMatrixLen(int64_t fftN, const std::vector<int64_t> &radixVecRef)
+int64_t GetTwMatrixLen(int64_t fftN, const std::vector<int64_t>& radixVecRef)
 {
     int64_t n = fftN;
     int64_t twMatrixLen = 0;
@@ -1040,29 +1051,28 @@ int64_t GetTwMatrixLen(int64_t fftN, const std::vector<int64_t> &radixVecRef)
     return twMatrixLen;
 }
 
-}
+} // namespace
 
-AspbStatus InitMixRadixTWMatrix(FFTCoreType coreType, int64_t fftN, bool forward,
-                                std::vector<int64_t> &radixVecRef,
-                                std::shared_ptr<AsdSip::FFTensor> &twMatrixArray)
+AspbStatus InitMixRadixTWMatrix(FFTCoreType coreType, int64_t fftN, bool forward, std::vector<int64_t>& radixVecRef,
+                                std::shared_ptr<AsdSip::FFTensor>& twMatrixArray)
 {
     int64_t twMatrixLen = GetTwMatrixLen(fftN, radixVecRef);
-    int64_t *radixListPtr = static_cast<int64_t *>(radixVecRef.data());
+    int64_t* radixListPtr = static_cast<int64_t*>(radixVecRef.data());
     int64_t radixListLen = static_cast<int64_t>(radixVecRef.size());
 
-    std::function<AsdSip::FFTensor *()> func = [=]() mutable -> AsdSip::FFTensor* {
-        AsdSip::FFTensor *twMatrixArrayPtr = new AsdSip::FFTensor;
-        AsdSip::FFTensor &twMatrixArray_ = *twMatrixArrayPtr;
+    std::function<AsdSip::FFTensor*()> func = [=]() mutable -> AsdSip::FFTensor* {
+        AsdSip::FFTensor* twMatrixArrayPtr = new AsdSip::FFTensor;
+        AsdSip::FFTensor& twMatrixArray_ = *twMatrixArrayPtr;
 
-        float *twMatrixArrayHost = nullptr;
+        float* twMatrixArrayHost = nullptr;
 
         if (twMatrixLen > 0) {
             try {
                 twMatrixArrayHost = new float[twMatrixLen];
-            } catch(std::bad_alloc& e) {
+            } catch (std::bad_alloc& e) {
                 delete twMatrixArrayPtr;
-                ASDSIP_LOG(ERROR) << "twMatrixArrayHost nalloc failed: " << e.what();
-                throw std::runtime_error("twMatrixArrayHost nalloc failed:.");
+                ASDSIP_LOG(ERROR) << "twMatrixArrayHost alloc failed: " << e.what();
+                throw std::runtime_error("twMatrixArrayHost alloc failed:.");
             }
 
             InitMem(twMatrixArrayHost, 0, twMatrixLen * sizeof(float));
@@ -1087,10 +1097,10 @@ AspbStatus InitMixRadixTWMatrix(FFTCoreType coreType, int64_t fftN, bool forward
                 for (int64_t k = 0; k < n1 * n2; k++) {
                     int64_t i = k / n2;
                     int64_t j = k % n2;
-                    nowHTwMatrixArrayHost[i * 2 * tileN0 + (j / tileN0) * 2 * n1 * tileN0 + (j % tileN0)] =
-                        cos(-1.0 * K_2PI / (n1 * n2) * i * j);
-                    nowHTwMatrixArrayHost[i * 2 * tileN0 + tileN0 + (j / tileN0) * 2 * n1 * tileN0 + (j % tileN0)] =
-                        sin(-1.0 * K_2PI / (n1 * n2) * i * j);
+                    nowHTwMatrixArrayHost[i * 2 * tileN0 + (j / tileN0) * 2 * n1 * tileN0 + (j % tileN0)] = cos(
+                        -1.0 * K_2PI / (n1 * n2) * i * j);
+                    nowHTwMatrixArrayHost[i * 2 * tileN0 + tileN0 + (j / tileN0) * 2 * n1 * tileN0 +
+                                          (j % tileN0)] = sin(-1.0 * K_2PI / (n1 * n2) * i * j);
                 }
                 nowHTwMatrixArrayHost += 2 * n1 * ROUND(n2, tileN0);
                 n0 *= n1;
@@ -1112,16 +1122,16 @@ AspbStatus InitMixRadixTWMatrix(FFTCoreType coreType, int64_t fftN, bool forward
 }
 
 // to estimate workspace
-void InitMixRadixParam(int64_t parity, int64_t fftN, int64_t batchSize, std::vector<int64_t> &radixVecRef,
-                       int64_t &workspaceInputSize, int64_t &workspaceOutputSize, int64_t &workspaceSyncSize,
-                       int64_t &workspaceC2cOutputSize, int64_t &workspaceAuxilSize)
+void InitMixRadixParam(int64_t parity, int64_t fftN, int64_t batchSize, std::vector<int64_t>& radixVecRef,
+                       int64_t& workspaceInputSize, int64_t& workspaceOutputSize, int64_t& workspaceSyncSize,
+                       int64_t& workspaceC2cOutputSize, int64_t& workspaceAuxilSize)
 {
     if (fftN == 0) {
         fftN = 1;
     }
     int64_t n = fftN;
 
-    int64_t *radixListPtr = static_cast<int64_t *>(radixVecRef.data());
+    int64_t* radixListPtr = static_cast<int64_t*>(radixVecRef.data());
     int64_t stepLen = static_cast<int64_t>(radixVecRef.size());
     int64_t tmpBatchSize = batchSize;
     // 让每次处理的数据小于 2 ^ 21/2 ^ 22 次方
@@ -1187,9 +1197,9 @@ void InitMixRadixParam(int64_t parity, int64_t fftN, int64_t batchSize, std::vec
     workspaceAuxilSize = AUXILSIZE;
 }
 
-void InitAiVSplitWay(FFTCoreType coreType, int64_t fftN, std::vector<int64_t> &radixVecRef, int32_t &aivSplitWay)
+void InitAiVSplitWay(FFTCoreType coreType, int64_t fftN, std::vector<int64_t>& radixVecRef, int32_t& aivSplitWay)
 {
-    int64_t *radixListPtr = static_cast<int64_t *>(radixVecRef.data());
+    int64_t* radixListPtr = static_cast<int64_t*>(radixVecRef.data());
     int64_t stepLen = static_cast<int64_t>(radixVecRef.size());
     int64_t n = fftN;
 
@@ -1247,7 +1257,7 @@ void InitAiVSplitWay(FFTCoreType coreType, int64_t fftN, std::vector<int64_t> &r
     }
 }
 
-void GenWMatrixForwardForMultiLen(int64_t stepLen, int64_t *radixListPtr, int64_t fftN, float *nowDftMatrixArrayHost)
+void GenWMatrixForwardForMultiLen(int64_t stepLen, int64_t* radixListPtr, int64_t fftN, float* nowDftMatrixArrayHost)
 {
     int64_t n0Num = 1;
     // 生成正向所需的W矩阵
@@ -1273,10 +1283,10 @@ void GenWMatrixForwardForMultiLen(int64_t stepLen, int64_t *radixListPtr, int64_
                 int64_t i = k / n1Num;
                 int64_t j = k % n1Num;
                 nowDftMatrixArrayHost[i * TWO_MUL * ROUND(n1Num, ROUND_16) + j] = cos(-1.0 * K_2PI / n1Num * i * j);
-                nowDftMatrixArrayHost[i * TWO_MUL * ROUND(n1Num, ROUND_16) + ROUND(n1Num, ROUND_16) + j] =
-                    -sin(-1.0 * K_2PI / n1Num * i * j);
-                nowDftMatrixArrayHost[n1Num * TWO_MUL * ROUND(n1Num, ROUND_16) +
-                    i * TWO_MUL * ROUND(n1Num, ROUND_16) + j] = sin(-1.0 * K_2PI / n1Num * i * j);
+                nowDftMatrixArrayHost[i * TWO_MUL * ROUND(n1Num, ROUND_16) + ROUND(n1Num, ROUND_16) + j] = -sin(
+                    -1.0 * K_2PI / n1Num * i * j);
+                nowDftMatrixArrayHost[n1Num * TWO_MUL * ROUND(n1Num, ROUND_16) + i * TWO_MUL * ROUND(n1Num, ROUND_16) +
+                                      j] = sin(-1.0 * K_2PI / n1Num * i * j);
                 nowDftMatrixArrayHost[n1Num * TWO_MUL * ROUND(n1Num, ROUND_16) + i * TWO_MUL * ROUND(n1Num, ROUND_16) +
                                       ROUND(n1Num, ROUND_16) + j] = cos(-1.0 * K_2PI / n1Num * i * j);
             }
@@ -1290,46 +1300,48 @@ void GenWMatrixForwardForMultiLen(int64_t stepLen, int64_t *radixListPtr, int64_
                 int64_t n1InIndex = i % (tileM0 / 2);
                 int64_t n1Actual = (n1Index == n1Loop - 1) ? (2 * n1Num - n1Index * tileM0) : tileM0;
                 nowDftMatrixArrayHost[n1Index * tileM0 * TWO_MUL * ROUND(n1Num, ROUND_16) +
-                                      n1InIndex * TWO_MUL * ROUND(n1Num, ROUND_16) + j] =
-                                      cos(-1.0 * K_2PI / n1Num * i * j);
+                                      n1InIndex * TWO_MUL * ROUND(n1Num, ROUND_16) + j] = cos(-1.0 * K_2PI / n1Num * i *
+                                                                                              j);
                 nowDftMatrixArrayHost[n1Index * tileM0 * TWO_MUL * ROUND(n1Num, ROUND_16) +
-                                      n1InIndex * TWO_MUL * ROUND(n1Num, ROUND_16) + ROUND(n1Num, ROUND_16) + j] =
-                    -sin(-1.0 * K_2PI / n1Num * i * j);
-                nowDftMatrixArrayHost[n1Index * tileM0 * TWO_MUL * ROUND(n1Num, ROUND_16) +
-                                      n1InIndex * TWO_MUL * ROUND(n1Num, ROUND_16) +
-                                      (n1Actual / TWO_MUL) * TWO_MUL * ROUND(n1Num, ROUND_16) + j] =
-                    sin(-1.0 * K_2PI / n1Num * i * j);
+                                      n1InIndex * TWO_MUL * ROUND(n1Num, ROUND_16) + ROUND(n1Num, ROUND_16) +
+                                      j] = -sin(-1.0 * K_2PI / n1Num * i * j);
                 nowDftMatrixArrayHost[n1Index * tileM0 * TWO_MUL * ROUND(n1Num, ROUND_16) +
                                       n1InIndex * TWO_MUL * ROUND(n1Num, ROUND_16) +
-                                      (n1Actual / TWO_MUL) * TWO_MUL * ROUND(n1Num, ROUND_16) +
-                                      ROUND(n1Num, ROUND_16) + j] = cos(-1.0 * K_2PI / n1Num * i * j);
+                                      (n1Actual / TWO_MUL) * TWO_MUL * ROUND(n1Num, ROUND_16) + j] = sin(-1.0 * K_2PI /
+                                                                                                         n1Num * i * j);
+                nowDftMatrixArrayHost[n1Index * tileM0 * TWO_MUL * ROUND(n1Num, ROUND_16) +
+                                      n1InIndex * TWO_MUL * ROUND(n1Num, ROUND_16) +
+                                      (n1Actual / TWO_MUL) * TWO_MUL * ROUND(n1Num, ROUND_16) + ROUND(n1Num, ROUND_16) +
+                                      j] = cos(-1.0 * K_2PI / n1Num * i * j);
             }
         } else if (stepIndex == stepLen - 1) {
             for (int64_t k = 0; k < n1Num * n1Num; k++) {
                 int64_t i = k / n1Num;
                 int64_t j = k % n1Num;
-                nowDftMatrixArrayHost[i * TWO_MUL * TWO_MUL * ROUND(n1Num, ROUND_16) + j] =
-                    cos(-1.0 * K_2PI / n1Num * i * j);
-                nowDftMatrixArrayHost[i * TWO_MUL * TWO_MUL * ROUND(n1Num, ROUND_16) + ROUND(n1Num, ROUND_16) + j] =
-                    -sin(-1.0 * K_2PI / n1Num * i * j);
+                nowDftMatrixArrayHost[i * TWO_MUL * TWO_MUL * ROUND(n1Num, ROUND_16) + j] = cos(-1.0 * K_2PI / n1Num *
+                                                                                                i * j);
+                nowDftMatrixArrayHost[i * TWO_MUL * TWO_MUL * ROUND(n1Num, ROUND_16) + ROUND(n1Num, ROUND_16) +
+                                      j] = -sin(-1.0 * K_2PI / n1Num * i * j);
                 nowDftMatrixArrayHost[i * TWO_MUL * TWO_MUL * ROUND(n1Num, ROUND_16) +
-                    TWO_MUL * ROUND(n1Num, ROUND_16) + j] = sin(-1.0 * K_2PI / n1Num * i * j);
+                                      TWO_MUL * ROUND(n1Num, ROUND_16) + j] = sin(-1.0 * K_2PI / n1Num * i * j);
                 nowDftMatrixArrayHost[i * TWO_MUL * TWO_MUL * ROUND(n1Num, ROUND_16) +
-                    TWO_MUL * ROUND(n1Num, ROUND_16) + ROUND(n1Num, ROUND_16) + j] =
-                    cos(-1.0 * K_2PI / n1Num * i * j);
+                                      TWO_MUL * ROUND(n1Num, ROUND_16) + ROUND(n1Num, ROUND_16) + j] = cos(-1.0 *
+                                                                                                           K_2PI /
+                                                                                                           n1Num * i *
+                                                                                                           j);
             }
         } else {
             for (int64_t k = 0; k < n1Num * n1Num; k++) {
                 int64_t i = k / n1Num;
                 int64_t j = k % n1Num;
-                nowDftMatrixArrayHost[i * TWO_MUL * ROUND(TWO_MUL * n1Num, tileM0) + j] =
-                    cos(-1.0 * K_2PI / n1Num * i * j);
-                nowDftMatrixArrayHost[i * TWO_MUL * ROUND(TWO_MUL * n1Num, tileM0) + n1Num + j] =
-                    -sin(-1.0 * K_2PI / n1Num * i * j);
-                nowDftMatrixArrayHost[i * TWO_MUL * ROUND(TWO_MUL * n1Num, tileM0) +
-                    ROUND(TWO_MUL * n1Num, tileM0) + j] = sin(-1.0 * K_2PI / n1Num * i * j);
-                nowDftMatrixArrayHost[i * TWO_MUL * ROUND(TWO_MUL * n1Num, tileM0) +
-                    ROUND(TWO_MUL * n1Num, tileM0) + n1Num + j] = cos(-1.0 * K_2PI / n1Num * i * j);
+                nowDftMatrixArrayHost[i * TWO_MUL * ROUND(TWO_MUL * n1Num, tileM0) + j] = cos(-1.0 * K_2PI / n1Num * i *
+                                                                                              j);
+                nowDftMatrixArrayHost[i * TWO_MUL * ROUND(TWO_MUL * n1Num, tileM0) + n1Num + j] = -sin(-1.0 * K_2PI /
+                                                                                                       n1Num * i * j);
+                nowDftMatrixArrayHost[i * TWO_MUL * ROUND(TWO_MUL * n1Num, tileM0) + ROUND(TWO_MUL * n1Num, tileM0) +
+                                      j] = sin(-1.0 * K_2PI / n1Num * i * j);
+                nowDftMatrixArrayHost[i * TWO_MUL * ROUND(TWO_MUL * n1Num, tileM0) + ROUND(TWO_MUL * n1Num, tileM0) +
+                                      n1Num + j] = cos(-1.0 * K_2PI / n1Num * i * j);
             }
             nowDftMatrixArrayHost += ROUND(TWO_MUL * n1Num, tileM0) * ROUND(TWO_MUL * n1Num, tileK0);
             n0Num *= n1Num;
@@ -1337,7 +1349,7 @@ void GenWMatrixForwardForMultiLen(int64_t stepLen, int64_t *radixListPtr, int64_
     }
 }
 
-void GenWMatrixForwardForOneLen(int64_t stepLen, int64_t *radixListPtr, int64_t fftN, float *nowDftMatrixArrayHost)
+void GenWMatrixForwardForOneLen(int64_t stepLen, int64_t* radixListPtr, int64_t fftN, float* nowDftMatrixArrayHost)
 {
     int64_t n0 = 1;
     int64_t n = fftN;
@@ -1371,10 +1383,10 @@ void GenWMatrixForwardForOneLen(int64_t stepLen, int64_t *radixListPtr, int64_t 
         for (int64_t k = 0; k < n1Radix * n1Radix; k++) {
             int64_t i = k / n1Radix;
             int64_t j = k % n1Radix;
-            nowDftMatrixArrayHost[i * TWO_MUL * ROUND(TWO_MUL * n1Radix, tileM0) + TWO_MUL * j] =
-                cos(-1.0 * K_2PI / n1Radix * i * j);
-            nowDftMatrixArrayHost[i * TWO_MUL * ROUND(TWO_MUL * n1Radix, tileM0) + TWO_MUL * j + 1] =
-                -sin(-1.0 * K_2PI / n1Radix * i * j);
+            nowDftMatrixArrayHost[i * TWO_MUL * ROUND(TWO_MUL * n1Radix, tileM0) + TWO_MUL * j] = cos(-1.0 * K_2PI /
+                                                                                                      n1Radix * i * j);
+            nowDftMatrixArrayHost[i * TWO_MUL * ROUND(TWO_MUL * n1Radix, tileM0) + TWO_MUL * j + 1] = -sin(
+                -1.0 * K_2PI / n1Radix * i * j);
             nowDftMatrixArrayHost[i * TWO_MUL * ROUND(TWO_MUL * n1Radix, tileM0) + ROUND(TWO_MUL * n1Radix, tileM0) +
                                   TWO_MUL * j] = sin(-1.0 * K_2PI / n1Radix * i * j);
             nowDftMatrixArrayHost[i * TWO_MUL * ROUND(TWO_MUL * n1Radix, tileM0) + ROUND(TWO_MUL * n1Radix, tileM0) +
@@ -1385,8 +1397,8 @@ void GenWMatrixForwardForOneLen(int64_t stepLen, int64_t *radixListPtr, int64_t 
     }
 }
 
-void GenWMatrixInverseForMultiLen(int64_t stepLen, int64_t *radixListPtr, int64_t fftN,
-                                  float *nowDftMatrixArrayInverseHost)
+void GenWMatrixInverseForMultiLen(int64_t stepLen, int64_t* radixListPtr, int64_t fftN,
+                                  float* nowDftMatrixArrayInverseHost)
 {
     int64_t n0 = 1;
 
@@ -1417,8 +1429,8 @@ void GenWMatrixInverseForMultiLen(int64_t stepLen, int64_t *radixListPtr, int64_
                 int64_t i = k / n1;
                 int64_t j = k % n1;
                 nowDftMatrixArrayInverseHost[i * TWO_MUL * ROUND(n1, ROUND_16) + j] = cos(-1.0 * K_2PI / n1 * i * j);
-                nowDftMatrixArrayInverseHost[i * TWO_MUL * ROUND(n1, ROUND_16) + ROUND(n1, ROUND_16) + j] =
-                    sin(-1.0 * K_2PI / n1 * i * j);
+                nowDftMatrixArrayInverseHost[i * TWO_MUL * ROUND(n1, ROUND_16) + ROUND(n1, ROUND_16) + j] = sin(
+                    -1.0 * K_2PI / n1 * i * j);
                 nowDftMatrixArrayInverseHost[n1 * TWO_MUL * ROUND(n1, ROUND_16) + i * TWO_MUL * ROUND(n1, ROUND_16) +
                                              j] = -sin(-1.0 * K_2PI / n1 * i * j);
                 nowDftMatrixArrayInverseHost[n1 * TWO_MUL * ROUND(n1, ROUND_16) + i * TWO_MUL * ROUND(n1, ROUND_16) +
@@ -1434,15 +1446,17 @@ void GenWMatrixInverseForMultiLen(int64_t stepLen, int64_t *radixListPtr, int64_
                 int64_t n1InIndex = i % (tileM0 / 2);
                 int64_t n1Actual = (n1Index == n1Loop - 1) ? (2 * n1 - n1Index * tileM0) : tileM0;
                 nowDftMatrixArrayInverseHost[n1Index * tileM0 * TWO_MUL * ROUND(n1, ROUND_16) +
-                                             n1InIndex * TWO_MUL * ROUND(n1, ROUND_16) + j] =
-                    cos(-1.0 * K_2PI / n1 * i * j);
+                                             n1InIndex * TWO_MUL * ROUND(n1, ROUND_16) + j] = cos(-1.0 * K_2PI / n1 *
+                                                                                                  i * j);
                 nowDftMatrixArrayInverseHost[n1Index * tileM0 * TWO_MUL * ROUND(n1, ROUND_16) +
-                                             n1InIndex * TWO_MUL * ROUND(n1, ROUND_16) + ROUND(n1, ROUND_16) + j] =
-                    sin(-1.0 * K_2PI / n1 * i * j);
+                                             n1InIndex * TWO_MUL * ROUND(n1, ROUND_16) + ROUND(n1, ROUND_16) +
+                                             j] = sin(-1.0 * K_2PI / n1 * i * j);
                 nowDftMatrixArrayInverseHost[n1Index * tileM0 * TWO_MUL * ROUND(n1, ROUND_16) +
                                              n1InIndex * TWO_MUL * ROUND(n1, ROUND_16) +
-                                             (n1Actual / TWO_MUL) * TWO_MUL * ROUND(n1, ROUND_16) + j] =
-                    -sin(-1.0 * K_2PI / n1 * i * j);
+                                             (n1Actual / TWO_MUL) * TWO_MUL * ROUND(n1, ROUND_16) + j] = -sin(-1.0 *
+                                                                                                              K_2PI /
+                                                                                                              n1 * i *
+                                                                                                              j);
                 nowDftMatrixArrayInverseHost[n1Index * tileM0 * TWO_MUL * ROUND(n1, ROUND_16) +
                                              n1InIndex * TWO_MUL * ROUND(n1, ROUND_16) +
                                              (n1Actual / TWO_MUL) * TWO_MUL * ROUND(n1, ROUND_16) +
@@ -1452,24 +1466,25 @@ void GenWMatrixInverseForMultiLen(int64_t stepLen, int64_t *radixListPtr, int64_
             for (int64_t k = 0; k < n1 * n1; k++) {
                 int64_t i = k / n1;
                 int64_t j = k % n1;
-                nowDftMatrixArrayInverseHost[i * TWO_MUL * TWO_MUL * ROUND(n1, ROUND_16) + j] =
-                    cos(-1.0 * K_2PI / n1 * i * j);
-                nowDftMatrixArrayInverseHost[i * TWO_MUL * TWO_MUL * ROUND(n1, ROUND_16) + ROUND(n1, ROUND_16) + j] =
-                    sin(-1.0 * K_2PI / n1 * i * j);
+                nowDftMatrixArrayInverseHost[i * TWO_MUL * TWO_MUL * ROUND(n1, ROUND_16) + j] = cos(-1.0 * K_2PI / n1 *
+                                                                                                    i * j);
+                nowDftMatrixArrayInverseHost[i * TWO_MUL * TWO_MUL * ROUND(n1, ROUND_16) + ROUND(n1, ROUND_16) +
+                                             j] = sin(-1.0 * K_2PI / n1 * i * j);
                 nowDftMatrixArrayInverseHost[i * TWO_MUL * TWO_MUL * ROUND(n1, ROUND_16) +
                                              TWO_MUL * ROUND(n1, ROUND_16) + j] = -sin(-1.0 * K_2PI / n1 * i * j);
                 nowDftMatrixArrayInverseHost[i * TWO_MUL * TWO_MUL * ROUND(n1, ROUND_16) +
-                                             TWO_MUL * ROUND(n1, ROUND_16) + ROUND(n1, ROUND_16) + j] =
-                    cos(-1.0 * K_2PI / n1 * i * j);
+                                             TWO_MUL * ROUND(n1, ROUND_16) + ROUND(n1, ROUND_16) + j] = cos(-1.0 *
+                                                                                                            K_2PI / n1 *
+                                                                                                            i * j);
             }
         } else {
             for (int64_t k = 0; k < n1 * n1; k++) {
                 int64_t i = k / n1;
                 int64_t j = k % n1;
-                nowDftMatrixArrayInverseHost[i * TWO_MUL * ROUND(TWO_MUL * n1, tileM0) + j] =
-                    cos(-1.0 * K_2PI / n1 * i * j);
-                nowDftMatrixArrayInverseHost[i * TWO_MUL * ROUND(TWO_MUL * n1, tileM0) + n1 + j] =
-                    sin(-1.0 * K_2PI / n1 * i * j);
+                nowDftMatrixArrayInverseHost[i * TWO_MUL * ROUND(TWO_MUL * n1, tileM0) + j] = cos(-1.0 * K_2PI / n1 *
+                                                                                                  i * j);
+                nowDftMatrixArrayInverseHost[i * TWO_MUL * ROUND(TWO_MUL * n1, tileM0) + n1 + j] = sin(-1.0 * K_2PI /
+                                                                                                       n1 * i * j);
                 nowDftMatrixArrayInverseHost[i * TWO_MUL * ROUND(TWO_MUL * n1, tileM0) + ROUND(TWO_MUL * n1, tileM0) +
                                              j] = -sin(-1.0 * K_2PI / n1 * i * j);
                 nowDftMatrixArrayInverseHost[i * TWO_MUL * ROUND(TWO_MUL * n1, tileM0) + ROUND(TWO_MUL * n1, tileM0) +
@@ -1481,8 +1496,8 @@ void GenWMatrixInverseForMultiLen(int64_t stepLen, int64_t *radixListPtr, int64_
     }
 }
 
-void GenWMatrixInverseForOneLen(int64_t stepLen, int64_t *radixListPtr, int64_t fftN,
-                                float *nowDftMatrixArrayInverseHost)
+void GenWMatrixInverseForOneLen(int64_t stepLen, int64_t* radixListPtr, int64_t fftN,
+                                float* nowDftMatrixArrayInverseHost)
 {
     int64_t n0 = 1;
     int64_t n = fftN;
@@ -1515,10 +1530,10 @@ void GenWMatrixInverseForOneLen(int64_t stepLen, int64_t *radixListPtr, int64_t 
         for (int64_t k = 0; k < n1 * n1; k++) {
             int64_t i = k / n1;
             int64_t j = k % n1;
-            nowDftMatrixArrayInverseHost[i * TWO_MUL * ROUND(TWO_MUL * n1, tileM0) + TWO_MUL * j] =
-                cos(-1.0 * K_2PI / n1 * i * j);
-            nowDftMatrixArrayInverseHost[i * TWO_MUL * ROUND(TWO_MUL * n1, tileM0) + TWO_MUL * j + 1] =
-                sin(-1.0 * K_2PI / n1 * i * j);
+            nowDftMatrixArrayInverseHost[i * TWO_MUL * ROUND(TWO_MUL * n1, tileM0) + TWO_MUL * j] = cos(-1.0 * K_2PI /
+                                                                                                        n1 * i * j);
+            nowDftMatrixArrayInverseHost[i * TWO_MUL * ROUND(TWO_MUL * n1, tileM0) + TWO_MUL * j + 1] = sin(
+                -1.0 * K_2PI / n1 * i * j);
             nowDftMatrixArrayInverseHost[i * TWO_MUL * ROUND(TWO_MUL * n1, tileM0) + ROUND(TWO_MUL * n1, tileM0) +
                                          TWO_MUL * j] = -sin(-1.0 * K_2PI / n1 * i * j);
             nowDftMatrixArrayInverseHost[i * TWO_MUL * ROUND(TWO_MUL * n1, tileM0) + ROUND(TWO_MUL * n1, tileM0) +
@@ -1531,7 +1546,7 @@ void GenWMatrixInverseForOneLen(int64_t stepLen, int64_t *radixListPtr, int64_t 
 
 // PQMatrix
 AspbStatus InitPQMatrix(FFTCoreType coreType, int64_t fftN, bool forward, bool isP,
-                        std::shared_ptr<AsdSip::FFTensor> &pqMatrix)
+                        std::shared_ptr<AsdSip::FFTensor>& pqMatrix)
 {
     int64_t inSize = 2 * fftN;
     int64_t outSize = 2 * fftN;
@@ -1548,38 +1563,40 @@ AspbStatus InitPQMatrix(FFTCoreType coreType, int64_t fftN, bool forward, bool i
         sinTable[i] = sin(K_2PI * i / fftN);
     }
 
-    std::function<AsdSip::FFTensor *()> func = [=, &cosTable, &sinTable]() -> AsdSip::FFTensor* {
-        AsdSip::FFTensor *_pqMatrix_ptr = new AsdSip::FFTensor;
-        AsdSip::FFTensor &_pqMatrix = *_pqMatrix_ptr;
+    std::function<AsdSip::FFTensor*()> func = [=, &cosTable, &sinTable]() -> AsdSip::FFTensor* {
+        AsdSip::FFTensor* _pqMatrix_ptr = new AsdSip::FFTensor;
+        AsdSip::FFTensor& _pqMatrix = *_pqMatrix_ptr;
 
-        float *_pqMatrix_host = nullptr;
+        float* _pqMatrix_host = nullptr;
         try {
-            _pqMatrix_host  = new float[outSize * inSize];
-        } catch(std::bad_alloc& e) {
+            _pqMatrix_host = new float[outSize * inSize];
+        } catch (std::bad_alloc& e) {
             delete _pqMatrix_ptr;
-            ASDSIP_LOG(ERROR) << "_pqMatrix_host nalloc failed: " << e.what();
-            throw std::runtime_error("_pqMatrix_host nalloc failed:.");
+            ASDSIP_LOG(ERROR) << "_pqMatrix_host alloc failed: " << e.what();
+            throw std::runtime_error("_pqMatrix_host alloc failed:.");
         }
         InitMem(_pqMatrix_host, 0, sizeof(float) * outSize * inSize);
 
         for (int i = 0; i < fftN; i++) {
             for (int j = 0; j < fftN; j++) {
                 if (isP) {
-                    *(reinterpret_cast<float *>(_pqMatrix_host) + (2 * i) * (2 * fftN) + j) = cosTable[(i * j) % fftN];
-                    *(reinterpret_cast<float *>(_pqMatrix_host) + (2 * i + 1) * (2 * fftN) + j) =
-                        (forward ? -1 : 1) * sinTable[(i * j) % fftN];
-                    *(reinterpret_cast<float *>(_pqMatrix_host) + (2 * i) * (2 * fftN) + j + fftN) =
-                        (forward ? 1 : -1) * sinTable[(i * j) % fftN];
-                    *(reinterpret_cast<float *>(_pqMatrix_host) + (2 * i + 1) * (2 * fftN) + j + fftN) = cosTable[(i * j) % fftN];
+                    *(reinterpret_cast<float*>(_pqMatrix_host) + (2 * i) * (2 * fftN) + j) = cosTable[(i * j) % fftN];
+                    *(reinterpret_cast<float*>(_pqMatrix_host) + (2 * i + 1) * (2 * fftN) +
+                      j) = (forward ? -1 : 1) * sinTable[(i * j) % fftN];
+                    *(reinterpret_cast<float*>(_pqMatrix_host) + (2 * i) * (2 * fftN) + j +
+                      fftN) = (forward ? 1 : -1) * sinTable[(i * j) % fftN];
+                    *(reinterpret_cast<float*>(_pqMatrix_host) + (2 * i + 1) * (2 * fftN) + j +
+                      fftN) = cosTable[(i * j) % fftN];
                     continue;
                 }
 
-                *(reinterpret_cast<float *>(_pqMatrix_host) + j * (2 * fftN) + (2 * i)) = cosTable[(i * j) % fftN];
-                *(reinterpret_cast<float *>(_pqMatrix_host) + j * (2 * fftN) + (2 * i + 1)) =
-                    (forward ? -1 : 1) * sinTable[(i * j) % fftN];
-                *(reinterpret_cast<float *>(_pqMatrix_host) + (j + fftN) * (2 * fftN) + (2 * i)) =
-                    (forward ? 1 : -1) * sinTable[(i * j) % fftN];
-                *(reinterpret_cast<float *>(_pqMatrix_host) + (j + fftN) * (2 * fftN) + (2 * i + 1)) = cosTable[(i * j) % fftN];
+                *(reinterpret_cast<float*>(_pqMatrix_host) + j * (2 * fftN) + (2 * i)) = cosTable[(i * j) % fftN];
+                *(reinterpret_cast<float*>(_pqMatrix_host) + j * (2 * fftN) + (2 * i + 1)) = (forward ? -1 : 1) *
+                                                                                             sinTable[(i * j) % fftN];
+                *(reinterpret_cast<float*>(_pqMatrix_host) + (j + fftN) * (2 * fftN) +
+                  (2 * i)) = (forward ? 1 : -1) * sinTable[(i * j) % fftN];
+                *(reinterpret_cast<float*>(_pqMatrix_host) + (j + fftN) * (2 * fftN) +
+                  (2 * i + 1)) = cosTable[(i * j) % fftN];
             }
         }
 

@@ -13,7 +13,7 @@
 #include "log/log.h"
 #include "utils/aspb_status.h"
 
-constexpr uint32_t MAX_LENG_PER_UB_PROC = 6144;  // 单次处理的最大数据量（复数） 6.75k ( 6912 -> 对齐32个complex元素)
+constexpr uint32_t MAX_LENG_PER_UB_PROC = 6144; // 单次处理的最大数据量（复数） 6.75k ( 6912 -> 对齐32个complex元素)
 constexpr uint32_t ELEMENTS_EACH_COMPLEX64 = 2;
 constexpr uint32_t PING_PONG_NUM = 2;
 constexpr uint32_t BLAS_SCAL_WORKSPACE_SIZE = 16 * 1024;
@@ -27,10 +27,7 @@ BlasCalPlan::BlasCalPlan() : m(0), n(0), incy(1), transA('N')
     maskTensor.hostData = nullptr;
 };
 
-AsdSip::AspbStatus BlasCalPlan::CreateTensor()
-{
-    return SetMaskTensor();
-}
+AsdSip::AspbStatus BlasCalPlan::CreateTensor() { return SetMaskTensor(); }
 
 AsdSip::AspbStatus BlasCalPlan::SetMaskTensor()
 {
@@ -38,7 +35,7 @@ AsdSip::AspbStatus BlasCalPlan::SetMaskTensor()
                             MAX_LENG_PER_UB_PROC * sizeof(std::complex<float>) * PING_PONG_NUM;
     uint32_t realBaseAddr = imagBaseAddr + MAX_LENG_PER_UB_PROC * sizeof(uint32_t);
 
-    uint32_t *maskData = nullptr;
+    uint32_t* maskData = nullptr;
     try {
         maskData = new uint32_t[MAX_LENG_PER_UB_PROC * ELEMENTS_EACH_COMPLEX64];
     } catch (std::bad_alloc& e) {
@@ -56,14 +53,13 @@ AsdSip::AspbStatus BlasCalPlan::SetMaskTensor()
     maskTensor.dataSize = MAX_LENG_PER_UB_PROC * ELEMENTS_EACH_COMPLEX64 * sizeof(uint32_t);
 
     if (!MallocTensorInDevice(maskTensor).Ok()) {
-        ASDSIP_LOG(ERROR) << "BlasCalPlan maskTensor malloc failed: ";
+        ASDSIP_LOG(ERROR) << "BlasCalPlan maskTensor malloc failed";
         delete[] maskData;
         maskData = nullptr;
         maskTensor.hostData = nullptr;
         return ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }
     toAclTensor(maskTensor, maskAclTensor);
-    maskData = nullptr;
     return ErrorType::ACL_SUCCESS;
 };
 
@@ -74,19 +70,13 @@ AsdSip::AspbStatus BlasCalPlan::FreeTensor()
         maskTensor.data = nullptr;
     }
     if (maskTensor.hostData != nullptr) {
-        delete[] static_cast<uint32_t *>(maskTensor.hostData);
+        delete[] static_cast<uint32_t*>(maskTensor.hostData);
         maskTensor.hostData = nullptr;
     }
     return ErrorType::ACL_SUCCESS;
 }
 
-BlasCalPlan::~BlasCalPlan()
-{
-    BlasPlan::DestroyPlanData();
-}
+BlasCalPlan::~BlasCalPlan() { BlasPlan::DestroyPlanData(); }
 
-int64_t BlasCalPlan::GetWorkspaceSize()
-{
-    return BLAS_SCAL_WORKSPACE_SIZE;
-}
-}
+int64_t BlasCalPlan::GetWorkspaceSize() { return BLAS_SCAL_WORKSPACE_SIZE; }
+} // namespace AsdSip

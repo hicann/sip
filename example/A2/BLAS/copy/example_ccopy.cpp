@@ -23,7 +23,7 @@ using namespace AsdSip;
         AsdSip::AspbStatus err_ = (err);                       \
         if (err_ != AsdSip::ErrorType::ACL_SUCCESS) {          \
             std::cout << "Execute failed." << std::endl;       \
-            exit(-1);                                          \
+            return -1;                                         \
         } else {                                               \
             std::cout << "Execute successfully." << std::endl; \
         }                                                      \

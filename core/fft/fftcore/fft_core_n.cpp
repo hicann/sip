@@ -28,11 +28,11 @@
 using namespace AsdSip;
 
 constexpr int RADIXVEC_SIZE_THREE = 3;
-constexpr int N_DOING_24 = 16777216; // pow(2, 24)
+constexpr int N_DOING_24 = 16777216;  // pow(2, 24)
 constexpr int N_DOING_27 = 134217728; // pow(2, 27)
-constexpr int N_DOING_15 = 32768; // pow(2, 15)
-constexpr int N_DOING_19 = 524288; // pow(2, 19)
-constexpr int N_DOING_25 = 33554432; // pow(2, 25)
+constexpr int N_DOING_15 = 32768;     // pow(2, 15)
+constexpr int N_DOING_19 = 524288;    // pow(2, 19)
+constexpr int N_DOING_25 = 33554432;  // pow(2, 25)
 constexpr int RADIX_INDEX2 = 2;
 constexpr int RADIX_INDEX3 = 3;
 constexpr int RADIX_INDEX4 = 4;
@@ -60,16 +60,16 @@ constexpr int LOGN_27 = 27;
 
 size_t FFTCoreN::EstimateWorkspaceSize()
 {
-    const KernelInfo &kernelInfo = kernel->GetKernelInfo();
+    const KernelInfo& kernelInfo = kernel->GetKernelInfo();
     return getAlignedSize(kernelInfo.GetTotalScratchSize());
 }
 
-void FFTCoreN::Run(Tensor &input, Tensor &output, void *stream, workspace::Workspace &workspace)
+void FFTCoreN::Run(Tensor& input, Tensor& output, void* stream, workspace::Workspace& workspace)
 {
-    const KernelInfo &kernelInfo = kernel->GetKernelInfo();
+    const KernelInfo& kernelInfo = kernel->GetKernelInfo();
     // set workspace
     size_t bufferSize = kernelInfo.GetTotalScratchSize();
-    runInfo.SetScratchDeviceAddr((uint8_t *)workspace.allocate(bufferSize));
+    runInfo.SetScratchDeviceAddr((uint8_t*)workspace.allocate(bufferSize));
 
     runInfo.SetStream(stream);
     launchParam.GetInTensor(0).data = input.data;
@@ -119,7 +119,7 @@ void FFTCoreN::InitTilingArgs()
     }
 
     float batchDataSize = float(n) * 2 * 4 / 1024 / 1024;
-    float l2CacheSize = 92;  // 910B4 cache size
+    float l2CacheSize = 92; // 910B4 cache size
     repeatBatchSize = static_cast<uint32_t>(floor((l2CacheSize - 10 - CALCUL_TWO) / CALCUL_TWO / batchDataSize));
     repeatBatchSize = repeatBatchSize < 1 ? problemDesc.batch : repeatBatchSize;
 }
@@ -149,7 +149,7 @@ AspbStatus FFTCoreN::InitTactic()
         ssyncTilingNum.push_back(x);
     }
     OpParam::FftN param = {problemDesc.nDoing, problemDesc.batch, repeatBatchSize, problemDesc.forward, sradixVec,
-                           saicInputAddr,       saivOutputAddr,    slessTCopy,      ssyncTilingNum};
+                           saicInputAddr,      saivOutputAddr,    slessTCopy,      ssyncTilingNum};
 
     Tensor tensorIn;
     Tensor tensorOut;
@@ -163,7 +163,7 @@ AspbStatus FFTCoreN::InitTactic()
     launchParam.AddInTensor(*index);
     launchParam.AddOutTensor(tensorOut);
 
-    Operation *op = Ops::Instance().GetOperationByName(std::string("FftNOperation"));
+    Operation* op = Ops::Instance().GetOperationByName(std::string("FftNOperation"));
     if (op == nullptr) {
         return AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }
@@ -172,7 +172,7 @@ AspbStatus FFTCoreN::InitTactic()
     ASDSIP_ECHECK(kernel != nullptr, "Get best kernel failed", AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
     // allocate and initialize tiling workspace
-    uint8_t *deviceLaunchBuffer = nullptr;
+    uint8_t* deviceLaunchBuffer = nullptr;
     kernel->SetLaunchWithTiling(false);
     uint32_t launchBufferSize = kernel->GetTilingSize(launchParam);
     if (launchBufferSize == 0) {
@@ -189,7 +189,7 @@ AspbStatus FFTCoreN::InitTactic()
         ASDSIP_LOG(ERROR) << "malloc device memory fail";
         return AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }
-    deviceLaunchBuffer = static_cast<uint8_t *>(tempDevicePtr);
+    deviceLaunchBuffer = static_cast<uint8_t*>(tempDevicePtr);
     st = MkiRtMemCopy(deviceLaunchBuffer, launchBufferSize, hostLaunchBuffer, launchBufferSize,
                       MKIRT_MEMCOPY_HOST_TO_DEVICE);
     if (st != MKIRT_SUCCESS) {
@@ -282,26 +282,26 @@ AspbStatus FFTCoreN::InitIndex()
     tN = tN < N0 ? tN : N0;
     int64_t tilingNum = (tM / 2) * tN;
 
-    std::function<AsdSip::FFTensor *()> func = [=]() -> AsdSip::FFTensor* {
-        AsdSip::FFTensor *indexMatrixPtr = new(std::nothrow) AsdSip::FFTensor;
+    std::function<AsdSip::FFTensor*()> func = [=]() -> AsdSip::FFTensor* {
+        AsdSip::FFTensor* indexMatrixPtr = new (std::nothrow) AsdSip::FFTensor;
         if (indexMatrixPtr == nullptr) {
             ASDSIP_LOG(ERROR) << "indexMatrixPtr new failed";
             throw std::runtime_error("indexMatrixPtr new failed");
         }
-        AsdSip::FFTensor &indexMatrix = *indexMatrixPtr;
+        AsdSip::FFTensor& indexMatrix = *indexMatrixPtr;
 
         indexMatrix.desc.dtype = TENSOR_DTYPE_INT32;
         indexMatrix.desc.format = TENSOR_FORMAT_ND;
         indexMatrix.desc.dims = {tilingNum};
         indexMatrix.dataSize = sizeof(int32_t) * tilingNum;
 
-        int32_t *indexMatrixHost = nullptr;
+        int32_t* indexMatrixHost = nullptr;
         try {
-            indexMatrixHost  = new int32_t[tilingNum];
-        } catch(std::bad_alloc& e) {
+            indexMatrixHost = new int32_t[tilingNum];
+        } catch (std::bad_alloc& e) {
             delete indexMatrixPtr;
-            ASDSIP_LOG(ERROR) << "indexMatrixHost nalloc failed: " << e.what();
-            throw std::runtime_error("indexMatrixHost nalloc failed:.");
+            ASDSIP_LOG(ERROR) << "indexMatrixHost alloc failed: " << e.what();
+            throw std::runtime_error("indexMatrixHost alloc failed:.");
         }
 
         for (int64_t i = 0; i < tilingNum / 2; i++) {
@@ -355,7 +355,7 @@ bool FFTCoreN::PreAllocateInDevice()
 
 void FFTCoreN::DestroyInDevice() const
 {
-    uint8_t *deviceBuffer = runInfo.GetTilingDeviceAddr();
+    uint8_t* deviceBuffer = runInfo.GetTilingDeviceAddr();
     if (deviceBuffer != nullptr) {
         MkiRtMemFreeDevice(deviceBuffer);
     }

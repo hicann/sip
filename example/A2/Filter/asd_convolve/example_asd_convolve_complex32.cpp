@@ -25,7 +25,7 @@ using half = op::fp16_t;
         AsdSip::AspbStatus err_ = (err);                 \
         if (err_ != AsdSip::ACL_SUCCESS) {               \
             std::cout << "Execute failed." << std::endl; \
-            exit(-1);                                    \
+            return -1;                                   \
         }                                                \
     } while (0)
 

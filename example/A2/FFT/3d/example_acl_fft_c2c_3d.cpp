@@ -27,16 +27,16 @@ using namespace AsdSip;
         printf(message, ##__VA_ARGS__); \
     } while (0)
 
-#define ASD_STATUS_CHECK(err)                                                \
-    do {                                                                     \
-        AsdSip::AspbStatus err_ = (err);                                     \
-        if (err_ != AsdSip::ErrorType::ACL_SUCCESS) {                                      \
+#define ASD_STATUS_CHECK(err)                            \
+    do {                                                 \
+        AsdSip::AspbStatus err_ = (err);                 \
+        if (err_ != AsdSip::ErrorType::ACL_SUCCESS) {    \
             std::cout << "Execute failed." << std::endl; \
-            exit(-1);                                                        \
-        }                                                                    \
+            return -1;                                   \
+        }                                                \
     } while (0)
 
-int64_t GetShapeSize(const std::vector<int64_t> &shape)
+int64_t GetShapeSize(const std::vector<int64_t>& shape)
 {
     int64_t shapeSize = 1;
     for (auto i : shape) {
@@ -45,7 +45,7 @@ int64_t GetShapeSize(const std::vector<int64_t> &shape)
     return shapeSize;
 }
 
-int Init(int32_t deviceId, aclrtStream *stream)
+int Init(int32_t deviceId, aclrtStream* stream)
 {
     // 固定写法，AscendCL初始化
     auto ret = aclInit(nullptr);
@@ -58,8 +58,8 @@ int Init(int32_t deviceId, aclrtStream *stream)
 }
 
 template <typename T>
-int CreateAclTensor(const std::vector<T> &hostData, const std::vector<int64_t> &shape, void **deviceAddr,
-    aclDataType dataType, aclTensor **tensor)
+int CreateAclTensor(const std::vector<T>& hostData, const std::vector<int64_t>& shape, void** deviceAddr,
+                    aclDataType dataType, aclTensor** tensor)
 {
     auto size = GetShapeSize(shape) * sizeof(T);
     // 调用aclrtMalloc申请device侧内存
@@ -76,20 +76,13 @@ int CreateAclTensor(const std::vector<T> &hostData, const std::vector<int64_t> &
     }
 
     // 调用aclCreateTensor接口创建aclTensor
-    *tensor = aclCreateTensor(shape.data(),
-        shape.size(),
-        dataType,
-        strides.data(),
-        0,
-        aclFormat::ACL_FORMAT_ND,
-        shape.data(),
-        shape.size(),
-        *deviceAddr);
+    *tensor = aclCreateTensor(shape.data(), shape.size(), dataType, strides.data(), 0, aclFormat::ACL_FORMAT_ND,
+                              shape.data(), shape.size(), *deviceAddr);
     return 0;
 }
 
-
-int main() {
+int main()
+{
     int32_t deviceId = 0;
     aclrtStream stream;
     auto ret = Init(deviceId, &stream);
@@ -107,10 +100,10 @@ int main() {
     }
     std::vector<std::complex<float>> outHostData(tensorInSize, std::complex<float>(0, 0));
 
-    void *inputDeviceAddr = nullptr;
-    void *outDeviceAddr = nullptr;
-    aclTensor *input = nullptr;
-    aclTensor *out = nullptr;
+    void* inputDeviceAddr = nullptr;
+    void* outDeviceAddr = nullptr;
+    aclTensor* input = nullptr;
+    aclTensor* out = nullptr;
     ret = CreateAclTensor(inputHostData, selfShape, &inputDeviceAddr, aclDataType::ACL_COMPLEX64, &input);
     CHECK_RET(ret == ::ACL_SUCCESS, return ret);
     ret = CreateAclTensor(outHostData, outShape, &outDeviceAddr, aclDataType::ACL_COMPLEX64, &out);
@@ -119,16 +112,17 @@ int main() {
     asdFftHandle handle;
     asdFftCreate(handle);
 
-    asdFftMakePlan3D(handle, Nfft1, Nfft2, Nfft3, asdFftType::ASCEND_FFT_C2C, asdFftDirection::ASCEND_FFT_FORWARD, batch);
+    asdFftMakePlan3D(handle, Nfft1, Nfft2, Nfft3, asdFftType::ASCEND_FFT_C2C, asdFftDirection::ASCEND_FFT_FORWARD,
+                     batch);
 
     size_t work_size;
     asdFftGetWorkspaceSize(handle, work_size);
-    void *workspaceAddr = nullptr;
+    void* workspaceAddr = nullptr;
     if (work_size > 0) {
         ret = aclrtMalloc(&workspaceAddr, static_cast<int64_t>(work_size), ACL_MEM_MALLOC_HUGE_FIRST);
         CHECK_RET(ret == ::ACL_SUCCESS, LOG_PRINT("allocate workspace failed. ERROR: %d\n", ret); return ret);
     }
-    asdFftSetWorkspace(handle, (uint8_t *)workspaceAddr);
+    asdFftSetWorkspace(handle, (uint8_t*)workspaceAddr);
 
     asdFftSetStream(handle, stream);
     ASD_STATUS_CHECK(asdFftExecC2C(handle, input, out));
@@ -140,11 +134,8 @@ int main() {
 
     auto size = GetShapeSize(outShape);
     std::vector<std::complex<float>> outData(size, 0);
-    ret = aclrtMemcpy(outData.data(),
-        outData.size() * sizeof(outData[0]),
-        outDeviceAddr,
-        size * sizeof(outData[0]),
-        ACL_MEMCPY_DEVICE_TO_HOST);
+    ret = aclrtMemcpy(outData.data(), outData.size() * sizeof(outData[0]), outDeviceAddr, size * sizeof(outData[0]),
+                      ACL_MEMCPY_DEVICE_TO_HOST);
 
     // 打印输出tensor值中前16个
     for (int64_t i = 0; i < std::min(static_cast<int64_t>(16), tensorInSize); i++) {

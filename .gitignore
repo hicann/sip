@@ -31,3 +31,9 @@ output/
 oat_reports/
 
 log/
+
+# coverage tool and lint caches
+lcov/
+lcov-1.16/
+.ruff_cache/
+oat_reports*/

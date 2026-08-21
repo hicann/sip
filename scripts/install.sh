@@ -61,7 +61,7 @@ function log() {
     if [ x"$log_file" = x ]; then
         echo -e "[cann-asdsip] [$(date +%Y%m%d-%H:%M:%S)] [$1] $2"
     else
-        if [ $(stat -c %s $log_file) -gt $MAX_LOG_SIZE ];then 
+        if [ $(stat -c %s $log_file) -gt $MAX_LOG_SIZE ];then
             echo -e "[cann-asdsip] [$(date +%Y%m%d-%H:%M:%S)] [$1] log file is bigger than $MAX_LOG_SIZE, stop write log to file"
         else
             echo -e "[cann-asdsip] [$(date +%Y%m%d-%H:%M:%S)] [$1] $2" >>$log_file
@@ -80,7 +80,7 @@ function print() {
     if [ x"$log_file" = x ]; then
         echo -e "[cann-asdsip] [$(date +%Y%m%d-%H:%M:%S)] [$1] $2"
     else
-        if [ $(stat -c %s $log_file) -gt $MAX_LOG_SIZE ];then 
+        if [ $(stat -c %s $log_file) -gt $MAX_LOG_SIZE ];then
             echo -e "[cann-asdsip] [$(date +%Y%m%d-%H:%M:%S)] [$1] log file is bigger than $MAX_LOG_SIZE, stop write log to file"
             echo -e "[cann-asdsip] [$(date +%Y%m%d-%H:%M:%S)] [$1] $2"
         else
@@ -141,7 +141,7 @@ function chmod_authority() {
     # 修改文件和目录权限
     chmod_file ${default_install_path}
     chmod_file ${install_dir}
-    if [ "${install_for_all_flag}" == "y" ]; then 
+    if [ "${install_for_all_flag}" == "y" ]; then
         chmod 444 ${install_dir}/scripts/filelist.csv
     else
         chmod 440 ${install_dir}/scripts/filelist.csv
@@ -159,7 +159,7 @@ function chmod_authority() {
     chmod ${path_rights} "${install_dir}"
 }
 
-function chmod_file() { 
+function chmod_file() {
     chmod_recursion ${1} "550" "file" "*.sh"
     chmod_recursion ${1} "440" "file" "*.bin"
     chmod_recursion ${1} "440" "file" "*.h"
@@ -171,7 +171,7 @@ function chmod_file() {
 
 function chmod_dir() {
     chmod_recursion ${1} ${2} "dir"
-} 
+}
 
 function chmod_recursion() {
     # install-for-all 实际上是给other组用户赋予了和同组用户相同的权限
@@ -424,7 +424,7 @@ function install_process() {
     fi
     if [ -n "${ARCH}" ]; then
         if [ "${arch_pkg}" != "${ARCH}" ]; then
-            print "ERROR" "Install failed, pkg arch ${arch_pkg} is not consistent with the current enviroment architecture ${ARCH}."
+            print "ERROR" "Install failed, pkg arch ${arch_pkg} is not consistent with the current environment architecture ${ARCH}."
             exit 1
         fi
     fi
@@ -474,8 +474,19 @@ function check_owner() {
 function uninstall() {
     # 使用awk读取version.info文件中的version键对应的值
     VERSION_INFO_PATH=${default_install_path}/latest/version.info
+    # 容错: version.info 缺失(latest软链损坏/版本目录被删)时给出明确报错, 避免 grep 报错中断
+    if [ ! -f "$VERSION_INFO_PATH" ]; then
+        print "ERROR" "Uninstall failed, can not find ${VERSION_INFO_PATH}, the installation may be broken. Please reinstall or remove ${default_install_path} manually."
+        exit 1
+    fi
     old_version=$(grep -E 'Ascend-cann-asdsip :' $VERSION_INFO_PATH | cut -d ':' -f2)
     old_version=$(echo "$old_version" | sed 's/^[ 	]*//')
+
+    # 容错: 提取到的版本号为空时直接报错, 避免拼接出带尾斜杠的无效路径
+    if [ -z "$old_version" ]; then
+        print "ERROR" "Uninstall failed, can not parse version from ${VERSION_INFO_PATH}. Please remove ${default_install_path} manually."
+        exit 1
+    fi
 
     # 输出version值
     echo "Version is: $old_version"
@@ -494,7 +505,7 @@ function check_uninstall_path() {
             default_install_path="${HOME}/Ascend/asdsip"
         fi
     fi
-    
+
     if [ ! -d "${default_install_path}" ]; then
         print "ERROR" "Uninstall failed, can not find the path of Ascend-cann-asdsip."
         exit 1
@@ -583,7 +594,7 @@ function upgrade() {
     remove_back_up_version
     print "INFO" "Ascend-cann-asdsip upgrade success!"
 }
- 
+
 function main() {
     parse_script_args $*
     if [ "${uninstall_flag}" == "y" ]; then

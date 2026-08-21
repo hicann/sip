@@ -18,24 +18,21 @@ namespace wten {
 template <typename T>
 class TheTensor {
 public:
-    TheTensor(const std::vector<int64_t> &shape)
-        : shape_(shape),
-          strides_(std::vector<int64_t>(shape.size())),
-          size_(compute_size(shape)),
-          data_(new T[size_])
+    // 禁用拷贝: data_ 为裸指针, 浅拷贝会导致析构时 double-free
+    TheTensor(const TheTensor&) = delete;
+    TheTensor& operator=(const TheTensor&) = delete;
+
+    TheTensor(const std::vector<int64_t>& shape)
+        : shape_(shape), strides_(std::vector<int64_t>(shape.size())), size_(compute_size(shape)), data_(new T[size_])
     {
         update_strides();
     }
 
-    TheTensor(TheTensor &&tensor)
-        : shape_(tensor.shape_),
-          strides_(tensor.strides_),
-          size_(tensor.size_),
-          data_(tensor.move_data())
-    {
-    }
+    TheTensor(TheTensor&& tensor)
+        : shape_(tensor.shape_), strides_(tensor.strides_), size_(tensor.size_), data_(tensor.move_data())
+    {}
 
-    TheTensor<T> &operator=(TheTensor<T> &&tensor)
+    TheTensor<T>& operator=(TheTensor<T>&& tensor)
     {
         delete[] data_;
         data_ = tensor.data_;
@@ -46,49 +43,28 @@ public:
         return *this;
     }
 
-    T &operator[](size_t index) const
-    {
-        return data_[index];
-    }
+    T& operator[](size_t index) const { return data_[index]; }
 
-    T *data() const
-    {
-        return data_;
-    }
+    T* data() const { return data_; }
 
-    T *move_data()
+    T* move_data()
     {
-        T *data = data_;
+        T* data = data_;
         data_ = nullptr;
         return data;
     }
 
-    void free_data()
-    {
-        delete[] move_data();
-    }
+    void free_data() { delete[] move_data(); }
 
-    size_t size() const
-    {
-        return size_;
-    }
+    size_t size() const { return size_; }
 
-    size_t ndim() const
-    {
-        return shape_.size();
-    }
+    size_t ndim() const { return shape_.size(); }
 
-    const std::vector<int64_t> &shape() const
-    {
-        return shape_;
-    }
+    const std::vector<int64_t>& shape() const { return shape_; }
 
-    const std::vector<int64_t> &strides() const
-    {
-        return strides_;
-    }
+    const std::vector<int64_t>& strides() const { return strides_; }
 
-    void reshape(const std::vector<int64_t> &shape)
+    void reshape(const std::vector<int64_t>& shape)
     {
         if (size_ != compute_size(shape)) {
             ASDSIP_LOG(ERROR) << "Invalid shape.";
@@ -99,18 +75,15 @@ public:
         update_strides();
     }
 
-    ~TheTensor()
-    {
-        delete [] data_;
-    };
+    ~TheTensor() { delete[] data_; };
 
 private:
     std::vector<int64_t> shape_;
     std::vector<int64_t> strides_;
     size_t size_;
-    T *data_;
+    T* data_;
 
-    size_t compute_size(const std::vector<int64_t> &shape) const
+    size_t compute_size(const std::vector<int64_t>& shape) const
     {
         size_t size = 1;
         for (size_t dim : shape) {
@@ -131,4 +104,4 @@ private:
     }
 };
 
-}
+} // namespace wten
