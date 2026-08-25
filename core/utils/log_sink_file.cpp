@@ -33,27 +33,23 @@
 #include "log/log_sink_file_sip.h"
 
 namespace AsdSip {
-constexpr size_t MAX_LOG_FILE_COUNT = 50;                               // 50 回滚管理50个日志文件
-constexpr size_t MAX_FILE_NAME_LEN = 128;                                  // 128: max file length
-constexpr uint64_t MAX_FILE_SIZE_THRESHOLD = 20 * 1024 * 1024;                // 20,971,520 当前单个日志文件最大20M
+constexpr size_t MAX_LOG_FILE_COUNT = 50;                         // 50 回滚管理50个日志文件
+constexpr size_t MAX_FILE_NAME_LEN = 128;                         // 128: max file length
+constexpr uint64_t MAX_FILE_SIZE_THRESHOLD = 20 * 1024 * 1024;    // 20,971,520 当前单个日志文件最大20M
 constexpr uint64_t DISK_AVAILABEL_LIMIT = 1 * 1024 * 1024 * 1024; // 磁盘剩余空间门限1G
 
 static bool isValidChar(unsigned char c)
 {
-    return (c >= 'a' && c <= 'z') ||
-           (c >= 'A' && c <= 'Z') ||
-           (c >= '0' && c <= '9') ||
-           (c == '.') || (c == '_') ||
+    return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || (c == '.') || (c == '_') ||
            (c == '-') || (c == '/');
 }
 
-
 std::mutex localeMutex;
 
-static bool IsValidFileName(const char *name)
+static bool IsValidFileName(const char* name)
 {
     std::lock_guard<std::mutex> lock(localeMutex);
-    
+
     size_t len = strlen(name);
     if (len == 0 || len > MAX_FILE_NAME_LEN) {
         return false;
@@ -61,10 +57,10 @@ static bool IsValidFileName(const char *name)
 
     // 保存当前的locale设置
     std::string original_locale = std::setlocale(LC_CTYPE, nullptr);
-    
+
     // 设置新的locale环境
     std::setlocale(LC_CTYPE, "en_US.UTF-8");
-    
+
     for (size_t i = 0; i < len; ++i) {
         char c = name[i];
         if (!isValidChar(static_cast<unsigned char>(c))) {
@@ -73,7 +69,7 @@ static bool IsValidFileName(const char *name)
             return false;
         }
     }
-    
+
     // 恢复原来的locale设置
     std::setlocale(LC_CTYPE, original_locale.c_str());
     return true;
@@ -83,7 +79,7 @@ LogSinkFileSip::LogSinkFileSip() { Init(); }
 
 LogSinkFileSip::~LogSinkFileSip() { CloseFile(); }
 
-void LogSinkFileSip::LogSip(const char *log, uint64_t logLen)
+void LogSinkFileSip::LogSip(const char* log, uint64_t logLen)
 {
     std::lock_guard<std::mutex> guard(mutex_);
     if (currentFileSize_ + logLen >= MAX_FILE_SIZE_THRESHOLD) {
@@ -120,10 +116,7 @@ static bool IsDirectory(const std::string& path)
 }
 
 // 辅助函数：检查路径是否可写
-static bool IsWritable(const std::string& path)
-{
-    return access(path.c_str(), W_OK) == 0;
-}
+static bool IsWritable(const std::string& path) { return access(path.c_str(), W_OK) == 0; }
 
 // 辅助函数：替换字符串中的所有指定子串
 static void ReplaceAll(std::string& str, const std::string& from, const std::string& to)
@@ -144,7 +137,7 @@ static std::string SafeNormalizePath(const std::string& inputPath)
     if (inputPath.empty()) {
         return "";
     }
-    
+
     // 处理URI编码
     std::string path;
     size_t i = 0;
@@ -152,14 +145,14 @@ static std::string SafeNormalizePath(const std::string& inputPath)
     while (i < inputPath.size()) {
         if (inputPath[i] == '%' && i + 2 < inputPath.size()) {
             // 取 % 后面两个字符
-            char hex[3] = { inputPath[i + 1], inputPath[i + 2], '\0' };
+            char hex[3] = {inputPath[i + 1], inputPath[i + 2], '\0'};
             char* end;
             long val = strtol(hex, &end, 16);
 
             // 检查是否成功解析了两个十六进制字符（end 应该指向末尾 '\0'）
-            if (end == hex + 2) {  // 关键：必须完整解析两个字符
+            if (end == hex + 2) { // 关键：必须完整解析两个字符
                 path += static_cast<char>(val);
-                i += 3;  // 跳过 '%' 和两个十六进制字符
+                i += 3; // 跳过 '%' 和两个十六进制字符
                 continue;
             }
         }
@@ -168,27 +161,27 @@ static std::string SafeNormalizePath(const std::string& inputPath)
         path += inputPath[i];
         ++i;
     }
-    
+
     // 2. 处理Unicode欺骗字符 - 使用字符串替换
-    ReplaceAll(path, "．", ".");  // 全角点 U+FF0E
-    ReplaceAll(path, "﹒", ".");  // 小点 U+FE52
-    ReplaceAll(path, "。", ".");  // 中文句号 U+3002
-    ReplaceAll(path, "／", "/");  // 全角斜杠 U+FF0F
-    
+    ReplaceAll(path, "．", "."); // 全角点 U+FF0E
+    ReplaceAll(path, "﹒", "."); // 小点 U+FE52
+    ReplaceAll(path, "。", "."); // 中文句号 U+3002
+    ReplaceAll(path, "／", "/"); // 全角斜杠 U+FF0F
+
     // 处理尾部截断攻击
     size_t null_pos = path.find('\0');
     if (null_pos != std::string::npos) {
         path = path.substr(0, null_pos);
     }
-    
+
     // 处理特殊分隔符
     std::replace(path.begin(), path.end(), '\\', '/');
-    
+
     // 处理相对路径和重复分隔符
     std::vector<std::string> parts;
     std::string current;
     bool isAbsolute = (path[0] == '/');
-    
+
     for (char c : path) {
         if (c == '/') {
             if (!current.empty()) {
@@ -209,7 +202,7 @@ static std::string SafeNormalizePath(const std::string& inputPath)
             current += c;
         }
     }
-    
+
     if (!current.empty()) {
         if (current == ".") {
             // 忽略
@@ -223,10 +216,10 @@ static std::string SafeNormalizePath(const std::string& inputPath)
             parts.push_back(current);
         }
     }
-    
+
     // 构建规范化路径
     std::string normalized;
-    for (const auto &part : parts) {
+    for (const auto& part : parts) {
         if (!normalized.empty() || isAbsolute) {
             normalized += "/";
         }
@@ -236,7 +229,7 @@ static std::string SafeNormalizePath(const std::string& inputPath)
     if (normalized.empty()) {
         normalized = isAbsolute ? "/" : ".";
     }
-    
+
     return normalized;
 }
 
@@ -257,29 +250,28 @@ static std::string ResolveAndValidatePath(const std::string& inputPath)
             return ""; // 仍然解析失败
         }
     }
-    
+
     std::string realPath = resolved;
 
     // 3. 验证路径属性
     if (!IsDirectory(realPath)) {
         return ""; // 不是目录
     }
-    
+
     if (!IsWritable(realPath)) {
         return ""; // 不可写
     }
-    
+
     // 4. 防止敏感目录访问
-    const std::vector<std::string> forbiddenPaths = {
-        "/", "/bin", "/sbin", "/usr", "/etc", "/root", "/var", "/sys", "/proc"
-    };
-    
+    const std::vector<std::string> forbiddenPaths = {"/",     "/bin", "/sbin", "/usr", "/etc",
+                                                     "/root", "/var", "/sys",  "/proc"};
+
     for (const auto& forbidden : forbiddenPaths) {
         if (realPath == forbidden || realPath.find(forbidden + "/") == 0) {
             return ""; // 禁止访问系统目录
         }
     }
-    
+
     // 5. 防止通过符号链接逃逸
     std::string current = realPath;
     while (!current.empty()) {
@@ -295,14 +287,14 @@ static std::string ResolveAndValidatePath(const std::string& inputPath)
                     linkTarget = current.substr(0, pos) + "/" + linkTarget;
                 }
             }
-            
+
             // 检查符号链接目标是否在禁止目录
             for (const auto& forbidden : forbiddenPaths) {
                 if (linkTarget.find(forbidden) == 0) {
                     return ""; // 符号链接指向禁止目录
                 }
             }
-            
+
             // 继续检查符号链接目标的父目录
             size_t pos = current.find_last_of('/');
             if (pos == 0) {
@@ -313,18 +305,18 @@ static std::string ResolveAndValidatePath(const std::string& inputPath)
             break; // 不是符号链接或错误
         }
     }
-    
+
     return realPath;
 }
 
 void LogSinkFileSip::Init()
 {
-    const char *env = "asdsip";
+    const char* env = "asdsip";
     boostType_ = env && strlen(env) <= MAX_ENV_STRING_LEN && IsValidFileName(env) ? std::string(env) : "asdsip";
 
     env = std::getenv("ASCEND_PROCESS_LOG_PATH") ? std::getenv("ASCEND_PROCESS_LOG_PATH") : "asdsip";
-    std::string logRootDir =
-        env && strlen(env) <= MAX_ENV_STRING_LEN && IsValidFileName(env) ? std::string(env) : GetHomeDir();
+    std::string logRootDir = env && strlen(env) <= MAX_ENV_STRING_LEN && IsValidFileName(env) ? std::string(env) :
+                                                                                                GetHomeDir();
 
     logRootDir = ResolveAndValidatePath(logRootDir);
     if (logRootDir.empty()) {
@@ -340,7 +332,7 @@ void LogSinkFileSip::Init()
     isFlush_ = env && strlen(env) <= MAX_ENV_STRING_LEN ? std::string(env) == "1" : false;
 }
 
-bool LogSinkFileSip::IsFileNameMatched(const std::string &fileName, std::string &createTime)
+bool LogSinkFileSip::IsFileNameMatched(const std::string& fileName, std::string& createTime)
 {
     std::string prefix = boostType_ + '_';
     bool match = Mki::StartsWith(fileName, prefix);
@@ -351,14 +343,14 @@ bool LogSinkFileSip::IsFileNameMatched(const std::string &fileName, std::string 
     if (!match) {
         return false;
     }
-    size_t subStrLen = fileName.length() - prefix.length() - 4;     // 4: length of ".log" postfix
+    size_t subStrLen = fileName.length() - prefix.length() - 4; // 4: length of ".log" postfix
     std::string subStr = fileName.substr(prefix.length(), subStrLen);
     std::vector<std::string> splitResult;
     Mki::StrSplit(subStr, '_', splitResult);
-    if (splitResult.size() != 2) {  // 2: time & pid
+    if (splitResult.size() != 2) { // 2: time & pid
         return false;
     }
-    for (auto &str : splitResult) {
+    for (auto& str : splitResult) {
         if (str.empty() || !std::all_of(str.begin(), str.end(), ::isdigit)) {
             return false;
         }
@@ -370,11 +362,11 @@ bool LogSinkFileSip::IsFileNameMatched(const std::string &fileName, std::string 
 void LogSinkFileSip::DeleteOldestFile()
 {
     std::vector<std::pair<std::string, std::string>> logFiles;
-    DIR *dir = opendir(logDir_.c_str());
+    DIR* dir = opendir(logDir_.c_str());
     if (!dir) {
         return;
     }
-    struct dirent *ptr = nullptr;
+    struct dirent* ptr = nullptr;
     while ((ptr = readdir(dir)) != nullptr) {
         if (ptr->d_name[0] != '.') {
             std::string fileName = ptr->d_name;
@@ -387,7 +379,7 @@ void LogSinkFileSip::DeleteOldestFile()
     closedir(dir);
 
     std::sort(logFiles.begin(), logFiles.end(),
-              [](std::pair<std::string, std::string> &a, std::pair<std::string, std::string> &b) {
+              [](std::pair<std::string, std::string>& a, std::pair<std::string, std::string>& b) {
                   return a.second < b.second;
               });
 
@@ -429,7 +421,7 @@ void LogSinkFileSip::OpenFile()
 std::string LogSinkFileSip::GetNewLogFilePath()
 {
     std::time_t tmpTime = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-    struct tm *nowTime = std::localtime(&tmpTime);
+    struct tm* nowTime = std::localtime(&tmpTime);
 
     std::stringstream filePath;
     filePath << logDir_ << "/" << boostType_ << "_" << std::to_string(syscall(SYS_getpid)) << "_"
@@ -466,7 +458,7 @@ void LogSinkFileSip::MakeLogDir()
     uint32_t offset = 0;
     uint32_t pathLen = logDir_.size();
     do {
-        const char *str = strchr(logDir_.c_str() + offset, '/');
+        const char* str = strchr(logDir_.c_str() + offset, '/');
         offset = (str == nullptr) ? pathLen : str - logDir_.c_str() + 1;
         std::string childDir = logDir_.substr(0, offset);
         if (stat(childDir.c_str(), &st) < 0) {
@@ -481,7 +473,9 @@ void LogSinkFileSip::MakeLogDir()
 
 void LogSinkFileSip::CloseFile()
 {
-    if (currentFd_ > 0) {
+    // fd 0 是合法的文件描述符（如进程启动时 stdin 已关闭，open() 可能返回 0），
+    // 需与其他非负 fd 一致处理，否则日志轮转与析构清理会失效（issue #108）
+    if (currentFd_ >= 0) {
         (void)fchmod(currentFd_, S_IRUSR | S_IRGRP);
         close(currentFd_);
         currentFd_ = -1;
@@ -497,9 +491,11 @@ std::string LogSinkFileSip::GetHomeDir()
     }
 
     char buffer[bufsize] = {0};
-    struct passwd pwd;
-    struct passwd *result = nullptr;
-    if (getpwuid_r(getuid(), &pwd, buffer, bufsize, &result) != 0 && !result) {
+    struct passwd pwd = {};
+    struct passwd* result = nullptr;
+    // POSIX: getpwuid_r 返回 0 但 *result 为 NULL 表示用户未找到，此时 pwd 内容未定义。
+    // 两种失败情况（返回非 0 / result 为 NULL）都必须视为错误，条件应为 || 而非 &&
+    if (getpwuid_r(getuid(), &pwd, buffer, bufsize, &result) != 0 || result == nullptr) {
         return "";
     }
 

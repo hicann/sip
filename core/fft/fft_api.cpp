@@ -1234,6 +1234,12 @@ bool matchR2C_(const FFTPlan& plan, const aclTensor* input)
     }
 
     int64_t last = static_cast<int64_t>(dimsNum) - 1;
+    // 防护: 输入张量维度数小于 plan 的 fftSizes 维度数时, 循环索引会变为负值导致越界读
+    if (static_cast<int64_t>(plan.fftSizes.size()) > last + 1) {
+        delete[] dims;
+        dims = nullptr;
+        return false;
+    }
     int64_t i = last;
     for (auto rit = plan.fftSizes.rbegin(); rit != plan.fftSizes.rend(); rit++, i--) {
         int64_t dim = dims[i];

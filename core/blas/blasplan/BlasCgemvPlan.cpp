@@ -21,8 +21,8 @@ static constexpr uint32_t BYTE_NUM_FLOAT32 = 4;
 namespace AsdSip {
 using namespace Mki;
 constexpr size_t CALC_DIV_TWO = 2;
-BlasCgemvPlan::BlasCgemvPlan(
-    asdBlasOperation_t trans, const int64_t m, const int64_t n, aclTensor *y, const int64_t incy)
+BlasCgemvPlan::BlasCgemvPlan(asdBlasOperation_t trans, const int64_t m, const int64_t n, aclTensor* y,
+                             const int64_t incy)
     : BlasPlan(), trans{trans}, m{m}, n{n}, incy{incy}, inputY{y}
 {
     maskTensor.data = nullptr;
@@ -58,10 +58,10 @@ AsdSip::AspbStatus BlasCgemvPlan::SetMaskTensor()
     uint32_t imagOffset = 1024;
 
     uint32_t maskSize = imagOffset * 2;
-    uint32_t *maskData = nullptr;
+    uint32_t* maskData = nullptr;
     try {
         maskData = new uint32_t[maskSize];
-    } catch (std::bad_alloc &e) {
+    } catch (std::bad_alloc& e) {
         ASDSIP_LOG(ERROR) << "BlasCgemvPlan failed: " << e.what();
         return ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }
@@ -91,9 +91,9 @@ AsdSip::AspbStatus BlasCgemvPlan::SetMaskTensor()
     return ErrorType::ACL_SUCCESS;
 };
 
-AsdSip::AspbStatus BlasCgemvPlan::SetyInTensor(aclTensor *y)
+AsdSip::AspbStatus BlasCgemvPlan::SetyInTensor(aclTensor* y)
 {
-    int64_t *storageDims = nullptr;
+    int64_t* storageDims = nullptr;
     uint64_t storageDimsNum = 0;
     auto ret = aclGetStorageShape(y, &storageDims, &storageDimsNum);
     if (ret != 0 || storageDims == nullptr || *storageDims <= 0) {
@@ -117,6 +117,13 @@ AsdSip::AspbStatus BlasCgemvPlan::SetyInTensor(aclTensor *y)
     yInTensor.desc = {
         TENSOR_DTYPE_COMPLEX64, TENSOR_FORMAT_ND, {static_cast<int64_t>(ySize / sizeof(std::complex<float>))}, {}, 0};
     yInTensor.dataSize = static_cast<uint64_t>(ySize);
+
+    // 构造函数与 CreateTensor 均会调用 SetyInTensor，重复分配前必须释放旧设备内存，
+    // 否则首次分配的指针被覆盖造成泄漏（issue #115）
+    if (yInTensor.data != nullptr) {
+        FreeTensorInDevice(yInTensor);
+        yInTensor.data = nullptr;
+    }
 
     ret = aclrtMalloc(&yInTensor.data, ySize, ACL_MEM_MALLOC_HUGE_FIRST);
     if (ret != 0) {
@@ -144,7 +151,7 @@ AsdSip::AspbStatus BlasCgemvPlan::FreeTensor()
         maskTensor.data = nullptr;
     }
     if (maskTensor.hostData != nullptr) {
-        delete[] static_cast<uint32_t *>(maskTensor.hostData);
+        delete[] static_cast<uint32_t*>(maskTensor.hostData);
         maskTensor.hostData = nullptr;
     }
     if (yInTensor.data != nullptr) {
@@ -158,8 +165,5 @@ AsdSip::AspbStatus BlasCgemvPlan::FreeTensor()
     return ErrorType::ACL_SUCCESS;
 }
 
-BlasCgemvPlan::~BlasCgemvPlan()
-{
-    BlasPlan::DestroyPlanData();
-}
-}  // namespace AsdSip
+BlasCgemvPlan::~BlasCgemvPlan() { BlasPlan::DestroyPlanData(); }
+} // namespace AsdSip
