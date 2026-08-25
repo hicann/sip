@@ -1,0 +1,421 @@
+# HCgemmBatched
+
+<!-- md-trans-meta sourceCommit=cec88e057607a630073cce4bbace3c21f8d93fe7 translatedAt=2026-08-12T10:51:26.310Z pushedAt=2026-08-20T11:47:59.753Z -->
+
+## Applicable Product
+
+|Product             |  Supported  |
+|:-------------------------|:----------:|
+|  <term>Atlas 200I/500 A2 inference products</term>    |     ×    |
+|  <term>Atlas inference products</term>    |     ×    |
+|  <term>Atlas training products</term>    |     ×    |
+|  <term>Atlas A3 training products/Atlas A3 inference products</term>   |     √    |
+|  <term>Atlas A2 training products/Atlas A2 inference products</term>     |     √    |
+|  <term>Ascend 950PR/Ascend 950DT</term>   |     ×    |
+
+## Function Description
+
+- API function:
+
+  `asdBlasMakeHCgemmBatchedPlan`: initializes the operator configuration corresponding to the handle.\
+  `asdBlasHCgemmBatched`: used to compute the product of complex matrices.
+
+- Formula:
+
+  $$
+  C= alpha * op(A[i])*op(B[i]) + beta * C[i]
+  $$
+  Example:\
+The input `inTensorA[i]` is:\
+[   [ 1+i, 1+2i ],
+    [ 1+3i, 1+4i ]  ]\
+  The input `inTensorB[i]` is:\
+[   [ 2+i, 2+2i ],
+    [ 2+3i, 2+4i ]  ]\
+The input `inTensorC[i]` is:\
+[   [ 3+i, 3+2i ],
+    [ 3+3i, 3+4i ]  ]\
+The input `transa` is: ASDBLAS_OP_N, and the input `transb` is: ASDBLAS_OP_N.\
+The input `m` is: 2, the input `n` is: 2, the input `k` is: 2, the input `alpha` is: 1+0i, and `beta` is: 0+0i.\
+The input `lda` is: 2, the input `ldb` is: 2, and the input `ldc` is: 2.\
+The input batchCount is: 2.\
+After the `asdBlasHCgemmBatched` operator is called, the output `C` is:\
+[   [ -7+15i, -18+16i ],
+    [ -24+22i, -44+14i ]  ]
+
+## Function Prototype
+
+```Cpp
+AspbStatus asdBlasMakeHCgemmBatchedPlan(
+  asdBlasHandle handle)
+```
+
+```Cpp
+AspbStatus asdBlasHCgemmBatched(
+  asdBlasHandle                     handle, 
+  asdBlasOperation_t                transa, 
+  asdBlasOperation_t                transb, 
+  const int64_t                     m,
+  const int64_t                     n, 
+  const int64_t                     k, 
+  const std::complex<op::fp16_t> &  alpha, 
+  aclTensor *                       A,
+  const int64_t                     lda, 
+  aclTensor *                       B, 
+  const int64_t                     ldb, 
+  const std::complex<op::fp16_t> &  beta,
+  aclTensor *                       C, 
+  const int64_t                     ldc, 
+  const int64_t                     batchCount)
+```
+
+## asdBlasMakeHCgemmBatchedPlan
+
+- **Parameter description:**
+
+  <table style="undefined;table-layout: fixed; width: 880px"><colgroup>
+    <col style="width: 250px">
+    <col style="width: 120px">
+    <col style="width: 510px">
+  </colgroup>
+  <thead>
+      <tr>
+        <th>Parameter</th>
+        <th>Input/Output</th>
+        <th>Description</th>
+      </tr></thead>
+  <tbody>
+    <tr>
+      <td>handle (asdBlasHandle)</td>
+      <td>Input</td>
+      <td>Handle of the operator</td>
+    </tr>
+    </tbody>
+    </table>
+
+- **Return value:**
+
+  For details about the return values, see [SiP Return Codes](../../context/sip_return_codes.md).
+
+## asdBlasHCgemmBatched
+
+- **Parameter description:**
+
+  <table style="undefined;table-layout: fixed; width: 880px"><colgroup>
+    <col style="width: 250px">
+    <col style="width: 120px">
+    <col style="width: 510px">
+  </colgroup>
+  <thead>
+      <tr>
+        <th>Parameter</th>
+        <th>Input/Output</th>
+        <th>Description</th>
+      </tr></thead>
+  <tbody>
+    <tr>
+      <td>handle (asdBlasHandle)</td>
+      <td>Input</td>
+      <td>Handle of the operator</td>
+    </tr>
+    <tr>
+      <td>transa (asdBlasOperation_t)</td>
+      <td>Input</td>
+      <td>Specifies whether matrix A needs to be transposed. The value must be <code>ASDBLAS_OP_N</code>.</td>
+    </tr>
+    <tr>
+      <td>transb (asdBlasOperation_t)</td>
+      <td>Input</td>
+      <td>Specifies whether matrix B needs to be transposed. The value must be <code>ASDBLAS_OP_N</code>.</td>
+    </tr>
+    <tr>
+      <td>m (int64_t)</td>
+      <td>Input</td>
+      <td>Number of rows of matrix C. Value range: {1-32}.</td>
+    </tr>
+    <tr>
+      <td>n (int64_t)</td>
+      <td>Input</td>
+      <td>Number of columns of matrix C. Value range: {1-32}.</td>
+    </tr>
+    <tr>
+      <td>k (int64_t)</td>
+      <td>Input</td>
+      <td>Common dimension of matrices A and B. Value range: {1-32}.</td>
+    </tr>
+    <tr>
+      <td>lda (int64_t)</td>
+      <td>Input</td>
+      <td>Memory address offset between horizontally adjacent elements of A. The value equals k.</td>
+    </tr>
+    <tr>
+      <td>ldb (int64_t)</td>
+      <td>Input</td>
+      <td>Memory address offset between horizontally adjacent elements of B. The value equals n.</td>
+    </tr>
+    <tr>
+      <td>ldc (int64_t)</td>
+      <td>Input</td>
+      <td>Memory address offset between horizontally adjacent elements of C. The value equals n.</td>
+    </tr>
+    <tr>
+      <td>A (aclTensor *)</td>
+      <td>Input</td>
+      <td><ul><li>Input matrix, corresponding to "A" in the formula.</li><li>Supported data type: <code>COMPLEX32</code>.</li><li>Data format: <code>ND</code>.</li><li>Shape: [batchCount, m, k].</li></ul></td>
+    </tr>
+    <tr>
+      <td>B (aclTensor *)</td>
+      <td>Input</td>
+      <td><ul><li>Input matrix, corresponding to "B" in the formula.</li><li>Supported data type: <code>COMPLEX32</code>.</li><li>Data format: <code>ND</code>.</li><li>Shape: [batchCount, k, n].</li></ul></td>
+    </tr>
+    <tr>
+      <td>C (aclTensor *)</td>
+      <td>Output</td>
+      <td><ul><li>Corresponding to "C" in the formula.</li><li>Supported data type: <code>COMPLEX32</code>.</li><li>Data format: <code>ND</code>.</li><li>Shape: [batchCount, m, n].</li></ul></td>
+    </tr>
+    <tr>
+      <td>alpha (std::complex&lt;op::fp16_t&gt; &amp;)</td>
+      <td>Input</td>
+      <td>Corresponding to "alpha" in the formula, a complex scalar used to multiply the result of the matrix multiplication. The value must be 1+0i.</td>
+    </tr>
+    <tr>
+      <td>beta (std::complex&lt;op::fp16_t&gt; &amp;)</td>
+      <td>Input</td>
+      <td>Corresponds to beta in the formula. A complex scalar used to multiply matrix C. The value must be 0+0i.</td>
+    </tr>
+    <tr>
+      <td>batchCount (int64_t)</td>
+      <td>Input</td>
+      <td>Number of batches. Value range: [2, 26208].</td>
+    </tr>
+    </tbody>
+    </table>
+
+- **Return value:**
+
+  For details about the return values, see [SiP Return Codes](../../context/sip_return_codes.md).
+
+## Constraints
+
+- During actual computation, the operator only supports 3-dimensional ND operations.
+
+- The operator input data is in row-major order. The input shapes are [batchCount, m, k], [batchCount, k, n], and [batchCount, m, n], and the output shape is [batchCount, m, n].
+
+## Calling Example
+
+The example code is as follows. This sample is intended to provide a minimal implementation for quick start, development, and debugging of the operator. Its core goal is to demonstrate the core functionality of the operator using the simplest code, rather than providing production-grade security assurance. Users are advised not to directly use the example code for business purposes. If users apply the example code in their own real business scenarios and security issues occur, the users shall bear the consequences themselves.
+
+```Cpp
+#include <iostream>
+#include <vector>
+#include "asdsip.h"
+#include "acl/acl.h"
+#include "acl_meta.h"
+
+
+using namespace AsdSip;
+
+#define ASD_STATUS_CHECK(err)                                                \
+    do {                                                                     \
+        AsdSip::AspbStatus err_ = (err);                                     \
+        if (err_ != AsdSip::ErrorType::ACL_SUCCESS) {                        \
+            std::cout << "Execute failed." << std::endl;                     \
+            exit(-1);                                                        \
+        } else {                                                             \
+            std::cout << "Execute successfully." << std::endl;               \
+        }                                                                    \
+    } while (0)
+
+#define CHECK_RET(cond, return_expr) \
+    do {                             \
+        if (!(cond)) {               \
+            return_expr;             \
+        }                            \
+    } while (0)
+
+#define LOG_PRINT(message, ...)         \
+    do {                                \
+        printf(message, ##__VA_ARGS__); \
+    } while (0)
+
+int64_t GetShapeSize(const std::vector<int64_t> &shape)
+{
+    int64_t shapeSize = 1;
+    for (auto i : shape) {
+        shapeSize *= i;
+    }
+    return shapeSize;
+}
+
+int Init(int32_t deviceId, aclrtStream *stream)
+{
+    // Boilerplate: Initialize ACL.
+    auto ret = aclInit(nullptr);
+    CHECK_RET(ret == ::ACL_SUCCESS, LOG_PRINT("aclInit failed. ERROR: %d\n", ret); return ret);
+    ret = aclrtSetDevice(deviceId);
+    CHECK_RET(ret == ::ACL_SUCCESS, LOG_PRINT("aclrtSetDevice failed. ERROR: %d\n", ret); return ret);
+    ret = aclrtCreateStream(stream);
+    CHECK_RET(ret == ::ACL_SUCCESS, LOG_PRINT("aclrtCreateStream failed. ERROR: %d\n", ret); return ret);
+    return 0;
+}
+
+template <typename T>
+int CreateAclTensor(const std::vector<T> &hostData, const std::vector<int64_t> &shape, void **deviceAddr,
+    aclDataType dataType, aclTensor **tensor)
+{
+    auto size = GetShapeSize(shape) * sizeof(T);
+    // Call aclrtMalloc to allocate device-side memory.
+    auto ret = aclrtMalloc(deviceAddr, size, ACL_MEM_MALLOC_HUGE_FIRST);
+    CHECK_RET(ret == ::ACL_SUCCESS, LOG_PRINT("aclrtMalloc failed. ERROR: %d\n", ret); return ret);
+    // Call aclrtMemcpy to copy host-side data to device-side memory.
+    ret = aclrtMemcpy(*deviceAddr, size, hostData.data(), size, ACL_MEMCPY_HOST_TO_DEVICE);
+    CHECK_RET(ret == ::ACL_SUCCESS, LOG_PRINT("aclrtMemcpy failed. ERROR: %d\n", ret); return ret);
+
+    // Compute the strides of a contiguous tensor.
+    std::vector<int64_t> strides(shape.size(), 1);
+    for (int64_t i = shape.size() - 2; i >= 0; i--) {
+        strides[i] = shape[i + 1] * strides[i + 1];
+    }
+
+    // Call the aclCreateTensor API to create an aclTensor.
+    *tensor = aclCreateTensor(shape.data(),
+        shape.size(),
+        dataType,
+        strides.data(),
+        0,
+        aclFormat::ACL_FORMAT_ND,
+        shape.data(),
+        shape.size(),
+        *deviceAddr);
+    return 0;
+}
+
+void printTensor(std::vector<std::complex<op::fp16_t>> tensorData, int64_t batch, int64_t rows, int64_t cols)
+{
+    for (int64_t b = 0; b < batch; b++) {
+        for (int64_t i = 0; i < rows; i++) {
+            for (int64_t j = 0; j < cols; j++) {
+                auto data = tensorData[b * rows * cols + i * cols + j];
+                std::cout << "(" << (float)data.real() << "," << (float)data.imag() << ")" << " ";
+            }
+            std::cout << std::endl;
+        }
+        std::cout << std::endl;
+    }
+}
+
+int main(int argc, char **argv)
+{
+    int deviceId = 0;
+
+    aclrtStream stream;
+    auto ret = Init(deviceId, &stream);
+    CHECK_RET(ret == ::ACL_SUCCESS, LOG_PRINT("Init acl failed. ERROR: %d\n", ret); return ret);
+
+    int batch = 2;
+    int m = 3;
+    int k = 3;
+    int n = 3;
+    asdBlasOperation_t transA = asdBlasOperation_t::ASDBLAS_OP_N;
+    asdBlasOperation_t transB = asdBlasOperation_t::ASDBLAS_OP_N;
+    std::complex<op::fp16_t> alpha = std::complex<op::fp16_t>(1.0f, 0.0f);
+    std::complex<op::fp16_t> beta = std::complex<op::fp16_t>(0.0f, 0.0f);
+
+    int64_t lda = k;
+    int64_t ldb = n;
+    int64_t ldc = n;
+
+    const int64_t tensorASize = batch * m * k;
+    const int64_t tensorBSize = batch * k * n;
+    const int64_t tensorCSize = batch * m * n;
+
+    std::vector<std::complex<op::fp16_t>> tensorInAData;
+    tensorInAData.reserve(tensorASize);
+    for (int i = 0; i < tensorASize; i++) {
+        tensorInAData.push_back(std::complex<op::fp16_t>(1.0f, i + 0.0f));
+    }
+
+    std::vector<std::complex<op::fp16_t>> tensorInBData;
+    tensorInBData.reserve(tensorBSize);
+    for (int i = 0; i < tensorBSize; i++) {
+        tensorInBData.push_back(std::complex<op::fp16_t>(1.0f, i + 0.0f));
+    }
+
+    std::vector<std::complex<op::fp16_t>> tensorInCData;
+    tensorInCData.reserve(tensorCSize);
+    for (int i = 0; i < tensorCSize; i++) {
+        tensorInCData.push_back(std::complex<op::fp16_t>(1.0f, i + 0.0f));
+    }
+
+    std::vector<int64_t> matAShape = {batch, m, k};
+    std::vector<int64_t> matBShape = {batch, k, n};
+    std::vector<int64_t> matCShape = {batch, m, n};
+
+    aclTensor *matA = nullptr;
+    aclTensor *matB = nullptr;
+    aclTensor *matC = nullptr;
+    void *matADeviceAddr = nullptr;
+    void *matBDeviceAddr = nullptr;
+    void *matCDeviceAddr = nullptr;
+
+    ret = CreateAclTensor<std::complex<op::fp16_t>>(
+        tensorInAData, matAShape, &matADeviceAddr, aclDataType::ACL_COMPLEX32, &matA);
+    CHECK_RET(ret == ::ACL_SUCCESS, return ret);
+
+    ret = CreateAclTensor<std::complex<op::fp16_t>>(
+        tensorInBData, matBShape, &matBDeviceAddr, aclDataType::ACL_COMPLEX32, &matB);
+    CHECK_RET(ret == ::ACL_SUCCESS, return ret);
+
+    ret = CreateAclTensor<std::complex<op::fp16_t>>(
+        tensorInCData, matCShape, &matCDeviceAddr, aclDataType::ACL_COMPLEX32, &matC);
+    CHECK_RET(ret == ::ACL_SUCCESS, return ret);
+    std::cout << "alpha = " << "(" << (float) alpha.real() << "," << (float) alpha.imag() << ")" << std::endl;
+    std::cout << "beta = " << "(" << (float) beta.real() << "," << (float) beta.imag() << ")" << std::endl;
+    std::cout << "------- input TensorInA -------" << std::endl;
+    printTensor(tensorInAData, batch, m, k);
+    std::cout << "------- input TensorInB -------" << std::endl;
+    printTensor(tensorInBData, batch, k, n);
+
+    asdBlasHandle handle;
+    asdBlasCreate(handle);
+
+    size_t lwork = 0;
+    void *buffer = nullptr;
+    asdBlasMakeHCgemmBatchedPlan(handle);
+    asdBlasGetWorkspaceSize(handle, lwork);
+    std::cout << "lwork = " << lwork << std::endl;
+    if (lwork > 0) {
+        ret = aclrtMalloc(&buffer, static_cast<int64_t>(lwork), ACL_MEM_MALLOC_HUGE_FIRST);
+        CHECK_RET(ret == ::ACL_SUCCESS, LOG_PRINT("allocate workspace failed. ERROR: %d\n", ret); return ret);
+    }
+    asdBlasSetWorkspace(handle, buffer);
+    asdBlasSetStream(handle, stream);
+
+    ASD_STATUS_CHECK(asdBlasHCgemmBatched(handle, transA, transB, m, n, k, alpha, matA, lda, matB, ldb, beta, matC, ldc, batch));
+
+    asdBlasSynchronize(handle);
+    asdBlasDestroy(handle);
+
+    ret = aclrtMemcpy(tensorInCData.data(),
+        tensorCSize * sizeof(std::complex<op::fp16_t>),
+        matCDeviceAddr,
+        tensorCSize * sizeof(std::complex<op::fp16_t>),
+        ACL_MEMCPY_DEVICE_TO_HOST);
+    CHECK_RET(ret == ::ACL_SUCCESS, LOG_PRINT("copy result from device to host failed. ERROR: %d\n", ret); return ret);
+
+    std::cout << "------- output TensorInC -------" << std::endl;
+    printTensor(tensorInCData, batch, m, n);
+
+    aclDestroyTensor(matA);
+    aclDestroyTensor(matB);
+    aclDestroyTensor(matC);
+    aclrtFree(matADeviceAddr);
+    aclrtFree(matBDeviceAddr);
+    aclrtFree(matCDeviceAddr);
+
+    aclrtDestroyStream(stream);
+    aclrtResetDevice(deviceId);
+    aclFinalize();
+    return 0;
+}
+```

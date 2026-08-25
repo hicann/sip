@@ -106,7 +106,7 @@ source /usr/local/Ascend/cann/set_env.sh
 安装CANN之后，您可安装一些工具方便后续开发，参见以下内容：
 
 * [CANN依赖列表](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/900/softwareinst/instg/instg_0045.html?OS=Debian&InstallType=netapt)
-* [CANN安装后操作](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/900/softwareinst/instg/instg_0094.html?OS=Debian&InstallType=netapt)
+* [CANN安装后操作](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/latest/softwareinst/instg/instg_0094.html?OS=Debian&InstallType=netapt)
 
 ## <a id="learn"></a>4.  快速上手
 
@@ -273,7 +273,7 @@ cd example
 bash build.sh
 ```
 
-算子使用指导：可访问[头文件列表-CANN社区版-昇腾社区](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/900/API/SiP/SIP_0000.html)。
+算子使用指导：可访问[头文件列表-CANN社区版-昇腾社区](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/910/acce/SiP/docs/zh/Installation_Operation_Guide/operator_usage_guide.md)。
 
 #### 4.2.2  样例安全声明
 
@@ -284,7 +284,7 @@ SiP不推荐用户直接将样例作为业务代码，也不保证此种做法�
 ### 4.3  日志和环境变量说明
 
 - 加速库日志现在已经部分适配CANN日志，环境变量说明请参考
-  **[CANN社区版文档/环境变量参考](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/900/maintenref/envvar/envref_07_0001.html)**。
+  **[CANN社区版文档/环境变量参考](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/910/maintenref/envvar/envref_07_0001.html)**。
 
 ## <a id="develop"></a>5.  自定义算子开发
 
@@ -300,5 +300,5 @@ SiP不推荐用户直接将样例作为业务代码，也不保证此种做法�
 
 ## <a id="doc"></a>7.  参考文档
 
-**[CANN社区版文档](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/900/index/index.html)**
-**[SiP社区版文档](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/900/API/SiP/SIP_0000.html)**
+**[CANN社区版文档](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/910/index/index.html)**
+**[SiP社区版文档](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/910/acce/SiP/docs/zh/Installation_Operation_Guide/overview.md)**

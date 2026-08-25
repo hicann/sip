@@ -66,4 +66,4 @@ SiP的基本编译命令是`bash build.sh`，在默认构建模式下，该命�
 
 ​**文件名**​：`scripts/set_env.sh`  
 加速库安装完成后，系统提供`set_env.sh`（进程级环境变量设置脚本），以自动完成环境变量设置，用户进程结束后自动失效。
-若想查看相关变量含义说明，可访问[环境变量参考-CANN社区版-昇腾社区](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/900/maintenref/envvar/envref_07_0001.html)。
+若想查看相关变量含义说明，可访问[环境变量参考-CANN社区版-昇腾社区](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/910/maintenref/envvar/envref_07_0001.html)。
