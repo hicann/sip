@@ -10,6 +10,7 @@
 #ifndef PYTORCH_NPU_HELPER_HPP_
 #define PYTORCH_NPU_HELPER_HPP_
 
+#include <vector>
 #include "BlasMixCache.h"
 #include "FFTMixCache.h"
 #include "constants.h"
@@ -35,8 +36,7 @@ inline aclTensor* ConvertType(const at::Tensor& at_tensor)
         return nullptr;
     }
     at::ScalarType scalar_data_type = at_tensor.scalar_type();
-    aclDataType acl_data_type =
-        kATenScalarTypeToAclDataTypeTable[static_cast<int64_t>(scalar_data_type)];
+    aclDataType acl_data_type = kATenScalarTypeToAclDataTypeTable[static_cast<int64_t>(scalar_data_type)];
     TORCH_CHECK(acl_data_type != ACL_DT_UNDEFINED,
                 std::string(c10::toString(scalar_data_type)) + " has not been supported")
     c10::SmallVector<int64_t, sip_pta::DIM_5> storageDims;
@@ -68,17 +68,22 @@ inline aclTensor* ConvertType(const at::Tensor& at_tensor)
 
     if (at_tensor.unsafeGetTensorImpl()->is_wrapped_number()) {
         c10::Scalar expScalar = ConvertTensorToScalar(at_tensor);
-        at::Tensor aclInput = CopyScalarToDevice(expScalar, scalar_data_type);
+        // 局部张量在函数返回时析构释放设备存储，返回的 aclTensor* 持有悬垂指针
+        // 构成 use-after-free（issue #119）。一次算子执行可能连续转换多个标量，
+        // 单个 static 槽位会被后续调用覆盖；与 #120 一致，用 thread_local 容器
+        // 为每次调用持有独立张量（无覆盖/无别名/无线程竞态，覆盖 EXEC_FUNC 窗口）。
+        thread_local std::vector<at::Tensor> scalarTensorHolder;
+        scalarTensorHolder.push_back(CopyScalarToDevice(expScalar, scalar_data_type));
+        const at::Tensor& aclInput = scalarTensorHolder.back();
         return aclCreateTensor(aclInput.sizes().data(), aclInput.sizes().size(), acl_data_type,
-                               aclInput.strides().data(), aclInput.storage_offset(), format,
-                               storageDims.data(), storageDims.size(),
-                               const_cast<void*>(aclInput.storage().data()));
+                               aclInput.strides().data(), aclInput.storage_offset(), format, storageDims.data(),
+                               storageDims.size(), const_cast<void*>(aclInput.storage().data()));
     }
 
-    auto acl_tensor = aclCreateTensor(
-        at_tensor.sizes().data(), at_tensor.sizes().size(), acl_data_type,
-        at_tensor.strides().data(), at_tensor.storage_offset(), format, storageDims.data(),
-        storageDims.size(), const_cast<void*>(at_tensor.storage().data()));
+    auto acl_tensor = aclCreateTensor(at_tensor.sizes().data(), at_tensor.sizes().size(), acl_data_type,
+                                      at_tensor.strides().data(), at_tensor.storage_offset(), format,
+                                      storageDims.data(), storageDims.size(),
+                                      const_cast<void*>(at_tensor.storage().data()));
     return acl_tensor;
 }
 
@@ -90,8 +95,7 @@ inline aclScalar* ConvertType(const at::Scalar& at_scalar)
     }
 
     at::ScalarType scalar_data_type = at_scalar.type();
-    aclDataType acl_data_type =
-        kATenScalarTypeToAclDataTypeTable[static_cast<int64_t>(scalar_data_type)];
+    aclDataType acl_data_type = kATenScalarTypeToAclDataTypeTable[static_cast<int64_t>(scalar_data_type)];
     TORCH_CHECK(acl_data_type != ACL_DT_UNDEFINED,
                 std::string(c10::toString(scalar_data_type)) + " has not been supported")
     aclScalar* acl_scalar = nullptr;
@@ -119,7 +123,7 @@ inline aclScalar* ConvertType(const at::Scalar& at_scalar)
         default:
             acl_scalar = nullptr;
             break;
-        }
+    }
     return acl_scalar;
 }
 
@@ -133,7 +137,8 @@ inline aclIntArray* ConvertType(const at::IntArrayRef& at_array)
     return array;
 }
 
-template <std::size_t N> inline aclBoolArray* ConvertType(const std::array<bool, N>& value)
+template <std::size_t N>
+inline aclBoolArray* ConvertType(const std::array<bool, N>& value)
 {
     static const auto aclCreateBoolArray = GET_OP_API_FUNC(aclCreateBoolArray);
     if (aclCreateBoolArray == nullptr) {
@@ -199,7 +204,11 @@ inline aclDataType ConvertType(const at::ScalarType scalarType)
     return kATenScalarTypeToAclDataTypeTable[static_cast<int64_t>(scalarType)];
 }
 
-template <typename T> T ConvertType(T value) { return value; }
+template <typename T>
+T ConvertType(T value)
+{
+    return value;
+}
 
 template <typename Tuple, size_t... I>
 auto ConvertToOpApiFunc(const Tuple& params, void* opApiAddr, std::index_sequence<I...>)
@@ -209,13 +218,15 @@ auto ConvertToOpApiFunc(const Tuple& params, void* opApiAddr, std::index_sequenc
     return func;
 }
 
-template <typename Tuple> auto ConvertToOpApiFunc(const Tuple& params, void* opApiAddr)
+template <typename Tuple>
+auto ConvertToOpApiFunc(const Tuple& params, void* opApiAddr)
 {
     static constexpr auto size = std::tuple_size<Tuple>::value;
     return ConvertToOpApiFunc(params, opApiAddr, std::make_index_sequence<size>{});
 }
 
-template <typename... Ts> constexpr auto ConvertTypes(Ts&... args)
+template <typename... Ts>
+constexpr auto ConvertTypes(Ts&... args)
 {
     return std::make_tuple(ConvertType(args)...);
 }
@@ -226,7 +237,8 @@ auto call(Function f, Tuple t, std::index_sequence<I...>)
     return f(std::get<I>(t)...);
 }
 
-template <typename Function, typename Tuple> auto call(Function f, Tuple t)
+template <typename Function, typename Tuple>
+auto call(Function f, Tuple t)
 {
     static constexpr auto size = std::tuple_size<Tuple>::value;
     return call(f, t, std::make_index_sequence<size>{});
@@ -306,7 +318,15 @@ inline Mki::Tensor ConvertType(const MkiConvertInput& mkiInput)
 
 inline aclTensor* CreateAclTensorFromAtTensor(const at::Tensor& at_tensor)
 {
-    at::Tensor tensor_contiguous = at_tensor.is_contiguous() ? at_tensor : at_tensor.contiguous();
+    // 非连续输入时 .contiguous() 产生的新张量若为局部变量，函数返回即析构释放
+    // 设备存储，返回的 aclTensor* 持有悬垂指针构成 use-after-free（issue #120）。
+    // 一次算子执行前会连续转换多个张量（如 convolve 的 signal/kernel/output），
+    // 单个 static 槽位会被后续调用覆盖导致前序指针再次悬垂；改用 thread_local
+    // 容器为每次调用持有独立张量：无跨调用覆盖、无别名、无线程间数据竞态，
+    // 生命周期延续至该线程后续调用（覆盖 EXEC_FUNC 同步执行窗口）。
+    thread_local std::vector<at::Tensor> tensorContiguousHolder;
+    tensorContiguousHolder.push_back(at_tensor.is_contiguous() ? at_tensor : at_tensor.contiguous());
+    const at::Tensor& tensor_contiguous = tensorContiguousHolder.back();
 
     auto shape = tensor_contiguous.sizes().vec();
     auto strides = tensor_contiguous.strides().vec();
@@ -323,17 +343,16 @@ inline aclTensor* CreateAclTensorFromAtTensor(const at::Tensor& at_tensor)
         return nullptr;
     }
 
-    aclTensor* tensor =
-        aclCreateTensorFunc(shape.data(),   // 1. View Shape
-                            dim_num,        // 2. View Dim Num
-                            acl_data_type,  // 3. DataType
-                            strides.data(), // 4. Strides
-                            offset,         // 5. Offset
-                            ACL_FORMAT_ND,  // 6. Format (固定使用 ND)
-                            shape.data(), // 7. Storage Shape (关键：传原始 shape，满足 > 1 的校验)
-                            dim_num,   // 8. Storage Dim Num
-                            device_ptr // 9. Data Addr
-        );
+    aclTensor* tensor = aclCreateTensorFunc(shape.data(),   // 1. View Shape
+                                            dim_num,        // 2. View Dim Num
+                                            acl_data_type,  // 3. DataType
+                                            strides.data(), // 4. Strides
+                                            offset,         // 5. Offset
+                                            ACL_FORMAT_ND,  // 6. Format (固定使用 ND)
+                                            shape.data(), // 7. Storage Shape (关键：传原始 shape，满足 > 1 的校验)
+                                            dim_num,   // 8. Storage Dim Num
+                                            device_ptr // 9. Data Addr
+    );
 
     return tensor;
 }
@@ -341,28 +360,27 @@ inline aclTensor* CreateAclTensorFromAtTensor(const at::Tensor& at_tensor)
 uint64_t CalcHashId();
 
 // 通过so文件函数名调用
-#define EXEC_FUNC_NAME(ops_api_name, ...)                                                          \
-    do {                                                                                           \
-        static const auto opApiFuncAddr = GetAsdSipApiFuncAddr(#ops_api_name);                     \
-        TORCH_CHECK(opApiFuncAddr != nullptr, #ops_api_name, " not found.");                       \
-        auto converted_params = ConvertTypes(__VA_ARGS__);                                         \
-        auto acl_call = [converted_params] ()->int {                                              \
-            static auto opsFunc = ConvertToOpApiFunc(converted_params, opApiFuncAddr);             \
-            auto opsStats = call(opsFunc, converted_params);                                       \
-            TORCH_CHECK(opsStats == 0,                                                             \
-                        "call " #ops_api_name " failed, detail:", aclGetRecentErrMsg());           \
-            return opsStats;                                                                       \
-        };                                                                                         \
-        at_npu::native::OpCommand cmd;                                                             \
-        cmd.Name(#ops_api_name);                                                                   \
-        cmd.SetCustomHandler(acl_call);                                                            \
-        cmd.Run();                                                                                 \
+#define EXEC_FUNC_NAME(ops_api_name, ...)                                                               \
+    do {                                                                                                \
+        static const auto opApiFuncAddr = GetAsdSipApiFuncAddr(#ops_api_name);                          \
+        TORCH_CHECK(opApiFuncAddr != nullptr, #ops_api_name, " not found.");                            \
+        auto converted_params = ConvertTypes(__VA_ARGS__);                                              \
+        auto acl_call = [converted_params]() -> int {                                                   \
+            static auto opsFunc = ConvertToOpApiFunc(converted_params, opApiFuncAddr);                  \
+            auto opsStats = call(opsFunc, converted_params);                                            \
+            TORCH_CHECK(opsStats == 0, "call " #ops_api_name " failed, detail:", aclGetRecentErrMsg()); \
+            return opsStats;                                                                            \
+        };                                                                                              \
+        at_npu::native::OpCommand cmd;                                                                  \
+        cmd.Name(#ops_api_name);                                                                        \
+        cmd.SetCustomHandler(acl_call);                                                                 \
+        cmd.Run();                                                                                      \
     } while (false)
 
 #define EXEC_FUNC(ops_api, ...)                                                                    \
     do {                                                                                           \
         auto converted_params = ConvertTypes(__VA_ARGS__);                                         \
-        auto acl_call = [converted_params] ()->int {                                              \
+        auto acl_call = [converted_params]() -> int {                                              \
             auto opsStats = call(ops_api, converted_params);                                       \
             TORCH_CHECK(opsStats == 0, "call " #ops_api " failed, detail:", aclGetRecentErrMsg()); \
             return opsStats;                                                                       \
@@ -373,39 +391,37 @@ uint64_t CalcHashId();
         cmd.Run();                                                                                 \
     } while (false)
 
-#define EXEC_BLAS_FUNC(ops_api, makePlanFunc, planParam, ...)                                      \
-    do {                                                                                           \
-        auto sip_stream = c10_npu::getCurrentNPUStream().stream(false);                            \
-        AsdSip::asdBlasHandle handle = op_api::getBlasHandle(#ops_api, planParam, makePlanFunc);   \
-        size_t workspace_size = 0;                                                                 \
-        void* workspace_addr = nullptr;                                                            \
-        at::Tensor workspace_tensor;                                                               \
-        AsdSip::asdBlasGetWorkspaceSize(handle, workspace_size);                                   \
-        if (workspace_size > 0) {                                                                  \
-            workspace_tensor =                                                                     \
-                at_npu::native::allocate_workspace(static_cast<long>(workspace_size), sip_stream); \
-            workspace_addr = const_cast<void*>(workspace_tensor.storage().data());                 \
-        }                                                                                          \
-        AsdSip::asdBlasSetWorkspace(handle, workspace_addr);                                       \
-        AsdSip::asdBlasSetStream(handle, sip_stream);                                              \
-        EXEC_FUNC(ops_api, handle, __VA_ARGS__);                                                   \
+#define EXEC_BLAS_FUNC(ops_api, makePlanFunc, planParam, ...)                                                     \
+    do {                                                                                                          \
+        auto sip_stream = c10_npu::getCurrentNPUStream().stream(false);                                           \
+        AsdSip::asdBlasHandle handle = op_api::getBlasHandle(#ops_api, planParam, makePlanFunc);                  \
+        size_t workspace_size = 0;                                                                                \
+        void* workspace_addr = nullptr;                                                                           \
+        at::Tensor workspace_tensor;                                                                              \
+        AsdSip::asdBlasGetWorkspaceSize(handle, workspace_size);                                                  \
+        if (workspace_size > 0) {                                                                                 \
+            workspace_tensor = at_npu::native::allocate_workspace(static_cast<long>(workspace_size), sip_stream); \
+            workspace_addr = const_cast<void*>(workspace_tensor.storage().data());                                \
+        }                                                                                                         \
+        AsdSip::asdBlasSetWorkspace(handle, workspace_addr);                                                      \
+        AsdSip::asdBlasSetStream(handle, sip_stream);                                                             \
+        EXEC_FUNC(ops_api, handle, __VA_ARGS__);                                                                  \
     } while (false)
 
-#define EXEC_FFT_FUNC(ops_api, fftParam, ...)                                                      \
-    do {                                                                                           \
-        auto sip_stream = c10_npu::getCurrentNPUStream().stream(false);                            \
-        AsdSip::asdFftHandle handle = op_api::getFftHandle(fftParam);                              \
-        size_t workspace_size = 0;                                                                 \
-        AsdSip::asdFftGetWorkspaceSize(handle, workspace_size);                                    \
-        void* workspace_addr = nullptr;                                                            \
-        at::Tensor workspace_tensor;                                                               \
-        if (workspace_size > 0) {                                                                  \
-            workspace_tensor =                                                                     \
-                at_npu::native::allocate_workspace(static_cast<long>(workspace_size), sip_stream); \
-            workspace_addr = const_cast<void*>(workspace_tensor.storage().data());                 \
-        }                                                                                          \
-        AsdSip::asdFftSetWorkspace(handle, workspace_addr);                                        \
-        AsdSip::asdFftSetStream(handle, sip_stream);                                               \
-        EXEC_FUNC(ops_api, handle, __VA_ARGS__);                                                   \
+#define EXEC_FFT_FUNC(ops_api, fftParam, ...)                                                                     \
+    do {                                                                                                          \
+        auto sip_stream = c10_npu::getCurrentNPUStream().stream(false);                                           \
+        AsdSip::asdFftHandle handle = op_api::getFftHandle(fftParam);                                             \
+        size_t workspace_size = 0;                                                                                \
+        AsdSip::asdFftGetWorkspaceSize(handle, workspace_size);                                                   \
+        void* workspace_addr = nullptr;                                                                           \
+        at::Tensor workspace_tensor;                                                                              \
+        if (workspace_size > 0) {                                                                                 \
+            workspace_tensor = at_npu::native::allocate_workspace(static_cast<long>(workspace_size), sip_stream); \
+            workspace_addr = const_cast<void*>(workspace_tensor.storage().data());                                \
+        }                                                                                                         \
+        AsdSip::asdFftSetWorkspace(handle, workspace_addr);                                                       \
+        AsdSip::asdFftSetStream(handle, sip_stream);                                                              \
+        EXEC_FUNC(ops_api, handle, __VA_ARGS__);                                                                  \
     } while (false)
 #endif // PYTORCH_NPU_HELPER_HPP_

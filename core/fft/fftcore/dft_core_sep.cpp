@@ -8,6 +8,7 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
+#include <memory>
 #include <mki/utils/rt/rt.h>
 #include "utils/assert.h"
 #include "log/log.h"
@@ -27,15 +28,16 @@ using namespace AsdSip;
 
 size_t DFTCoreSep::EstimateWorkspaceSize()
 {
-    const KernelInfo &kernelInfo = kernel->GetKernelInfo();
+    const KernelInfo& kernelInfo = kernel->GetKernelInfo();
     return getAlignedSize(kernelInfo.GetTotalScratchSize());
 }
 
-void DFTCoreSep::Run(void *inputReal, void *inputImag, void *outputReal, void *outputImag, void *stream, workspace::Workspace &workspace)
+void DFTCoreSep::Run(void* inputReal, void* inputImag, void* outputReal, void* outputImag, void* stream,
+                     workspace::Workspace& workspace)
 {
-    const Mki::KernelInfo &kernelInfo = kernel->GetKernelInfo();
+    const Mki::KernelInfo& kernelInfo = kernel->GetKernelInfo();
     size_t bufferSize = kernelInfo.GetTotalScratchSize();
-    runInfo.SetScratchDeviceAddr((uint8_t *)workspace.allocate(bufferSize));
+    runInfo.SetScratchDeviceAddr((uint8_t*)workspace.allocate(bufferSize));
 
     launchParam.GetOutTensor(0).data = outputReal;
     launchParam.GetOutTensor(1).data = outputImag;
@@ -47,11 +49,10 @@ void DFTCoreSep::Run(void *inputReal, void *inputImag, void *outputReal, void *o
     workspace.recycleLast();
 }
 
-
 void DFTCoreSep::DestroyInDevice() const
 {
     // destroy tiling data in device
-    uint8_t *deviceLaunchBuffer = nullptr;
+    uint8_t* deviceLaunchBuffer = nullptr;
     deviceLaunchBuffer = runInfo.GetTilingDeviceAddr();
     if (deviceLaunchBuffer != nullptr) {
         MkiRtMemFreeDevice(deviceLaunchBuffer);
@@ -64,31 +65,40 @@ AspbStatus DFTCoreSep::InitRotationMatrix()
     int64_t inSize = fftN * 3;
     int64_t outSize = fftN;
     float flag = problemDesc.forward ? 1 : -1;
-    // for simplicity, we construct one rotation matrix, the first half is real part, and the second half is the imag part.
-    std::function<FFTensor *()> func = [=]() -> FFTensor* {
-        FFTensor *rotationMatrixPtr = new FFTensor;
-        FFTensor &rotationMatrix_ = *rotationMatrixPtr;
+    // for simplicity, we construct one rotation matrix, the first half is real part, and the second half is the imag
+    // part.
+    std::function<FFTensor*()> func = [=]() -> FFTensor* {
+        FFTensor* rotationMatrixPtr = new FFTensor;
+        FFTensor& rotationMatrix_ = *rotationMatrixPtr;
 
-        float *rotationMatrixHost = new(std::nothrow) float[outSize * inSize];
+        float* rotationMatrixHost = new (std::nothrow) float[outSize * inSize];
         if (rotationMatrixHost == nullptr) {
             delete rotationMatrixPtr;
             ASDSIP_LOG(ERROR) << "rotationMatrixHost malloc failed: ";
             throw std::runtime_error("rotationMatrixHost malloc failed:.");
         }
 
-        float cosTable[fftN];
-        float sinTable[fftN];
+        // 变长栈数组（VLA）在 fftN 较大时（用户 fftSize 上界 1<<27）必然栈溢出，
+        // 改为堆分配并用 unique_ptr 管理生命周期（issue #118）
+        std::unique_ptr<float[]> cosTable(new (std::nothrow) float[fftN]);
+        std::unique_ptr<float[]> sinTable(new (std::nothrow) float[fftN]);
+        if (cosTable == nullptr || sinTable == nullptr) {
+            delete[] rotationMatrixHost;
+            delete rotationMatrixPtr;
+            ASDSIP_LOG(ERROR) << "cos/sin table malloc failed: ";
+            throw std::runtime_error("cos/sin table malloc failed.");
+        }
         for (int64_t i = 0; i < fftN; i++) {
-            *(cosTable + i) = cos(flag * K_2PI * i / fftN);
-            *(sinTable + i) = sin(flag * K_2PI * i / fftN);
+            *(cosTable.get() + i) = cos(flag * K_2PI * i / fftN);
+            *(sinTable.get() + i) = sin(flag * K_2PI * i / fftN);
         }
 
         // construct real part and imag part
         for (int64_t i = 0; i < fftN; i++) {
             for (int64_t j = 0; j < fftN; j++) {
-                *(rotationMatrixHost + i * fftN + j) = *(cosTable + (i * j) % fftN); // a
-                *(rotationMatrixHost + fftN * fftN + i * fftN + j) = -1 * (*(sinTable + (i * j) % fftN)); // b
-                *(rotationMatrixHost + fftN * fftN * 2 + i * fftN + j) = 1 * (*(sinTable + (i * j) % fftN)); // -b
+                *(rotationMatrixHost + i * fftN + j) = *(cosTable.get() + (i * j) % fftN);                         // a
+                *(rotationMatrixHost + fftN * fftN + i * fftN + j) = -1 * (*(sinTable.get() + (i * j) % fftN));    // b
+                *(rotationMatrixHost + fftN * fftN * 2 + i * fftN + j) = 1 * (*(sinTable.get() + (i * j) % fftN)); // -b
             }
         }
 
@@ -145,7 +155,7 @@ AspbStatus DFTCoreSep::InitTactic()
     launchParam.AddOutTensor(tensorOutReal);
     launchParam.AddOutTensor(tensorOutImag);
 
-    Operation *op = Ops::Instance().GetOperationByName(std::string("DftSepOperation"));
+    Operation* op = Ops::Instance().GetOperationByName(std::string("DftSepOperation"));
     if (op == nullptr) {
         return AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }
@@ -154,7 +164,7 @@ AspbStatus DFTCoreSep::InitTactic()
     ASDSIP_ECHECK(kernel != nullptr, "Get best kernel failed", AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
     // allocate and initialize tiling workspace
-    uint8_t *device = nullptr;
+    uint8_t* device = nullptr;
     kernel->SetLaunchWithTiling(false);
     uint32_t launchBufferSize = kernel->GetTilingSize(launchParam);
     if (launchBufferSize == 0) {
@@ -171,9 +181,8 @@ AspbStatus DFTCoreSep::InitTactic()
         ASDSIP_LOG(ERROR) << "malloc device memory fail";
         return AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }
-    device = static_cast<uint8_t *>(tempDevicePtr);
-    st = MkiRtMemCopy(device, launchBufferSize, hostLaunchBuffer, launchBufferSize,
-                      MKIRT_MEMCOPY_HOST_TO_DEVICE);
+    device = static_cast<uint8_t*>(tempDevicePtr);
+    st = MkiRtMemCopy(device, launchBufferSize, hostLaunchBuffer, launchBufferSize, MKIRT_MEMCOPY_HOST_TO_DEVICE);
     if (st != MKIRT_SUCCESS) {
         MkiRtMemFreeDevice(device);
         device = nullptr;

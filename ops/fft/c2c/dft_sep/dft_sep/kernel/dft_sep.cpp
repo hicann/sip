@@ -1,4 +1,4 @@
- /**
+/**
  * Copyright (c) 2025 Huawei Technologies Co., Ltd.
  * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
  * CANN Open Software License Agreement Version 2.0 (the "License").
@@ -37,29 +37,24 @@ constexpr uint32_t L0_SHAPE_M = 128;
 constexpr uint32_t L0_SHAPE_N = 128;
 constexpr uint32_t L0_SHAPE_K = 64;
 
-
-extern "C" __global__ __aicore__ void dft_sep(
-    GM_ADDR ffts_addr,
-    GM_ADDR gm_a_real,
-    GM_ADDR gm_a_imag,
-    GM_ADDR gm_b,
-    GM_ADDR gm_c_real,
-    GM_ADDR gm_c_imag,
-    GM_ADDR workspace,
-    GM_ADDR tiling_para_gm
-) {
+extern "C" __global__ __aicore__ void dft_sep(GM_ADDR ffts_addr, GM_ADDR gm_a_real, GM_ADDR gm_a_imag, GM_ADDR gm_b,
+                                              GM_ADDR gm_c_real, GM_ADDR gm_c_imag, GM_ADDR workspace,
+                                              GM_ADDR tiling_para_gm)
+{
     AscendC::SetSyncBaseAddr((uint64_t)ffts_addr);
     uint32_t batchSize, m, n, k, trans_a, trans_b, M0, N0, K0;
 
-    auto tiling_para = reinterpret_cast<__gm__ int32_t *>(tiling_para_gm);
+    auto tiling_para = reinterpret_cast<__gm__ int32_t*>(tiling_para_gm);
     batchSize = tiling_para[0]; // set to 1
-    m = tiling_para[1]; // batch size
-    n = tiling_para[2]; // fftN
-    k = tiling_para[3]; // fftN
+    m = tiling_para[1];         // batch size
+    n = tiling_para[2];         // fftN
+    k = tiling_para[3];         // fftN
 
+    // 指针偏移用 64 位计算：n*k 在 uint32_t 域相乘，fftN > 65536 时溢出回绕导致越界（issue #113）
+    uint64_t bMatrixSize = static_cast<uint64_t>(n) * static_cast<uint64_t>(k) * sizeof(float);
     auto gm_b_real = gm_b;
-    auto gm_b_imag = gm_b + n * k * sizeof(float);
-    auto gm_b_imag_neg = gm_b + 2 * n * k * sizeof(float);
+    auto gm_b_imag = gm_b + bMatrixSize;
+    auto gm_b_imag_neg = gm_b + 2 * bMatrixSize;
 
     using LayoutA = layout::RowMajor;
     using LayoutB = layout::RowMajor;
