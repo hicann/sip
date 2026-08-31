@@ -18,7 +18,7 @@ asdBlasMakeCaxpyPlan：初始化该句柄对应的Caxpy算子配置。\
 asdBlasCaxpy：实现复数向量乘以一个复数标量后，再加上一个复数向量。
 - 计算公式：
   $$
-  y= alpha * x + y\\ 
+  y= alpha * x + y\\
   $$
   示例：\
 输入“x”为：\
@@ -29,7 +29,7 @@ asdBlasCaxpy：实现复数向量乘以一个复数标量后，再加上一个�
 [3.0 + 4.0j, 4.0 + 4.0j]\
 调用“asdBlasCaxpy”算子后，输出“y”为：\
 [-4.0 + 28.0j, 0.0 + 32.0j]
- 
+
 ## 函数原型
 
 ```Cpp
@@ -38,12 +38,12 @@ AspbStatus asdBlasMakeCaxpyPlan(asdBlasHandle handle)
 
 ```Cpp
 AspbStatus asdBlasCaxpy(
-  asdBlasHandle              handle, 
-  const int64_t              n, 
-  const std::complex<float> *alpha, 
+  asdBlasHandle              handle,
+  const int64_t              n,
+  const std::complex<float> &alpha,
   aclTensor*                 x,
-  int64_t                    incx, 
-  aclTensor*                 y, 
+  int64_t                    incx,
+  aclTensor*                 y,
   int64_t                    incy)
 ```
 
@@ -102,7 +102,7 @@ AspbStatus asdBlasCaxpy(
       <td>向量中复数元素的个数。</td>
     </tr>
     <tr>
-      <td>alpha（std::complex&ltfloat&gt *）</td>
+      <td>alpha（std::complex&ltfloat&gt &）</td>
       <td>输入</td>
       <td><ul><li>对应公式中的alpha，输入的复数标量。</li><li>数据类型支持COMPLEX64。</li></ul></td>
     </tr>

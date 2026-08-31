@@ -53,8 +53,10 @@
        <td>ASCEND_MODULE_LOG_LEVEL</td>
        <td>设置应用类日志的各模块日志级别，仅支持调试日志。</td>
      </tr>
- </tbody>
-   </table>
+
+  </tbody>
+
+  </table>
 
 - **环境变量长度限制：**
 

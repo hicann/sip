@@ -37,23 +37,23 @@ istft函数用于进行逆短时傅里叶变换，它的目标是将stft得到�
 
 ```Cpp
 AspbStatus asdFftIstftMakePlan(
-  asdFftHandle              handle, 
-  const aclTensor *         input, 
+  asdFftHandle              handle,
+  const aclTensor *         input,
   const int64_t             nFft,
-  const int64_t             hopLengthOpt, 
+  const int64_t             hopLengthOpt,
   const int64_t             winLengthOpt,
-  const bool                center, 
-  const bool                normalized, 
+  const bool                center,
+  const bool                normalized,
   const bool                onesidedOpt,
-  const int64_t             lengthOpt, 
+  const int64_t             lengthOpt,
   const bool                returnComplex)
 ```
 
 ```Cpp
 AspbStatus asdFftExecIstft(
-  asdFftHandle              handle, 
-  const aclTensor *         input, 
-  const aclTensor *         windowOpt, 
+  asdFftHandle              handle,
+  const aclTensor *         input,
+  const aclTensor *         windowOpt,
   const aclTensor *         output)
 ```
 
@@ -128,7 +128,7 @@ AspbStatus asdFftExecIstft(
 - **返回值**：
 
   返回状态码，具体参见[SiP返回码](../../context/SiP返回码.md)。
-  
+
 ## asdFftExecIstft
 
 - **参数说明：**
@@ -153,12 +153,12 @@ AspbStatus asdFftExecIstft(
     <tr>
       <td>input（aclTensor *）</td>
       <td>输入</td>
-      <td><ul><li>对应公式中的'x'。</li><li>数据格式支持ND，格式预期与stft输出相同。</li><li>数据类型仅支持COMPLEX64。</li><li>shape为(B, N, T)<ul><li>'B'是批处理维度。</li><li>N 是频率样本的数量，对于onesidedOpt为true， 输入为 (n_fft // 2) + 1，否则为 n_fft。</li><li>T是帧的数量，对于中心填充的stft为 1 + length // hop_length，否则为 1 + (length - n_fft) // hop_length。</li></ul></li></ul></td>
+      <td><ul><li>对应公式中的'x'。</li><li>数据格式支持ND，格式预期与stft输出相同。</li><li>数据类型仅支持COMPLEX64。</li><li>shape为(B, N, T)<ul><li>'B'是批处理维度。</li><li>N 是频率样本的数量，对于onesidedOpt为true， 输入为 (nFft // 2) + 1，否则为nFft。</li><li>T是帧的数量，对于中心填充的stft为 1 + length // hopLengthOpt，否则为 1 + (length - nFft) // hopLengthOpt。</li></ul></li></ul></td>
     </tr>
     <tr>
       <td>windowOpt（aclTensor *）</td>
       <td>输入</td>
-      <td><ul><li>对应公式中的'w'。</li><li>数据格式支持ND。</li><li>数据类型仅支持FLOAT。</li><li>shape为[win_length]。</li></ul></td>
+      <td><ul><li>对应公式中的'w'。</li><li>数据格式支持ND。</li><li>数据类型仅支持FLOAT。</li><li>shape为[winLengthOpt]。</li></ul></td>
     </tr>
     <tr>
       <td>output（aclTensor *）</td>
@@ -175,7 +175,7 @@ AspbStatus asdFftExecIstft(
 
 - istft均不支持本地更新，即不允许输入tensor和输出tensor是同一个tensor。
 
-- 为了使istft能够正确地重构信号，n_fft、hop_length、win_length、window、center和normalized这些参数必须与之前进行stft变换时使用的参数保持一致。
+- 为了使istft能够正确地重构信号，n_fft、hopLengthOpt、winLengthOpt、windowOpt、center和normalized这些参数必须与之前进行stft变换时使用的参数保持一致。
 
 - 输入的元素不支持inf、-inf和nan，如果输入中包含这些值, 那么结果为未定义。
 
