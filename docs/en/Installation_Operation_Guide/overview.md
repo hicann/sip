@@ -23,7 +23,7 @@ The following figure shows the position of the signal processing acceleration li
 
 - Solver operators: Primarily provides complex linear algebra functions based on BLAS, such as matrix decomposition and eigenvalue solving. Not provided in this release.
 
-## Architecture Diagram
+## Applicable Products
 
   <term>Atlas A2 training products / Atlas A2 inference products</term>\
   <term>Atlas A3 training products / Atlas A3 inference products</term>\

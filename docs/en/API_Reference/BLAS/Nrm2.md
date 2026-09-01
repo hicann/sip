@@ -44,7 +44,7 @@
   where $x_{i}$ represents the i-th element in vector x, and $x_{i}$ is a complex element.
 $$
 
-|x_{i}|^2=x_{i}\_real^2+x_{i}\_image^2
+|x_{i}|^2=x_{i}\_real^2+x_{i}\_imag^2
 
 $$
 

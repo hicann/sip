@@ -49,7 +49,7 @@ AspbStatus asdBlasSsyr(
   asdBlasHandle         handle, 
   asdBlasFillMode_t     uplo, 
   const int64_t         n, 
-  const float *         alpha, 
+  const float &         alpha, 
   aclTensor *           x, 
   const int64_t         incx, 
   aclTensor *           A, 

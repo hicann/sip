@@ -125,12 +125,12 @@ AspbStatus asdBlasCgemm(
     <tr>
       <td>lda (int64_t)</td>
       <td>Input</td>
-      <td>Memory address offset between adjacent elements of matrix A (constrained to m in the current version).</td>
+      <td>Memory address offset between left and right adjacent elements of matrix A (constrained to m in the current version).</td>
     </tr>
     <tr>
       <td>ldb (int64_t)</td>
       <td>Input</td>
-      <td>Memory address offset between adjacent elements of matrix B (constrained to k in the current version).</td>
+      <td>Memory address offset between left and right adjacent elements of matrix B (constrained to k in the current version).</td>
     </tr>
     <tr>
       <td>ldc (int64_t)</td>

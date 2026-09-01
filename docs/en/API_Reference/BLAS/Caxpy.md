@@ -45,7 +45,7 @@ AspbStatus asdBlasMakeCaxpyPlan(asdBlasHandle handle)
 AspbStatus asdBlasCaxpy(
   asdBlasHandle              handle, 
   const int64_t              n, 
-  const std::complex<float> *alpha, 
+  const std::complex<float> &alpha, 
   aclTensor*                 x,
   int64_t                    incx, 
   aclTensor*                 y, 
@@ -107,7 +107,7 @@ AspbStatus asdBlasCaxpy(
       <td>Number of complex elements in the vector.</td>
     </tr>
     <tr>
-      <td>alpha (std::complex&lt;float&gt; *)</td>
+      <td>alpha (std::complex&lt;float&gt; &)</td>
       <td>Input</td>
       <td><ul><li>Corresponds to "alpha" in the formula. Input complex scalar.</li><li>Supported data type: <code>COMPLEX64</code>.</li></ul></td>
     </tr>

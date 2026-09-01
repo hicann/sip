@@ -170,7 +170,7 @@ AspbStatus rsInterpolationBySinc(
 
 ## Constraints
 
-`rsInterpolationBySin`:
+`rsInterpolationBySinc`:
 
 - The number of input elements theoretically ranges from 1 to 3.93e+09.
 

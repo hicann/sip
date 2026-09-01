@@ -149,13 +149,13 @@ AspbStatus asdFftExecC2CSeparated(
       <td>Operator handle. The <code>asdFftHandle</code> object must be created manually.</td>
     </tr>
     <tr>
-      <td>inData (aclTensor *)</td>
+      <td>input (aclTensor *)</td>
       <td>Input</td>
       <td><ul><li>Corresponds to "x" in the formula.</li><li>Supported data type: <code>COMPLEX64</code>.</li><li>Data format: <code>ND</code>.</li>
       <li>For horizontal FFT, the input shape is (batchSize, fftSize).</li><li>For vertical FFT, the input shape is (fftSize, batchSize).</li></ul></td>
     </tr>
     <tr>
-      <td>outData (aclTensor *)</td>
+      <td>output (aclTensor *)</td>
       <td>Output</td>
       <td><ul><li>Corresponds to "y" in the formula.</li><li>Supported data type: <code>COMPLEX64</code>.</li><li>Data format: <code>ND</code>.</li>
       <li>For horizontal FFT, the output shape is (batchSize, fftSize).</li><li>For vertical FFT, the output shape is (fftSize, batchSize).</li></ul></td>
@@ -284,7 +284,7 @@ For details about the return values, see [SiP Return Codes](../../context/sip_re
       <td>outputReal (aclTensor *)</td>
       <td>Output</td>
       <td><ul><li>Real part of "y" in the formula.</li><li>Supported data type: <code>FLOAT32</code>.</li><li>Data format: <code>ND</code>.</li>
-      <li>Input shape: (batchSize, fftSize).</li></ul></td>
+      <li>Output shape: (batchSize, fftSize).</li></ul></td>
     </tr>
     <tr>
       <td>outputImag (aclTensor *)</td>

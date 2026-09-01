@@ -16,7 +16,7 @@
 - 信号领域融合算子库：包含PC、MTD、CFAR、Interpolation等融合算子，支撑脉冲信号分析，动态目标检测，恒虚警等场景。本期提供部分插值算子。
 - Solver算子：主要提供基于BLAS的复杂线性代数函数，例如矩阵分解、特征值求解等。本期不提供。
 
-## 架构图
+## 支持架构
 
   <term>Atlas A2 训练系列产品/Atlas A2 推理系列产品</term>\
   <term>Atlas A3 训练系列产品/Atlas A3 推理系列产品</term>\

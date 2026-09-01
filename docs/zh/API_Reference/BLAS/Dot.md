@@ -35,7 +35,7 @@ asdBlasCdotc：计算一个复数向量取共轭后和另一个复数向量的�
   - asdBlasCdotu的公式
 
   $$
-  result=\sum _{i=1}^n(conj(x[i]) * y[i])
+  result=\sum _{i=1}^n((x[i]) * y[i])
   $$
         其中，x[i]和y[i]是复数。
         示例：
@@ -44,7 +44,7 @@ asdBlasCdotc：计算一个复数向量取共轭后和另一个复数向量的�
         输入“y”为：
         [-0.1404+1.3380j, -0.4876+0.1842j]
         调用asdBlasCdotu算子后，输出“result”为：
-        1.2877-0.1420j
+        -0.9839+0.1425j
 - asdBlasCdotc的公式
 
   $$

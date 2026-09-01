@@ -41,7 +41,7 @@
   - Formula for asdBlasCdotu
 
   $$
-  result=\sum _{i=1}^n(conj(x[i]) * y[i])
+  result=\sum _{i=1}^n((x[i]) * y[i])
   $$
   where `x[i]` and `y[i]` are complex numbers, and `conj` is the conjugate operation.\
   Example:\
@@ -50,7 +50,7 @@
   The input `y` is:\
   [-0.1404+1.3380j, -0.4876+0.1842j]\
   After the `asdBlasCdotu` operator is called, the output `result` is:\
-  1.2877-0.1420j
+  -0.9839+0.1425j
 
 - Formula for asdBlasCdotc
 

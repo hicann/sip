@@ -159,12 +159,12 @@ AspbStatus asdFftExecIstft(
     <tr>
       <td>input (aclTensor *)</td>
       <td>Input</td>
-      <td><ul><li>Corresponds to "x" in the formula.</li><li>Data format: <code>ND</code>. The format is expected to be the same as the STFT output.</li><li>Supported data type: <code>COMPLEX64</code>.</li><li>Shape: (B, N, T)<ul><li>B is the batch dimension.</li><li>N is the number of frequency samples. When onesidedOpt is true, the input is (n_fft // 2) + 1; otherwise, it is n_fft.</li><li>T is the number of frames. For center-padded STFT, it is 1 + length // hop_length; otherwise, it is 1 + (length - n_fft) // hop_length.</li></ul></li></ul></td>
+      <td><ul><li>Corresponds to "x" in the formula.</li><li>Data format: <code>ND</code>. The format is expected to be the same as the STFT output.</li><li>Supported data type: <code>COMPLEX64</code>.</li><li>Shape: (B, N, T)<ul><li>B is the batch dimension.</li><li>N is the number of frequency samples. When onesidedOpt is true, the input is (nFft // 2) + 1; otherwise, it is nFft.</li><li>T is the number of frames. For center-padded STFT, it is 1 + length // hopLengthOpt; otherwise, it is 1 + (length - nFft) // hopLengthOpt.</li></ul></li></ul></td>
     </tr>
     <tr>
       <td>windowOpt (aclTensor *)</td>
       <td>Input</td>
-      <td><ul><li>Corresponds to "w" in the formula.</li><li>Data format: <code>ND</code>.</li><li>Supported data type: <code>FLOAT</code>.</li><li>Shape: [win_length].</li></ul></td>
+      <td><ul><li>Corresponds to "w" in the formula.</li><li>Data format: <code>ND</code>.</li><li>Supported data type: <code>FLOAT</code>.</li><li>Shape: [winLengthOpt].</li></ul></td>
     </tr>
     <tr>
       <td>output (aclTensor *)</td>
@@ -182,7 +182,7 @@ AspbStatus asdFftExecIstft(
 
 - `istft` does not support in-place update, meaning the input tensor and output tensor must not be the same tensor.
 
-- To ensure that `istft` can correctly reconstruct the signal, the parameters `n_fft`, `hop_length`, `win_length`, `window`, `center`, and `normalized` must be consistent with those used in the previous `stft` transform.
+- To ensure that `istft` can correctly reconstruct the signal, the parameters `nFft`, `hopLengthOpt`, `winLengthOpt`, `windowOpt`, `center`, and `normalized` must be consistent with those used in the previous `stft` transform.
 
 - The input elements do not support `inf`, `-inf`, or `NaN`. If the input contains such values, the result is undefined.
 
