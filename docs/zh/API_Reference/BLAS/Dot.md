@@ -398,7 +398,6 @@ int main(int argc, char **argv)
 - **asdBlasCdotu**
 
 ```Cpp
-
 #include <cmath>
 #include <complex>
 #include <iostream>
