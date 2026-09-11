@@ -15,9 +15,15 @@ namespace BlasPlanCache {
 
 static std::unordered_map<AsdSip::asdBlasHandle, std::unique_ptr<AsdSip::BlasPlan>> plans;
 
-void MakePlan(AsdSip::asdBlasHandle &handle, AsdSip::BlasPlan *plan)
+bool MakePlan(AsdSip::asdBlasHandle& handle, AsdSip::BlasPlan* plan)
 {
+    // 重复绑定守卫：insert 对已存在 key 不生效，携带新 plan 的 unique_ptr 临时对象会立即析构，
+    // 调用方随后继续访问该 plan 构成 use-after-free（issue #129）
+    if (plans.find(handle) != plans.end()) {
+        return false;
+    }
     plans.insert({handle, std::unique_ptr<AsdSip::BlasPlan>(plan)});
+    return true;
 }
 
 AsdSip::asdBlasHandle InitHandle()
@@ -26,7 +32,7 @@ AsdSip::asdBlasHandle InitHandle()
     return handle;
 }
 
-bool doesPlanExist(AsdSip::asdBlasHandle &handle)
+bool doesPlanExist(AsdSip::asdBlasHandle& handle)
 {
     if (plans.find(handle) == plans.end()) {
         return false;
@@ -35,7 +41,7 @@ bool doesPlanExist(AsdSip::asdBlasHandle &handle)
     return true;
 }
 
-AsdSip::BlasPlan &getPlan(AsdSip::asdBlasHandle &handle)
+AsdSip::BlasPlan& getPlan(AsdSip::asdBlasHandle& handle)
 {
     if (plans.at(handle) == nullptr) {
         throw std::runtime_error("BlasPlan is nullptr.");
@@ -44,9 +50,6 @@ AsdSip::BlasPlan &getPlan(AsdSip::asdBlasHandle &handle)
     }
 }
 
-void destroy_plan(AsdSip::asdBlasHandle &handle)
-{
-    plans.erase(handle);
-}
+void destroy_plan(AsdSip::asdBlasHandle& handle) { plans.erase(handle); }
 
-}
+} // namespace BlasPlanCache

@@ -45,8 +45,8 @@ public:
     using BlasPair = std::pair<BlasCacheKey, BlasCacheValue>;
     explicit BlasMixCache(int64_t c) noexcept;
 
-    // 因为 BLAS 的 create 逻辑各异，需要传入 onMiss 回调函数
-    BlasCacheValue get(BlasCacheKey& cacheKey, std::function<void(asdBlasHandle)> makePlanFunc);
+    // 因为 BLAS 的 create 逻辑各异，需要传入 onMiss 回调函数；回调返回 plan 创建结果（issue #128）
+    BlasCacheValue get(BlasCacheKey& cacheKey, std::function<AspbStatus(asdBlasHandle)> makePlanFunc);
 
     void setCapacity(int64_t maxSize);
     int64_t getCapacity();
@@ -60,7 +60,7 @@ private:
 };
 
 // 统一的销毁逻辑 (同步 + 销毁)
-inline void destoryBlasHandle(asdBlasHandle handle)
+inline void destroyBlasHandle(asdBlasHandle handle)
 {
     if (handle != nullptr) {
         asdBlasSynchronize(handle);
@@ -68,7 +68,7 @@ inline void destoryBlasHandle(asdBlasHandle handle)
     }
 }
 asdBlasHandle getBlasHandle(const std::string& opName, const std::vector<int64_t>& params,
-                        const std::function<void(asdBlasHandle)>& makePlanFunc);
+                            const std::function<AspbStatus(asdBlasHandle)>& makePlanFunc);
 
 } // namespace op_api
 

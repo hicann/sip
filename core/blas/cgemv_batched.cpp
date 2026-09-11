@@ -18,7 +18,7 @@ static constexpr uint32_t DIM_0 = 0;
 static constexpr uint32_t DIM_1 = 1;
 static constexpr uint32_t DIM_2 = 2;
 static constexpr uint32_t DIM_3 = 3;
-static constexpr uint32_t MAX_ELENUM_INLINE = 32;  // max elements in line
+static constexpr uint32_t MAX_ELENUM_INLINE = 32; // max elements in line
 
 namespace AsdSip {
 
@@ -28,22 +28,22 @@ struct CgemvBatchedImplParam {
     int64_t m;
     int64_t n;
     int64_t batchCount;
-    aclTensor *A;
-    aclTensor *x;
-    aclTensor *y;
+    aclTensor* A;
+    aclTensor* x;
+    aclTensor* y;
 };
 
 AspbStatus asdBlasCgemvBatchedShapeCheck(CgemvBatchedImplParam implParam)
 {
     ASDSIP_ECHECK(implParam.m > 0 && implParam.n > 0 && implParam.m <= MAX_ELENUM_INLINE &&
                       implParam.n <= MAX_ELENUM_INLINE && implParam.batchCount > 0,
-        "blas asdBlasCgemvBatched get m <= 0 || n <= 0 || m > 32 || n > 32 || batchCount <= 0.",
-        ErrorType::ACL_ERROR_INVALID_PARAM);
+                  "blas asdBlasCgemvBatched get m <= 0 || n <= 0 || m > 32 || n > 32 || batchCount <= 0.",
+                  ErrorType::ACL_ERROR_INVALID_PARAM);
 
-    int64_t *xstorageDims = nullptr;
+    int64_t* xstorageDims = nullptr;
     uint64_t xstorageDimsNum = 0;
-    CHECK_STATUS_WITH_ACL_RETURN(
-        aclGetStorageShape(implParam.x, &xstorageDims, &xstorageDimsNum), "asdBlasCgemvBatched: aclGetStorageShape");
+    CHECK_STATUS_WITH_ACL_RETURN(aclGetStorageShape(implParam.x, &xstorageDims, &xstorageDimsNum),
+                                 "asdBlasCgemvBatched: aclGetStorageShape");
     if (xstorageDimsNum > DIM_3 || *xstorageDims <= 0) {
         delete[] xstorageDims;
         xstorageDims = nullptr;
@@ -56,10 +56,10 @@ AspbStatus asdBlasCgemvBatchedShapeCheck(CgemvBatchedImplParam implParam)
         xstorageDims = nullptr;
     }
 
-    int64_t *ystorageDims = nullptr;
+    int64_t* ystorageDims = nullptr;
     uint64_t ystorageDimsNum = 0;
-    CHECK_STATUS_WITH_ACL_RETURN(
-        aclGetStorageShape(implParam.y, &ystorageDims, &ystorageDimsNum), "asdBlasCgemvBatched: aclGetStorageShape");
+    CHECK_STATUS_WITH_ACL_RETURN(aclGetStorageShape(implParam.y, &ystorageDims, &ystorageDimsNum),
+                                 "asdBlasCgemvBatched: aclGetStorageShape");
     if (ystorageDimsNum > DIM_3 || *ystorageDims <= 0) {
         delete[] ystorageDims;
         ystorageDims = nullptr;
@@ -72,10 +72,10 @@ AspbStatus asdBlasCgemvBatchedShapeCheck(CgemvBatchedImplParam implParam)
         ystorageDims = nullptr;
     }
 
-    int64_t *AstorageDims = nullptr;
+    int64_t* AstorageDims = nullptr;
     uint64_t AstorageDimsNum = 0;
-    CHECK_STATUS_WITH_ACL_RETURN(
-        aclGetStorageShape(implParam.A, &AstorageDims, &AstorageDimsNum), "asdBlasCgemvBatched: aclGetStorageShape");
+    CHECK_STATUS_WITH_ACL_RETURN(aclGetStorageShape(implParam.A, &AstorageDims, &AstorageDimsNum),
+                                 "asdBlasCgemvBatched: aclGetStorageShape");
     if (AstorageDimsNum != DIM_3 || AstorageDims[DIM_0] != implParam.batchCount || AstorageDims[DIM_1] != implParam.m ||
         AstorageDims[DIM_2] != implParam.n) {
         delete[] AstorageDims;
@@ -93,9 +93,8 @@ AspbStatus asdBlasCgemvBatchedShapeCheck(CgemvBatchedImplParam implParam)
 
 AspbStatus asdBlasCgemvBatchedImpl(asdBlasHandle handle, CgemvBatchedImplParam implParam)
 {
-    ASDSIP_ECHECK(BlasPlanCache::doesPlanExist(handle),
-        "blas CgemvBatched get cached plan failed.",
-        ErrorType::ACL_ERROR_INTERNAL_ERROR);
+    ASDSIP_ECHECK(BlasPlanCache::doesPlanExist(handle), "blas CgemvBatched get cached plan failed.",
+                  ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
     AsdSip::AspbStatus shapeCheckStatus = asdBlasCgemvBatchedShapeCheck(implParam);
     if (shapeCheckStatus != AsdSip::ErrorType::ACL_SUCCESS) {
@@ -103,8 +102,8 @@ AspbStatus asdBlasCgemvBatchedImpl(asdBlasHandle handle, CgemvBatchedImplParam i
     }
 
     try {
-        AsdSip::BlasCgemvBatchedPlan &plan =
-            dynamic_cast<AsdSip::BlasCgemvBatchedPlan &>(BlasPlanCache::getPlan(handle));
+        AsdSip::BlasCgemvBatchedPlan& plan = dynamic_cast<AsdSip::BlasCgemvBatchedPlan&>(
+            BlasPlanCache::getPlan(handle));
         ASDSIP_ECHECK(plan.IsInitialized(), "CgemvBatched plan init Error!.", ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
         Status status;
@@ -121,15 +120,15 @@ AspbStatus asdBlasCgemvBatchedImpl(asdBlasHandle handle, CgemvBatchedImplParam i
         opDesc.specificParam = param;
         ASDSIP_LOG(DEBUG) << "OpDesc: " << opDesc.opName << "; OpDesc info: " << param.ToString();
 
-        SVector<aclTensor *> inTensors{implParam.A, implParam.x, plan.GetAclMaskTensor()};
-        SVector<aclTensor *> outTensors{implParam.y};
+        SVector<aclTensor*> inTensors{implParam.A, implParam.x, plan.GetAclMaskTensor()};
+        SVector<aclTensor*> outTensors{implParam.y};
 
         status = RunAsdOpsV2(plan.GetStream(), opDesc, inTensors, outTensors, plan.GetWorkspace());
         ASDSIP_ECHECK(status.Ok(), status.Message(), ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
         ASDSIP_LOG(INFO) << "Execute asdBlasCgemvBatched success.";
         return ErrorType::ACL_SUCCESS;
-    } catch (std::bad_cast &e) {
+    } catch (std::bad_cast& e) {
         // Handle the exception
         ASDSIP_ELOG(ErrorType::ACL_ERROR_INTERNAL_ERROR) << "CgemvBatched Error: " << e.what();
         return ErrorType::ACL_ERROR_INTERNAL_ERROR;
@@ -137,8 +136,9 @@ AspbStatus asdBlasCgemvBatchedImpl(asdBlasHandle handle, CgemvBatchedImplParam i
 }
 
 AspbStatus asdBlasHCgemvBatched(asdBlasHandle handle, asdBlasOperation_t trans, const int64_t m, const int64_t n,
-    const std::complex<op::fp16_t> &alpha, aclTensor *A, const int64_t lda, aclTensor *x, const int64_t incx,
-    const std::complex<op::fp16_t> &beta, aclTensor *y, const int64_t incy, const int64_t batchCount)
+                                const std::complex<op::fp16_t>& alpha, aclTensor* A, const int64_t lda, aclTensor* x,
+                                const int64_t incx, const std::complex<op::fp16_t>& beta, aclTensor* y,
+                                const int64_t incy, const int64_t batchCount)
 {
     (void)alpha;
     (void)beta;
@@ -159,27 +159,25 @@ AspbStatus asdBlasHCgemvBatched(asdBlasHandle handle, asdBlasOperation_t trans, 
 }
 
 AspbStatus asdBlasCgemvBatched(asdBlasHandle handle, asdBlasOperation_t trans, const int64_t m, const int64_t n,
-    const std::complex<float> &alpha, aclTensor *A, const int64_t lda, aclTensor *x, const int64_t incx,
-    const std::complex<float> &beta, aclTensor *y, const int64_t incy, const int64_t batchCount)
+                               const std::complex<float>& alpha, aclTensor* A, const int64_t lda, aclTensor* x,
+                               const int64_t incx, const std::complex<float>& beta, aclTensor* y, const int64_t incy,
+                               const int64_t batchCount)
 {
     (void)alpha;
     (void)beta;
     std::lock_guard<std::mutex> lock(blas_mtx);
     aclDataType dataType = aclDataType::ACL_DT_UNDEFINED;
     CHECK_STATUS_WITH_ACL_RETURN(aclGetDataType(x, &dataType), "asdBlasCgemvBatched: aclGetDataType");
-    ASDSIP_ECHECK(dataType == aclDataType::ACL_COMPLEX64,
-        "blas asdBlasCgemvBatched get wrong x tensor dtype.",
-        ErrorType::ACL_ERROR_UNSUPPORTED_DATA_TYPE);
+    ASDSIP_ECHECK(dataType == aclDataType::ACL_COMPLEX64, "blas asdBlasCgemvBatched get wrong x tensor dtype.",
+                  ErrorType::ACL_ERROR_UNSUPPORTED_DATA_TYPE);
 
     CHECK_STATUS_WITH_ACL_RETURN(aclGetDataType(y, &dataType), "asdBlasCgemvBatched: aclGetDataType");
-    ASDSIP_ECHECK(dataType == aclDataType::ACL_COMPLEX64,
-        "blas asdBlasCgemvBatched get wrong y tensor dtype.",
-        ErrorType::ACL_ERROR_UNSUPPORTED_DATA_TYPE);
+    ASDSIP_ECHECK(dataType == aclDataType::ACL_COMPLEX64, "blas asdBlasCgemvBatched get wrong y tensor dtype.",
+                  ErrorType::ACL_ERROR_UNSUPPORTED_DATA_TYPE);
 
     CHECK_STATUS_WITH_ACL_RETURN(aclGetDataType(A, &dataType), "asdBlasCgemvBatched: aclGetDataType");
-    ASDSIP_ECHECK(dataType == aclDataType::ACL_COMPLEX64,
-        "blas asdBlasCgemvBatched get wrong A tensor dtype.",
-        ErrorType::ACL_ERROR_UNSUPPORTED_DATA_TYPE);
+    ASDSIP_ECHECK(dataType == aclDataType::ACL_COMPLEX64, "blas asdBlasCgemvBatched get wrong A tensor dtype.",
+                  ErrorType::ACL_ERROR_UNSUPPORTED_DATA_TYPE);
 
     if (lda <= 0) {
         ASDSIP_LOG(INFO) << "blas asdBlasCgemvBatched get lda <= 0.";
@@ -195,21 +193,25 @@ AspbStatus asdBlasCgemvBatched(asdBlasHandle handle, asdBlasOperation_t trans, c
     return asdBlasCgemvBatchedImpl(handle, {trans, asdDataType_t::ASD_C_64F, m, n, batchCount, A, x, y});
 }
 
-AspbStatus asdBlasMakeCgemvBatchedPlanImpl(
-    asdBlasHandle handle, asdBlasOperation_t trans, asdDataType_t dtype, const int64_t m)
+AspbStatus asdBlasMakeCgemvBatchedPlanImpl(asdBlasHandle handle, asdBlasOperation_t trans, asdDataType_t dtype,
+                                           const int64_t m)
 {
     ASDSIP_ECHECK(handle != nullptr, "blas CgemvBatched Make Plan failed.", ErrorType::ACL_ERROR_INTERNAL_ERROR);
+    // 重复绑定守卫：handle 只能初始化一次，防止 MakePlan 对已绑定 handle 静默失败导致 UAF（issue #129）
+    ASDSIP_ECHECK(!BlasPlanCache::doesPlanExist(handle),
+                  "blas handle already bound to a plan, repeated initialization is not allowed.",
+                  ErrorType::ACL_ERROR_INVALID_PARAM);
     ASDSIP_ECHECK(m > 0, "blas asdBlasMakeCgemvBatchedPlan get m <= 0.", ErrorType::ACL_ERROR_INVALID_PARAM);
 
-    AsdSip::BlasCgemvBatchedPlan *plan = nullptr;
+    AsdSip::BlasCgemvBatchedPlan* plan = nullptr;
     try {
         plan = new AsdSip::BlasCgemvBatchedPlan(trans, dtype, m);
         BlasPlanCache::MakePlan(handle, plan);
-    } catch (const std::exception &e) {
+    } catch (const std::exception& e) {
         if (plan != nullptr) {
             delete plan;
         }
-        delete static_cast<int *>(handle);
+        delete static_cast<int*>(handle);
         ASDSIP_ELOG(ErrorType::ACL_ERROR_INTERNAL_ERROR) << "Make CgemvBatched Plan failed: " << e.what();
         throw std::runtime_error("Make CgemvBatched Plan failed.");
     }
@@ -233,4 +235,4 @@ AspbStatus asdBlasMakeCgemvBatchedPlan(asdBlasHandle handle, asdBlasOperation_t 
     std::lock_guard<std::mutex> lock(blas_mtx);
     return asdBlasMakeCgemvBatchedPlanImpl(handle, trans, asdDataType_t::ASD_C_64F, m);
 }
-}  // namespace AsdSip
+} // namespace AsdSip

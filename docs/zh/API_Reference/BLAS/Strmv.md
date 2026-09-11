@@ -194,6 +194,8 @@ AspbStatus asdBlasStrmv(
   - 输入的元素个数n当前覆盖支持[1,8192]。
   - 算子输入shape为[n,n]、[n]，输出shape为[n]。
   - 算子实际计算时，不支持ND高维度运算（不支持维度≥3的运算）。
+  - 当前仅支持紧凑存储与单位步长：要求 lda == n、incx == 1，传入其他取值将返回 ACL_ERROR_INVALID_PARAM。
+  - uplo 仅支持 ASDBLAS_FILL_MODE_LOWER / ASDBLAS_FILL_MODE_UPPER，传入 ASDBLAS_FILL_MODE_FULL 等其他取值将返回 ACL_ERROR_INVALID_PARAM。
 
 ## 调用示例
 

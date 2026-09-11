@@ -22,8 +22,8 @@ namespace sip_pta {
 /**
  * @brief 复数矩阵-向量批量乘加算子 (CgemvBatched): y = alpha * op(A) * x + beta * y (Batch 模式)
  */
-at::Tensor asdBlasCgemvBatched(const at::Tensor& A, const at::Tensor& x, at::Tensor& y,
-                               const at::Scalar& alpha, const at::Scalar& beta, int64_t trans)
+at::Tensor asdBlasCgemvBatched(const at::Tensor& A, const at::Tensor& x, at::Tensor& y, const at::Scalar& alpha,
+                               const at::Scalar& beta, int64_t trans)
 {
     // 1. 基本校验：支持 ComplexFloat 和 ComplexHalf
     TORCH_CHECK((A.scalar_type() == at::kComplexFloat || A.scalar_type() == at::kComplexHalf) &&
@@ -54,11 +54,11 @@ at::Tensor asdBlasCgemvBatched(const at::Tensor& A, const at::Tensor& x, at::Ten
         std::complex<float> b_std(b_c10.real(), b_c10.imag());
 
         auto makePlan = [opA, m_val](AsdSip::asdBlasHandle handle) {
-            AsdSip::asdBlasMakeCgemvBatchedPlan(handle, opA, m_val);
+            return AsdSip::asdBlasMakeCgemvBatchedPlan(handle, opA, m_val);
         };
 
-        EXEC_BLAS_FUNC(AsdSip::asdBlasCgemvBatched, makePlan, params, opA, m_val, n_val, a_std,
-                       acl_a, lda, x, incx, b_std, y, incy, batchCount);
+        EXEC_BLAS_FUNC(AsdSip::asdBlasCgemvBatched, makePlan, params, opA, m_val, n_val, a_std, acl_a, lda, x, incx,
+                       b_std, y, incy, batchCount);
     } else {
         // 半精度逻辑 (Complex32)
         // 注意：此处需要将 Scalar 转换为半精度复数，op::fp16_t 是底层定义
@@ -69,11 +69,11 @@ at::Tensor asdBlasCgemvBatched(const at::Tensor& A, const at::Tensor& x, at::Ten
         std::complex<op::fp16_t> b_std(b_c10.real().x, b_c10.imag().x);
 
         auto makePlan = [opA, m_val](AsdSip::asdBlasHandle handle) {
-            AsdSip::asdBlasMakeHCgemvBatchedPlan(handle, opA, m_val);
+            return AsdSip::asdBlasMakeHCgemvBatchedPlan(handle, opA, m_val);
         };
 
-        EXEC_BLAS_FUNC(AsdSip::asdBlasHCgemvBatched, makePlan, params, opA, m_val, n_val, a_std,
-                       acl_a, lda, x, incx, b_std, y, incy, batchCount);
+        EXEC_BLAS_FUNC(AsdSip::asdBlasHCgemvBatched, makePlan, params, opA, m_val, n_val, a_std, acl_a, lda, x, incx,
+                       b_std, y, incy, batchCount);
     }
 
     return y;
@@ -88,8 +88,5 @@ TORCH_LIBRARY_FRAGMENT(torch_sip, m)
           "trans) -> Tensor(a!)");
 }
 
-TORCH_LIBRARY_IMPL(torch_sip, PrivateUse1, m)
-{
-    m.impl("asd_blas_cgemv_batched", &asdBlasCgemvBatched);
-}
+TORCH_LIBRARY_IMPL(torch_sip, PrivateUse1, m) { m.impl("asd_blas_cgemv_batched", &asdBlasCgemvBatched); }
 } // namespace sip_pta

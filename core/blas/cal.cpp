@@ -22,25 +22,25 @@ struct CalImplParam {
     int64_t n;
     float alphaReal;
     float alphaImag;
-    aclTensor *x;
+    aclTensor* x;
     int64_t incx;
 };
 
 AspbStatus asdBlasCalImpl(OpParam::Cal::CalType calType, asdBlasHandle handle, CalImplParam implParam)
 {
-    ASDSIP_ECHECK(
-        BlasPlanCache::doesPlanExist(handle), "blas Cal get cached plan failed.", ErrorType::ACL_ERROR_INTERNAL_ERROR);
+    ASDSIP_ECHECK(BlasPlanCache::doesPlanExist(handle), "blas Cal get cached plan failed.",
+                  ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
-    int64_t *storageDims = nullptr;
+    int64_t* storageDims = nullptr;
     uint64_t storageDimsNum = 0;
-    CHECK_STATUS_WITH_ACL_RETURN(
-        aclGetStorageShape(implParam.x, &storageDims, &storageDimsNum), "asdBlasCalImpl: aclGetStorageShape");
-    int64_t xSize = calType == OpParam::Cal::CalType::CAL_CSSCAL ? *storageDims * ELEMENTS_EACH_COMPLEX64 : *storageDims;
+    CHECK_STATUS_WITH_ACL_RETURN(aclGetStorageShape(implParam.x, &storageDims, &storageDimsNum),
+                                 "asdBlasCalImpl: aclGetStorageShape");
+    int64_t xSize = calType == OpParam::Cal::CalType::CAL_CSSCAL ? *storageDims * ELEMENTS_EACH_COMPLEX64 :
+                                                                   *storageDims;
     if (xSize != implParam.n) {
         delete[] storageDims;
         storageDims = nullptr;
-        ASDSIP_ELOG(ErrorType::ACL_ERROR_OP_INPUT_NOT_MATCH)
-            << "Input size mismatch between x and implParam.n.";
+        ASDSIP_ELOG(ErrorType::ACL_ERROR_OP_INPUT_NOT_MATCH) << "Input size mismatch between x and implParam.n.";
         return ErrorType::ACL_ERROR_OP_INPUT_NOT_MATCH;
     }
 
@@ -66,13 +66,13 @@ AspbStatus asdBlasCalImpl(OpParam::Cal::CalType calType, asdBlasHandle handle, C
     ASDSIP_LOG(DEBUG) << "OpDesc: " << opDesc.opName << "; OpDesc info: " << param.ToString();
 
     try {
-        AsdSip::BlasCalPlan &plan = dynamic_cast<AsdSip::BlasCalPlan &>(BlasPlanCache::getPlan(handle));
+        AsdSip::BlasCalPlan& plan = dynamic_cast<AsdSip::BlasCalPlan&>(BlasPlanCache::getPlan(handle));
         ASDSIP_ECHECK(plan.IsInitialized(), "Cal plan init Error!.", ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
-        aclTensor *mask = plan.GetAclMaskTensor();
+        aclTensor* mask = plan.GetAclMaskTensor();
         ASDSIP_ECHECK(mask != nullptr, "blas cal mask tensor is null!", ErrorType::ACL_ERROR_INTERNAL_ERROR);
-        SVector<aclTensor *> inTensors = {implParam.x};
-        SVector<aclTensor *> outTensors;
+        SVector<aclTensor*> inTensors = {implParam.x};
+        SVector<aclTensor*> outTensors;
         if (calType == OpParam::Cal::CalType::CAL_CSCAL) {
             inTensors.push_back(mask);
         }
@@ -82,24 +82,23 @@ AspbStatus asdBlasCalImpl(OpParam::Cal::CalType calType, asdBlasHandle handle, C
 
         ASDSIP_LOG(INFO) << "Execute asdBlasCal success.";
         return ErrorType::ACL_SUCCESS;
-    } catch (std::bad_cast &e) {
+    } catch (std::bad_cast& e) {
         // Handle the BlasCal exception ..
         ASDSIP_ELOG(ErrorType::ACL_ERROR_INTERNAL_ERROR) << "BlasCal Error: " << e.what();
         return ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }
 }
 
-AspbStatus asdBlasSscal(asdBlasHandle handle, const int64_t n, const float &alpha, aclTensor *x, const int64_t incx)
+AspbStatus asdBlasSscal(asdBlasHandle handle, const int64_t n, const float& alpha, aclTensor* x, const int64_t incx)
 {
     std::lock_guard<std::mutex> lock(blas_mtx);
     aclDataType dataType = aclDataType::ACL_DT_UNDEFINED;
     CHECK_STATUS_WITH_ACL_RETURN(aclGetDataType(x, &dataType), "asdBlasSscal: aclGetDataType");
 
-    ASDSIP_ECHECK(dataType == aclDataType::ACL_FLOAT,
-        "blas asdBlasSscal get wrong x tensor dtype.",
-        ErrorType::ACL_ERROR_UNSUPPORTED_DATA_TYPE);
-    ASDSIP_ECHECK(
-        n > 0 && n <= UINT32_MAX, "blas asdBlasSscal get n <= 0 or n > 2^32.", ErrorType::ACL_ERROR_INVALID_PARAM);
+    ASDSIP_ECHECK(dataType == aclDataType::ACL_FLOAT, "blas asdBlasSscal get wrong x tensor dtype.",
+                  ErrorType::ACL_ERROR_UNSUPPORTED_DATA_TYPE);
+    ASDSIP_ECHECK(n > 0 && n <= UINT32_MAX, "blas asdBlasSscal get n <= 0 or n > 2^32.",
+                  ErrorType::ACL_ERROR_INVALID_PARAM);
     float alphaReal = alpha;
     float alphaImag = 0.0;
     OpParam::Cal::CalType calType = OpParam::Cal::CalType::CAL_SSCAL;
@@ -107,34 +106,32 @@ AspbStatus asdBlasSscal(asdBlasHandle handle, const int64_t n, const float &alph
     return asdBlasCalImpl(calType, handle, {n, alphaReal, alphaImag, x, incx});
 }
 
-AspbStatus asdBlasCsscal(asdBlasHandle handle, const int64_t n, const float &alpha, aclTensor *x, const int64_t incx)
+AspbStatus asdBlasCsscal(asdBlasHandle handle, const int64_t n, const float& alpha, aclTensor* x, const int64_t incx)
 {
     std::lock_guard<std::mutex> lock(blas_mtx);
     aclDataType dataType = aclDataType::ACL_DT_UNDEFINED;
     CHECK_STATUS_WITH_ACL_RETURN(aclGetDataType(x, &dataType), "asdBlasCsscal: aclGetDataType");
-    ASDSIP_ECHECK(dataType == aclDataType::ACL_COMPLEX64,
-        "blas asdBlasCsscal get wrong x tensor dtype.",
-        ErrorType::ACL_ERROR_UNSUPPORTED_DATA_TYPE);
-    ASDSIP_ECHECK(
-        n > 0 && n <= UINT32_MAX, "blas asdBlasCsscal get n <= 0 or n > 2^32.", ErrorType::ACL_ERROR_INVALID_PARAM);
+    ASDSIP_ECHECK(dataType == aclDataType::ACL_COMPLEX64, "blas asdBlasCsscal get wrong x tensor dtype.",
+                  ErrorType::ACL_ERROR_UNSUPPORTED_DATA_TYPE);
+    ASDSIP_ECHECK(n > 0 && n <= UINT32_MAX, "blas asdBlasCsscal get n <= 0 or n > 2^32.",
+                  ErrorType::ACL_ERROR_INVALID_PARAM);
     float alphaReal = alpha;
     float alphaImag = 0.0;
     OpParam::Cal::CalType calType = OpParam::Cal::CalType::CAL_CSSCAL;
     return asdBlasCalImpl(calType, handle, {ELEMENTS_EACH_COMPLEX64 * n, alphaReal, alphaImag, x, incx});
 }
 
-AspbStatus asdBlasCscal(
-    asdBlasHandle handle, const int64_t n, const std::complex<float> &alpha, aclTensor *x, const int64_t incx)
+AspbStatus asdBlasCscal(asdBlasHandle handle, const int64_t n, const std::complex<float>& alpha, aclTensor* x,
+                        const int64_t incx)
 {
     std::lock_guard<std::mutex> lock(blas_mtx);
     ASDSIP_ECHECK(x != nullptr, "blas cscal tensor x is null!", ErrorType::ACL_ERROR_INTERNAL_ERROR);
     aclDataType dataType = aclDataType::ACL_DT_UNDEFINED;
     CHECK_STATUS_WITH_ACL_RETURN(aclGetDataType(x, &dataType), "asdBlasCscal: aclGetDataType");
-    ASDSIP_ECHECK(dataType == aclDataType::ACL_COMPLEX64,
-        "blas asdBlasCscal get wrong x tensor dtype.",
-        ErrorType::ACL_ERROR_UNSUPPORTED_DATA_TYPE);
-    ASDSIP_ECHECK(
-        n > 0 && n <= UINT32_MAX, "blas asdBlasCscal get n <= 0 or n > 2^32.", ErrorType::ACL_ERROR_INVALID_PARAM);
+    ASDSIP_ECHECK(dataType == aclDataType::ACL_COMPLEX64, "blas asdBlasCscal get wrong x tensor dtype.",
+                  ErrorType::ACL_ERROR_UNSUPPORTED_DATA_TYPE);
+    ASDSIP_ECHECK(n > 0 && n <= UINT32_MAX, "blas asdBlasCscal get n <= 0 or n > 2^32.",
+                  ErrorType::ACL_ERROR_INVALID_PARAM);
     float alphaReal = alpha.real();
     float alphaImag = alpha.imag();
     OpParam::Cal::CalType calType = OpParam::Cal::CalType::CAL_CSCAL;
@@ -145,15 +142,19 @@ AspbStatus asdBlasMakeCalPlan(asdBlasHandle handle)
 {
     std::lock_guard<std::mutex> lock(blas_mtx);
     ASDSIP_ECHECK(handle != nullptr, "blas asdBlasMakeCalPlan Fail.", ErrorType::ACL_ERROR_INTERNAL_ERROR);
-    AsdSip::BlasCalPlan *plan = nullptr;
+    // 重复绑定守卫：handle 只能初始化一次，防止 MakePlan 对已绑定 handle 静默失败导致 UAF（issue #129）
+    ASDSIP_ECHECK(!BlasPlanCache::doesPlanExist(handle),
+                  "blas handle already bound to a plan, repeated initialization is not allowed.",
+                  ErrorType::ACL_ERROR_INVALID_PARAM);
+    AsdSip::BlasCalPlan* plan = nullptr;
     try {
         plan = new AsdSip::BlasCalPlan();
         BlasPlanCache::MakePlan(handle, plan);
-    } catch (const std::exception &e) {
+    } catch (const std::exception& e) {
         if (plan != nullptr) {
             delete plan;
         }
-        delete static_cast<int *>(handle);
+        delete static_cast<int*>(handle);
         ASDSIP_ELOG(ErrorType::ACL_ERROR_INTERNAL_ERROR) << "Make Cal Plan failed: " << e.what();
         throw std::runtime_error("Make Cal Plan failed.");
     }
@@ -165,4 +166,4 @@ AspbStatus asdBlasMakeCalPlan(asdBlasHandle handle)
     plan->MarkInitialized();
     return ErrorType::ACL_SUCCESS;
 }
-}  // namespace AsdSip
+} // namespace AsdSip

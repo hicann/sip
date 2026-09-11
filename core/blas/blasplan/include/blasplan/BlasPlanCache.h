@@ -13,13 +13,14 @@
 
 namespace BlasPlanCache {
 
-void MakePlan(AsdSip::asdBlasHandle &handle, AsdSip::BlasPlan *plan);
+// 绑定 handle 与 plan；handle 已绑定 plan 时返回 false 且不接管 plan 所有权（issue #129）
+bool MakePlan(AsdSip::asdBlasHandle& handle, AsdSip::BlasPlan* plan);
 
 AsdSip::asdBlasHandle InitHandle();
 
-bool doesPlanExist(AsdSip::asdBlasHandle &handle);
+bool doesPlanExist(AsdSip::asdBlasHandle& handle);
 
-AsdSip::BlasPlan &getPlan(AsdSip::asdBlasHandle &handle);
+AsdSip::BlasPlan& getPlan(AsdSip::asdBlasHandle& handle);
 
-void destroy_plan(AsdSip::asdBlasHandle &handle);
-}
+void destroy_plan(AsdSip::asdBlasHandle& handle);
+} // namespace BlasPlanCache

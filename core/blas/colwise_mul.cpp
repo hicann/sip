@@ -19,9 +19,9 @@ namespace AsdSip {
 struct ColwiseMuParam {
     int64_t m;
     int64_t n;
-    aclTensor *mat;
-    aclTensor *vec;
-    aclTensor *result;
+    aclTensor* mat;
+    aclTensor* vec;
+    aclTensor* result;
 };
 
 AspbStatus ColwiseMulDtypeCheck(struct ColwiseMuParam parm)
@@ -45,12 +45,12 @@ AspbStatus ColwiseMulShapeCheck(struct ColwiseMuParam parm)
     return ErrorType::ACL_SUCCESS;
 }
 
-AspbStatus asdBlasColwiseMul(asdBlasHandle handle, const int64_t m, const int64_t n, aclTensor *mat,
-                             aclTensor *vec, aclTensor *result)
+AspbStatus asdBlasColwiseMul(asdBlasHandle handle, const int64_t m, const int64_t n, aclTensor* mat, aclTensor* vec,
+                             aclTensor* result)
 {
     std::lock_guard<std::mutex> lock(blas_mtx);
-    ASDSIP_ECHECK(BlasPlanCache::doesPlanExist(handle),
-                  "blas ColwiseMul get cached plan failed.", ErrorType::ACL_ERROR_INTERNAL_ERROR);
+    ASDSIP_ECHECK(BlasPlanCache::doesPlanExist(handle), "blas ColwiseMul get cached plan failed.",
+                  ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
     ColwiseMuParam implParam = {m, n, mat, vec, result};
     ASDSIP_CHECK(ColwiseMulDtypeCheck(implParam) == ErrorType::ACL_SUCCESS,
@@ -59,7 +59,7 @@ AspbStatus asdBlasColwiseMul(asdBlasHandle handle, const int64_t m, const int64_
                  "blas asdBlasColwiseMul shape check failed.", return ErrorType::ACL_ERROR_OP_INPUT_NOT_MATCH);
 
     try {
-        AsdSip::BlasColwiseMulPlan &plan = dynamic_cast<AsdSip::BlasColwiseMulPlan &>(BlasPlanCache::getPlan(handle));
+        AsdSip::BlasColwiseMulPlan& plan = dynamic_cast<AsdSip::BlasColwiseMulPlan&>(BlasPlanCache::getPlan(handle));
         ASDSIP_ECHECK(plan.IsInitialized(), "ColwiseMul plan init Error!.", ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
         Status status;
@@ -71,15 +71,15 @@ AspbStatus asdBlasColwiseMul(asdBlasHandle handle, const int64_t m, const int64_
         opDesc.specificParam = param;
         ASDSIP_LOG(DEBUG) << "OpDesc: " << opDesc.opName << "; OpDesc info: " << param.ToString();
 
-        SVector<aclTensor *> colwiseMulInTensors{mat, vec, plan.augAclTensor};
-        SVector<aclTensor *> colwiseMulOutTensors{result};
+        SVector<aclTensor*> colwiseMulInTensors{mat, vec, plan.augAclTensor};
+        SVector<aclTensor*> colwiseMulOutTensors{result};
 
         status = RunAsdOpsV2(plan.GetStream(), opDesc, colwiseMulInTensors, colwiseMulOutTensors, plan.GetWorkspace());
         ASDSIP_ECHECK(status.Ok(), status.Message(), ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
         ASDSIP_LOG(INFO) << "Execute asdBlasColwiseMul success.";
         return ErrorType::ACL_SUCCESS;
-    } catch (std::bad_cast &e) {
+    } catch (std::bad_cast& e) {
         // Handle the BlasColwiseMul exception
         ASDSIP_ELOG(ErrorType::ACL_ERROR_INTERNAL_ERROR) << "ColwiseMul Error: " << e.what();
         return ErrorType::ACL_ERROR_INTERNAL_ERROR;
@@ -90,7 +90,11 @@ AspbStatus asdBlasMakeColwiseMulPlan(asdBlasHandle handle)
 {
     std::lock_guard<std::mutex> lock(blas_mtx);
     ASDSIP_ECHECK(handle != nullptr, "blas MakeColwiseMulPlan Fail.", ErrorType::ACL_ERROR_INTERNAL_ERROR);
-    AsdSip::BlasColwiseMulPlan *plan = nullptr;
+    // 重复绑定守卫：handle 只能初始化一次，防止 MakePlan 对已绑定 handle 静默失败导致 UAF（issue #129）
+    ASDSIP_ECHECK(!BlasPlanCache::doesPlanExist(handle),
+                  "blas handle already bound to a plan, repeated initialization is not allowed.",
+                  ErrorType::ACL_ERROR_INVALID_PARAM);
+    AsdSip::BlasColwiseMulPlan* plan = nullptr;
     try {
         plan = new AsdSip::BlasColwiseMulPlan();
         BlasPlanCache::MakePlan(handle, plan);
@@ -104,10 +108,11 @@ AspbStatus asdBlasMakeColwiseMulPlan(asdBlasHandle handle)
     }
     if (plan->CreateTensor() != ErrorType::ACL_SUCCESS) {
         plan->MarkFailed();
-        ASDSIP_ELOG(ErrorType::ACL_ERROR_INTERNAL_ERROR) << "Fail to create blas asdBlasMakeColwiseMulPlan mask tensor.";
+        ASDSIP_ELOG(ErrorType::ACL_ERROR_INTERNAL_ERROR)
+            << "Fail to create blas asdBlasMakeColwiseMulPlan mask tensor.";
         return ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }
     plan->MarkInitialized();
     return ErrorType::ACL_SUCCESS;
 }
-}
+} // namespace AsdSip

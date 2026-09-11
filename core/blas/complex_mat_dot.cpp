@@ -16,9 +16,9 @@ using namespace Mki;
 
 namespace AsdSip {
 struct ComplexMatDotTensorParam {
-    const aclTensor *matx;
-    const aclTensor *maty;
-    const aclTensor *result;
+    const aclTensor* matx;
+    const aclTensor* maty;
+    const aclTensor* result;
 };
 
 AspbStatus ComplexMatDotDtypeCheck(struct ComplexMatDotTensorParam parm)
@@ -33,8 +33,8 @@ AspbStatus ComplexMatDotDtypeCheck(struct ComplexMatDotTensorParam parm)
 AspbStatus ComplexMatDotShapeCheck(ComplexMatDotTensorParam param, const int64_t m, const int64_t n)
 {
     ASDSIP_ECHECK(m > 0 && n > 0 && m <= UINT32_MAX && n <= UINT32_MAX,
-        "blas asdBlasComplexMatDot get m <= 0 || n <= 0 or m or n > 2^32.",
-        ErrorType::ACL_ERROR_INVALID_PARAM);
+                  "blas asdBlasComplexMatDot get m <= 0 || n <= 0 or m or n > 2^32.",
+                  ErrorType::ACL_ERROR_INVALID_PARAM);
     auto ret = ErrorType::ACL_ERROR_OP_INPUT_NOT_MATCH;
     SIP_OP_CHECK_INVALID_SHAPE(param.matx, ret);
     SIP_OP_CHECK_INVALID_SHAPE(param.maty, ret);
@@ -42,26 +42,23 @@ AspbStatus ComplexMatDotShapeCheck(ComplexMatDotTensorParam param, const int64_t
     return ErrorType::ACL_SUCCESS;
 }
 
-AspbStatus asdBlasComplexMatDot(
-    asdBlasHandle handle, const int64_t m, const int64_t n, aclTensor *matx, aclTensor *maty, aclTensor *result)
+AspbStatus asdBlasComplexMatDot(asdBlasHandle handle, const int64_t m, const int64_t n, aclTensor* matx,
+                                aclTensor* maty, aclTensor* result)
 {
     std::lock_guard<std::mutex> lock(blas_mtx);
-    ASDSIP_ECHECK(BlasPlanCache::doesPlanExist(handle),
-        "blas ComplexMatDot get cached plan failed.",
-        ErrorType::ACL_ERROR_INTERNAL_ERROR);
+    ASDSIP_ECHECK(BlasPlanCache::doesPlanExist(handle), "blas ComplexMatDot get cached plan failed.",
+                  ErrorType::ACL_ERROR_INTERNAL_ERROR);
     struct ComplexMatDotTensorParam parm {
         matx, maty, result
     };
     ASDSIP_CHECK(ComplexMatDotDtypeCheck(parm) == ErrorType::ACL_SUCCESS,
-        "blas asdBlasComplexMatDot dtype check failed.",
-        return ErrorType::ACL_ERROR_UNSUPPORTED_DATA_TYPE);
+                 "blas asdBlasComplexMatDot dtype check failed.", return ErrorType::ACL_ERROR_UNSUPPORTED_DATA_TYPE);
     ASDSIP_CHECK(ComplexMatDotShapeCheck(parm, m, n) == ErrorType::ACL_SUCCESS,
-        "blas asdBlasComplexMatDot shape check failed.",
-        return ErrorType::ACL_ERROR_OP_INPUT_NOT_MATCH);
+                 "blas asdBlasComplexMatDot shape check failed.", return ErrorType::ACL_ERROR_OP_INPUT_NOT_MATCH);
 
     try {
-        AsdSip::BlasComplexMatDotPlan &plan =
-            dynamic_cast<AsdSip::BlasComplexMatDotPlan &>(BlasPlanCache::getPlan(handle));
+        AsdSip::BlasComplexMatDotPlan& plan = dynamic_cast<AsdSip::BlasComplexMatDotPlan&>(
+            BlasPlanCache::getPlan(handle));
         ASDSIP_ECHECK(plan.IsInitialized(), "ComplexMatDot plan init Error!.", ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
         Status status;
@@ -73,15 +70,15 @@ AspbStatus asdBlasComplexMatDot(
         opDesc.specificParam = param;
         ASDSIP_LOG(DEBUG) << "OpDesc: " << opDesc.opName << "; OpDesc info: " << param.ToString();
 
-        SVector<aclTensor *> complexMatInTensors{matx, maty, plan.augAclTensor};
-        SVector<aclTensor *> complexMatOutTensors{result};
+        SVector<aclTensor*> complexMatInTensors{matx, maty, plan.augAclTensor};
+        SVector<aclTensor*> complexMatOutTensors{result};
 
         status = RunAsdOpsV2(plan.GetStream(), opDesc, complexMatInTensors, complexMatOutTensors, plan.GetWorkspace());
         ASDSIP_ECHECK(status.Ok(), status.Message(), ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
         ASDSIP_LOG(INFO) << "Execute asdBlasComplexMatDot success.";
         return ErrorType::ACL_SUCCESS;
-    } catch (std::bad_cast &e) {
+    } catch (std::bad_cast& e) {
         // Handle the ComplexMat exception
         ASDSIP_ELOG(ErrorType::ACL_ERROR_INTERNAL_ERROR) << "ComplexMatDot Error: " << e.what();
         return ErrorType::ACL_ERROR_INTERNAL_ERROR;
@@ -92,15 +89,19 @@ AspbStatus asdBlasMakeComplexMatDotPlan(asdBlasHandle handle)
 {
     std::lock_guard<std::mutex> lock(blas_mtx);
     ASDSIP_ECHECK(handle != nullptr, "blas MakeComplexMatDotPlan Fail.", ErrorType::ACL_ERROR_INTERNAL_ERROR);
-    AsdSip::BlasComplexMatDotPlan *plan = nullptr;
+    // 重复绑定守卫：handle 只能初始化一次，防止 MakePlan 对已绑定 handle 静默失败导致 UAF（issue #129）
+    ASDSIP_ECHECK(!BlasPlanCache::doesPlanExist(handle),
+                  "blas handle already bound to a plan, repeated initialization is not allowed.",
+                  ErrorType::ACL_ERROR_INVALID_PARAM);
+    AsdSip::BlasComplexMatDotPlan* plan = nullptr;
     try {
         plan = new AsdSip::BlasComplexMatDotPlan();
         BlasPlanCache::MakePlan(handle, plan);
-    } catch (const std::exception &e) {
+    } catch (const std::exception& e) {
         if (plan != nullptr) {
             delete plan;
         }
-        delete static_cast<int *>(handle);
+        delete static_cast<int*>(handle);
         ASDSIP_ELOG(ErrorType::ACL_ERROR_INTERNAL_ERROR) << "Make ComplexMatDot Plan failed: " << e.what();
         throw std::runtime_error("Make ComplexMatDot Plan failed.");
     }
@@ -113,4 +114,4 @@ AspbStatus asdBlasMakeComplexMatDotPlan(asdBlasHandle handle)
     plan->MarkInitialized();
     return ErrorType::ACL_SUCCESS;
 }
-}  // namespace AsdSip
+} // namespace AsdSip

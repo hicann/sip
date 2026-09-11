@@ -17,9 +17,9 @@ using namespace Mki;
 
 namespace AsdSip {
 struct CgercTensorParam {
-    const aclTensor *x;
-    const aclTensor *y;
-    const aclTensor *A;
+    const aclTensor* x;
+    const aclTensor* y;
+    const aclTensor* A;
 };
 
 AspbStatus CgercDtypeCheck(struct CgercTensorParam parm)
@@ -34,31 +34,28 @@ AspbStatus CgercDtypeCheck(struct CgercTensorParam parm)
 AspbStatus CgercShapeCheck(struct CgercTensorParam parm, const int64_t m, const int64_t n)
 {
     ASDSIP_ECHECK(m > 0 && n > 0 && m <= UINT32_MAX && n <= UINT32_MAX,
-        "blas Cgerc get m <= 0 || n <= 0 or m or n > 2^32.",
-        ErrorType::ACL_ERROR_INVALID_PARAM);
+                  "blas Cgerc get m <= 0 || n <= 0 or m or n > 2^32.", ErrorType::ACL_ERROR_INVALID_PARAM);
     SIP_OP_CHECK_NUM_NOT_MATCH(parm.A, m * n, ErrorType::ACL_ERROR_OP_INPUT_NOT_MATCH);
     SIP_OP_CHECK_NUM_NOT_MATCH(parm.x, m, ErrorType::ACL_ERROR_OP_INPUT_NOT_MATCH);
     SIP_OP_CHECK_NUM_NOT_MATCH(parm.y, n, ErrorType::ACL_ERROR_OP_INPUT_NOT_MATCH);
     return ErrorType::ACL_SUCCESS;
 }
 
-AspbStatus asdBlasCgerc(asdBlasHandle handle, const int64_t m, const int64_t n, const std::complex<float> &alpha,
-    aclTensor *x, const int64_t incx, aclTensor *y, const int64_t incy, aclTensor *A, const int64_t lda)
+AspbStatus asdBlasCgerc(asdBlasHandle handle, const int64_t m, const int64_t n, const std::complex<float>& alpha,
+                        aclTensor* x, const int64_t incx, aclTensor* y, const int64_t incy, aclTensor* A,
+                        const int64_t lda)
 {
     std::lock_guard<std::mutex> lock(blas_mtx);
-    ASDSIP_ECHECK(BlasPlanCache::doesPlanExist(handle),
-        "blas Cgerc get cached plan failed.",
-        ErrorType::ACL_ERROR_INTERNAL_ERROR);
+    ASDSIP_ECHECK(BlasPlanCache::doesPlanExist(handle), "blas Cgerc get cached plan failed.",
+                  ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
     struct CgercTensorParam parm {
         x, y, A
     };
-    ASDSIP_CHECK(CgercDtypeCheck(parm) == ErrorType::ACL_SUCCESS,
-        "blas asdBlasCgerc dtype check failed.",
-        return ErrorType::ACL_ERROR_UNSUPPORTED_DATA_TYPE);
-    ASDSIP_CHECK(CgercShapeCheck(parm, m, n) == ErrorType::ACL_SUCCESS,
-        "blas asdBlasCgerc shape check failed.",
-        return ErrorType::ACL_ERROR_OP_INPUT_NOT_MATCH);
+    ASDSIP_CHECK(CgercDtypeCheck(parm) == ErrorType::ACL_SUCCESS, "blas asdBlasCgerc dtype check failed.",
+                 return ErrorType::ACL_ERROR_UNSUPPORTED_DATA_TYPE);
+    ASDSIP_CHECK(CgercShapeCheck(parm, m, n) == ErrorType::ACL_SUCCESS, "blas asdBlasCgerc shape check failed.",
+                 return ErrorType::ACL_ERROR_OP_INPUT_NOT_MATCH);
 
     if (incx != 1) {
         ASDSIP_LOG(INFO) << "blas asdBlasCgerc get incx != 1.";
@@ -71,7 +68,7 @@ AspbStatus asdBlasCgerc(asdBlasHandle handle, const int64_t m, const int64_t n, 
     }
 
     try {
-        AsdSip::BlasCgercPlan &plan = dynamic_cast<AsdSip::BlasCgercPlan &>(BlasPlanCache::getPlan(handle));
+        AsdSip::BlasCgercPlan& plan = dynamic_cast<AsdSip::BlasCgercPlan&>(BlasPlanCache::getPlan(handle));
         ASDSIP_ECHECK(plan.IsInitialized(), "Cgerc plan init Error!.", ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
         OpDesc opDesc;
@@ -86,14 +83,14 @@ AspbStatus asdBlasCgerc(asdBlasHandle handle, const int64_t m, const int64_t n, 
         opDesc.specificParam = param;
         ASDSIP_LOG(DEBUG) << "OpDesc: " << opDesc.opName << "; OpDesc info: " << param.ToString();
 
-        SVector<aclTensor *> inTensors{x, y, plan.gatherAclOffset};
-        SVector<aclTensor *> outTensors{A};
+        SVector<aclTensor*> inTensors{x, y, plan.gatherAclOffset};
+        SVector<aclTensor*> outTensors{A};
         Status status = RunAsdOpsV2(plan.GetStream(), opDesc, inTensors, outTensors, plan.GetWorkspace());
         ASDSIP_ECHECK(status.Ok(), status.Message(), ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
         ASDSIP_LOG(INFO) << "Execute asdBlasCgerc success.";
         return ErrorType::ACL_SUCCESS;
-    } catch (std::bad_cast &e) {
+    } catch (std::bad_cast& e) {
         // Handle the op cgerc exception
         ASDSIP_ELOG(ErrorType::ACL_ERROR_INTERNAL_ERROR) << "Cgerc Error: " << e.what();
         return ErrorType::ACL_ERROR_INTERNAL_ERROR;
@@ -104,16 +101,20 @@ AspbStatus asdBlasMakeCgercPlan(asdBlasHandle handle)
 {
     std::lock_guard<std::mutex> lock(blas_mtx);
     ASDSIP_ECHECK(handle != nullptr, "blas MakeCgercPlan Fail.", ErrorType::ACL_ERROR_INTERNAL_ERROR);
+    // 重复绑定守卫：handle 只能初始化一次，防止 MakePlan 对已绑定 handle 静默失败导致 UAF（issue #129）
+    ASDSIP_ECHECK(!BlasPlanCache::doesPlanExist(handle),
+                  "blas handle already bound to a plan, repeated initialization is not allowed.",
+                  ErrorType::ACL_ERROR_INVALID_PARAM);
 
-    AsdSip::BlasCgercPlan *plan = nullptr;
+    AsdSip::BlasCgercPlan* plan = nullptr;
     try {
         plan = new AsdSip::BlasCgercPlan();
         BlasPlanCache::MakePlan(handle, plan);
-    } catch (const std::exception &e) {
+    } catch (const std::exception& e) {
         if (plan != nullptr) {
             delete plan;
         }
-        delete static_cast<int *>(handle);
+        delete static_cast<int*>(handle);
         ASDSIP_ELOG(ErrorType::ACL_ERROR_INTERNAL_ERROR) << "Make Cgerc Plan failed: " << e.what();
         throw std::runtime_error("Make Cgerc Plan failed.");
     }
@@ -125,4 +126,4 @@ AspbStatus asdBlasMakeCgercPlan(asdBlasHandle handle)
     plan->MarkInitialized();
     return ErrorType::ACL_SUCCESS;
 }
-}  // namespace AsdSip
+} // namespace AsdSip

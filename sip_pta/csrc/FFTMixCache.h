@@ -30,15 +30,11 @@ struct FFTParam {
     int64_t batchSize = 0;
     asdFft1dDimType dimType = asdFft1dDimType::ASCEND_FFT_HORIZONTAL;
 };
-inline bool operator==(const FFTParam &one, const FFTParam &other)
+inline bool operator==(const FFTParam& one, const FFTParam& other)
 {
-    return one.fftXSize == other.fftXSize
-        && one.fftYSize == other.fftYSize
-        && one.fftZSize == other.fftZSize
-        && one.fftType == other.fftType
-        && one.direction == other.direction
-        && one.batchSize == other.batchSize
-        && one.dimType == other.dimType;
+    return one.fftXSize == other.fftXSize && one.fftYSize == other.fftYSize && one.fftZSize == other.fftZSize &&
+           one.fftType == other.fftType && one.direction == other.direction && one.batchSize == other.batchSize &&
+           one.dimType == other.dimType;
 }
 // For torch_npu._C
 asdFftHandle getFftHandle(FFTParam& param);
@@ -50,10 +46,7 @@ struct FFTCacheValue {
     asdFftHandle handle = nullptr;
 };
 
-inline bool operator==(const FFTCacheKey& one, const FFTCacheKey& other)
-{
-    return one.fftParam == other.fftParam;
-}
+inline bool operator==(const FFTCacheKey& one, const FFTCacheKey& other) { return one.fftParam == other.fftParam; }
 
 class FFTMixCache {
 public:
@@ -74,21 +67,29 @@ private:
 
 inline asdFftHandle createFftHandle(const FFTParam& param)
 {
-    asdFftHandle handle;
-    asdFftCreate(handle);
+    asdFftHandle handle = nullptr;
+    if (asdFftCreate(handle) != AsdSip::ErrorType::ACL_SUCCESS) {
+        return nullptr;
+    }
+    AspbStatus planStatus = AsdSip::ErrorType::ACL_SUCCESS;
     if (param.fftYSize == 0 && param.fftZSize == 0) {
-        asdFftMakePlan1D(handle, param.fftXSize, param.fftType, param.direction,
-                                 param.batchSize, param.dimType);
+        planStatus = asdFftMakePlan1D(handle, param.fftXSize, param.fftType, param.direction, param.batchSize,
+                                      param.dimType);
     } else if (param.fftZSize == 0) {
-        asdFftMakePlan2D(handle, param.fftXSize, param.fftYSize, param.fftType,
-                                 param.direction, param.batchSize);
+        planStatus = asdFftMakePlan2D(handle, param.fftXSize, param.fftYSize, param.fftType, param.direction,
+                                      param.batchSize);
     } else {
-        asdFftMakePlan3D(handle, param.fftXSize, param.fftYSize, param.fftZSize,
-                                 param.fftType, param.direction, param.batchSize);
+        planStatus = asdFftMakePlan3D(handle, param.fftXSize, param.fftYSize, param.fftZSize, param.fftType,
+                                      param.direction, param.batchSize);
+    }
+    if (planStatus != AsdSip::ErrorType::ACL_SUCCESS) {
+        // plan 创建失败：销毁句柄并返回空，本次调用失败但下次调用可重建（issue #132）
+        asdFftDestroy(handle);
+        return nullptr;
     }
     return handle;
 }
-inline void destoryFftHandle(asdFftHandle handle)
+inline void destroyFftHandle(asdFftHandle handle)
 {
     asdFftSynchronize(handle);
     asdFftDestroy(handle);

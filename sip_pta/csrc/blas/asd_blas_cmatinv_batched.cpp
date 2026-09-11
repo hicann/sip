@@ -54,19 +54,19 @@ at::Tensor asdBlasCmatinvBatched(const at::Tensor& A)
     if (A.scalar_type() == at::kComplexFloat) {
         // 单精度逻辑 (Complex64)
         auto makePlan = [n, batchSize](AsdSip::asdBlasHandle handle) {
-            AsdSip::asdBlasMakeCmatinvBatchedPlan(handle, n, batchSize);
+            return AsdSip::asdBlasMakeCmatinvBatchedPlan(handle, n, batchSize);
         };
 
-        EXEC_BLAS_FUNC(AsdSip::asdBlasCmatinvBatched, makePlan, params, n, acl_a, lda, acl_a_inv, lda_inv,
-                       info, batchSize);
+        EXEC_BLAS_FUNC(AsdSip::asdBlasCmatinvBatched, makePlan, params, n, acl_a, lda, acl_a_inv, lda_inv, info,
+                       batchSize);
     } else {
         // 半精度逻辑 (Complex32)
         auto makePlan = [n, batchSize](AsdSip::asdBlasHandle handle) {
-            AsdSip::asdBlasMakeHCmatinvBatchedPlan(handle, n, batchSize);
+            return AsdSip::asdBlasMakeHCmatinvBatchedPlan(handle, n, batchSize);
         };
 
-        EXEC_BLAS_FUNC(AsdSip::asdBlasHCmatinvBatched, makePlan, params, n, acl_a, lda, acl_a_inv, lda_inv,
-                       info, batchSize);
+        EXEC_BLAS_FUNC(AsdSip::asdBlasHCmatinvBatched, makePlan, params, n, acl_a, lda, acl_a_inv, lda_inv, info,
+                       batchSize);
     }
 
     return Ainv;
@@ -75,8 +75,5 @@ at::Tensor asdBlasCmatinvBatched(const at::Tensor& A)
 // 算子注册
 TORCH_LIBRARY_FRAGMENT(torch_sip, m) { m.def("asd_blas_cmatinv_batched(Tensor A) -> Tensor"); }
 
-TORCH_LIBRARY_IMPL(torch_sip, PrivateUse1, m)
-{
-    m.impl("asd_blas_cmatinv_batched", &asdBlasCmatinvBatched);
-}
+TORCH_LIBRARY_IMPL(torch_sip, PrivateUse1, m) { m.impl("asd_blas_cmatinv_batched", &asdBlasCmatinvBatched); }
 } // namespace sip_pta

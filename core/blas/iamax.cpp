@@ -20,22 +20,21 @@ namespace AsdSip {
 
 struct IamaxImplParam {
     int64_t n;
-    aclTensor *x;
+    aclTensor* x;
     int64_t incx;
-    aclTensor *result;
+    aclTensor* result;
     int64_t dtype;
 };
 
 AspbStatus asdBlasIamaxImpl(asdBlasHandle handle, IamaxImplParam implParam)
 {
-    ASDSIP_ECHECK(BlasPlanCache::doesPlanExist(handle),
-        "blas Iamax get cached plan failed.",
-        ErrorType::ACL_ERROR_INTERNAL_ERROR);
+    ASDSIP_ECHECK(BlasPlanCache::doesPlanExist(handle), "blas Iamax get cached plan failed.",
+                  ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
-    int64_t *storageDims = nullptr;
+    int64_t* storageDims = nullptr;
     uint64_t iamaxStorageDimsNum = 0;
-    CHECK_STATUS_WITH_ACL_RETURN(
-        aclGetStorageShape(implParam.x, &storageDims, &iamaxStorageDimsNum), "asdBlasIamaxImpl: aclGetStorageShape");
+    CHECK_STATUS_WITH_ACL_RETURN(aclGetStorageShape(implParam.x, &storageDims, &iamaxStorageDimsNum),
+                                 "asdBlasIamaxImpl: aclGetStorageShape");
     if (*storageDims != implParam.n) {
         delete[] storageDims;
         storageDims = nullptr;
@@ -47,7 +46,7 @@ AspbStatus asdBlasIamaxImpl(asdBlasHandle handle, IamaxImplParam implParam)
     storageDims = nullptr;
 
     CHECK_STATUS_WITH_ACL_RETURN(aclGetStorageShape(implParam.result, &storageDims, &iamaxStorageDimsNum),
-        "asdBlasIamaxImpl: aclGetStorageShape");
+                                 "asdBlasIamaxImpl: aclGetStorageShape");
     if (*storageDims != RESULT_SIZE) {
         delete[] storageDims;
         storageDims = nullptr;
@@ -61,7 +60,7 @@ AspbStatus asdBlasIamaxImpl(asdBlasHandle handle, IamaxImplParam implParam)
     }
 
     try {
-        AsdSip::BlasIamaxPlan &plan = dynamic_cast<AsdSip::BlasIamaxPlan &>(BlasPlanCache::getPlan(handle));
+        AsdSip::BlasIamaxPlan& plan = dynamic_cast<AsdSip::BlasIamaxPlan&>(BlasPlanCache::getPlan(handle));
         ASDSIP_ECHECK(plan.IsInitialized(), "Iamax plan init Error!.", ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
         if (implParam.n <= 0 || implParam.incx <= 0) {
@@ -87,50 +86,46 @@ AspbStatus asdBlasIamaxImpl(asdBlasHandle handle, IamaxImplParam implParam)
         opDesc.specificParam = param;
         ASDSIP_LOG(DEBUG) << "OpDesc: " << opDesc.opName << "; OpDesc info: " << param.ToString();
 
-        SVector<aclTensor *> inTensors{implParam.x};
-        SVector<aclTensor *> outTensors{implParam.result};
+        SVector<aclTensor*> inTensors{implParam.x};
+        SVector<aclTensor*> outTensors{implParam.result};
         Status iamaxStatus = RunAsdOpsV2(plan.GetStream(), opDesc, inTensors, outTensors, plan.GetWorkspace());
         ASDSIP_ECHECK(iamaxStatus.Ok(), iamaxStatus.Message(), ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
         ASDSIP_LOG(INFO) << "Execute asdBlasIamax success.";
         return ErrorType::ACL_SUCCESS;
-    } catch (std::bad_cast &e) {
+    } catch (std::bad_cast& e) {
         // Handle the op iamax exception
         ASDSIP_ELOG(ErrorType::ACL_ERROR_INTERNAL_ERROR) << "Iamax Error: " << e.what();
         return ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }
 }
 
-AspbStatus asdBlasIsamax(asdBlasHandle handle, const int64_t n, aclTensor *x, const int64_t incx, aclTensor *result)
+AspbStatus asdBlasIsamax(asdBlasHandle handle, const int64_t n, aclTensor* x, const int64_t incx, aclTensor* result)
 {
     std::lock_guard<std::mutex> lock(blas_mtx);
     aclDataType dataType = aclDataType::ACL_DT_UNDEFINED;
     CHECK_STATUS_WITH_ACL_RETURN(aclGetDataType(x, &dataType), "asdBlasIsamax: aclGetDataType");
-    ASDSIP_ECHECK(dataType == aclDataType::ACL_FLOAT,
-        "blas asdBlasIsamax get wrong x tensor dtype.",
-        ErrorType::ACL_ERROR_UNSUPPORTED_DATA_TYPE);
+    ASDSIP_ECHECK(dataType == aclDataType::ACL_FLOAT, "blas asdBlasIsamax get wrong x tensor dtype.",
+                  ErrorType::ACL_ERROR_UNSUPPORTED_DATA_TYPE);
 
     CHECK_STATUS_WITH_ACL_RETURN(aclGetDataType(result, &dataType), "asdBlasIsamax: aclGetDataType");
-    ASDSIP_ECHECK(dataType == aclDataType::ACL_INT32,
-        "blas asdBlasIsamax get wrong result tensor dtype.",
-        ErrorType::ACL_ERROR_UNSUPPORTED_DATA_TYPE);
+    ASDSIP_ECHECK(dataType == aclDataType::ACL_INT32, "blas asdBlasIsamax get wrong result tensor dtype.",
+                  ErrorType::ACL_ERROR_UNSUPPORTED_DATA_TYPE);
 
     return asdBlasIamaxImpl(handle, {n, x, incx, result, 0});
 }
 
-AspbStatus asdBlasIcamax(asdBlasHandle handle, const int64_t n, aclTensor *x, const int64_t incx, aclTensor *result)
+AspbStatus asdBlasIcamax(asdBlasHandle handle, const int64_t n, aclTensor* x, const int64_t incx, aclTensor* result)
 {
     std::lock_guard<std::mutex> lock(blas_mtx);
     aclDataType dataType = aclDataType::ACL_DT_UNDEFINED;
     CHECK_STATUS_WITH_ACL_RETURN(aclGetDataType(x, &dataType), "asdBlasIcamax: aclGetDataType");
-    ASDSIP_ECHECK(dataType == aclDataType::ACL_COMPLEX64,
-        "blas asdBlasIcamax get wrong x tensor dtype.",
-        ErrorType::ACL_ERROR_UNSUPPORTED_DATA_TYPE);
+    ASDSIP_ECHECK(dataType == aclDataType::ACL_COMPLEX64, "blas asdBlasIcamax get wrong x tensor dtype.",
+                  ErrorType::ACL_ERROR_UNSUPPORTED_DATA_TYPE);
 
     CHECK_STATUS_WITH_ACL_RETURN(aclGetDataType(result, &dataType), "asdBlasIcamax: aclGetDataType");
-    ASDSIP_ECHECK(dataType == aclDataType::ACL_INT32,
-        "blas asdBlasIcamax get wrong result tensor dtype.",
-        ErrorType::ACL_ERROR_UNSUPPORTED_DATA_TYPE);
+    ASDSIP_ECHECK(dataType == aclDataType::ACL_INT32, "blas asdBlasIcamax get wrong result tensor dtype.",
+                  ErrorType::ACL_ERROR_UNSUPPORTED_DATA_TYPE);
 
     return asdBlasIamaxImpl(handle, {n, x, incx, result, 1});
 }
@@ -139,15 +134,19 @@ AspbStatus asdBlasMakeIamaxPlan(asdBlasHandle handle)
 {
     std::lock_guard<std::mutex> lock(blas_mtx);
     ASDSIP_ECHECK(handle != nullptr, "blas MakeIamaxPlan Fail.", ErrorType::ACL_ERROR_INTERNAL_ERROR);
-    AsdSip::BlasIamaxPlan *plan = nullptr;
+    // 重复绑定守卫：handle 只能初始化一次，防止 MakePlan 对已绑定 handle 静默失败导致 UAF（issue #129）
+    ASDSIP_ECHECK(!BlasPlanCache::doesPlanExist(handle),
+                  "blas handle already bound to a plan, repeated initialization is not allowed.",
+                  ErrorType::ACL_ERROR_INVALID_PARAM);
+    AsdSip::BlasIamaxPlan* plan = nullptr;
     try {
         plan = new AsdSip::BlasIamaxPlan();
         BlasPlanCache::MakePlan(handle, plan);
-    } catch (const std::exception &e) {
+    } catch (const std::exception& e) {
         if (plan != nullptr) {
             delete plan;
         }
-        delete static_cast<int *>(handle);
+        delete static_cast<int*>(handle);
         ASDSIP_ELOG(ErrorType::ACL_ERROR_INTERNAL_ERROR) << "Make Iamax Plan failed: " << e.what();
         throw std::runtime_error("Make Iamax Plan failed.");
     }
@@ -159,4 +158,4 @@ AspbStatus asdBlasMakeIamaxPlan(asdBlasHandle handle)
     plan->MarkInitialized();
     return ErrorType::ACL_SUCCESS;
 }
-}  // namespace AsdSip
+} // namespace AsdSip

@@ -19,21 +19,21 @@ constexpr int64_t COMPLEX_NUM = 2;
 
 struct RotImplParam {
     int64_t elementCount;
-    aclTensor *x;
-    aclTensor *y;
+    aclTensor* x;
+    aclTensor* y;
     float c;
     float s;
 };
 
 AspbStatus asdBlasRotImpl(OpParam::Rot::RotType rotType, asdBlasHandle handle, RotImplParam implParam)
 {
-    ASDSIP_ECHECK(
-        BlasPlanCache::doesPlanExist(handle), "blas Rot get cached plan failed.", ErrorType::ACL_ERROR_INTERNAL_ERROR);
+    ASDSIP_ECHECK(BlasPlanCache::doesPlanExist(handle), "blas Rot get cached plan failed.",
+                  ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
-    int64_t *storageDims = nullptr;
+    int64_t* storageDims = nullptr;
     uint64_t rotStorageDimsNum = 0;
-    CHECK_STATUS_WITH_ACL_RETURN(
-        aclGetStorageShape(implParam.x, &storageDims, &rotStorageDimsNum), "asdBlasRotImpl: aclGetStorageShape");
+    CHECK_STATUS_WITH_ACL_RETURN(aclGetStorageShape(implParam.x, &storageDims, &rotStorageDimsNum),
+                                 "asdBlasRotImpl: aclGetStorageShape");
     if (*storageDims * COMPLEX_NUM != implParam.elementCount) {
         delete[] storageDims;
         storageDims = nullptr;
@@ -44,8 +44,8 @@ AspbStatus asdBlasRotImpl(OpParam::Rot::RotType rotType, asdBlasHandle handle, R
     delete[] storageDims;
     storageDims = nullptr;
 
-    CHECK_STATUS_WITH_ACL_RETURN(
-        aclGetStorageShape(implParam.y, &storageDims, &rotStorageDimsNum), "asdBlasRotImpl: aclGetStorageShape");
+    CHECK_STATUS_WITH_ACL_RETURN(aclGetStorageShape(implParam.y, &storageDims, &rotStorageDimsNum),
+                                 "asdBlasRotImpl: aclGetStorageShape");
     if (*storageDims * COMPLEX_NUM != implParam.elementCount) {
         delete[] storageDims;
         storageDims = nullptr;
@@ -59,7 +59,7 @@ AspbStatus asdBlasRotImpl(OpParam::Rot::RotType rotType, asdBlasHandle handle, R
     }
 
     try {
-        AsdSip::BlasPlan &plan = dynamic_cast<AsdSip::BlasPlan &>(BlasPlanCache::getPlan(handle));
+        AsdSip::BlasPlan& plan = dynamic_cast<AsdSip::BlasPlan&>(BlasPlanCache::getPlan(handle));
         ASDSIP_ECHECK(plan.IsInitialized(), "Rot plan init Error!.", ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
         OpDesc opDesc;
@@ -72,35 +72,33 @@ AspbStatus asdBlasRotImpl(OpParam::Rot::RotType rotType, asdBlasHandle handle, R
         opDesc.specificParam = param;
         ASDSIP_LOG(DEBUG) << "OpDesc: " << opDesc.opName << "; OpDesc info: " << param.ToString();
 
-        SVector<aclTensor *> inTensors{implParam.x, implParam.y};
-        SVector<aclTensor *> outTensors{};
+        SVector<aclTensor*> inTensors{implParam.x, implParam.y};
+        SVector<aclTensor*> outTensors{};
 
         Status status = RunAsdOpsV2(plan.GetStream(), opDesc, inTensors, outTensors, plan.GetWorkspace());
         ASDSIP_ECHECK(status.Ok(), status.Message(), ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
         ASDSIP_LOG(INFO) << "Execute asdBlasRot success.";
         return ErrorType::ACL_SUCCESS;
-    } catch (std::bad_cast &e) {
+    } catch (std::bad_cast& e) {
         // Handle the op rot exception
         ASDSIP_ELOG(ErrorType::ACL_ERROR_INTERNAL_ERROR) << "Rot Error: " << e.what();
         return ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }
 }
 
-AspbStatus asdBlasCsrot(asdBlasHandle handle, const int64_t n, aclTensor *x, const int64_t incx, aclTensor *y,
-    const int64_t incy, const float &c, const float &s)
+AspbStatus asdBlasCsrot(asdBlasHandle handle, const int64_t n, aclTensor* x, const int64_t incx, aclTensor* y,
+                        const int64_t incy, const float& c, const float& s)
 {
     std::lock_guard<std::mutex> lock(blas_mtx);
     aclDataType dataType = aclDataType::ACL_DT_UNDEFINED;
     CHECK_STATUS_WITH_ACL_RETURN(aclGetDataType(x, &dataType), "asdBlasCsrot: aclGetDataType");
-    ASDSIP_ECHECK(dataType == aclDataType::ACL_COMPLEX64,
-        "blas asdBlasCsrot get wrong x tensor dtype.",
-        ErrorType::ACL_ERROR_UNSUPPORTED_DATA_TYPE);
+    ASDSIP_ECHECK(dataType == aclDataType::ACL_COMPLEX64, "blas asdBlasCsrot get wrong x tensor dtype.",
+                  ErrorType::ACL_ERROR_UNSUPPORTED_DATA_TYPE);
 
     CHECK_STATUS_WITH_ACL_RETURN(aclGetDataType(y, &dataType), "asdBlasCsrot: aclGetDataType");
-    ASDSIP_ECHECK(dataType == aclDataType::ACL_COMPLEX64,
-        "blas asdBlasCsrot get wrong y tensor dtype.",
-        ErrorType::ACL_ERROR_UNSUPPORTED_DATA_TYPE);
+    ASDSIP_ECHECK(dataType == aclDataType::ACL_COMPLEX64, "blas asdBlasCsrot get wrong y tensor dtype.",
+                  ErrorType::ACL_ERROR_UNSUPPORTED_DATA_TYPE);
 
     if (incx <= 0) {
         ASDSIP_LOG(INFO) << "blas asdBlasCsrot get incx <= 0.";
@@ -109,8 +107,8 @@ AspbStatus asdBlasCsrot(asdBlasHandle handle, const int64_t n, aclTensor *x, con
     if (incy <= 0) {
         ASDSIP_LOG(INFO) << "blas asdBlasCsrot get incy <= 0.";
     }
-    ASDSIP_ECHECK(
-        n > 0 && n <= UINT32_MAX, "blas asdBlasCsrot get n <= 0 or n > 2^32.", ErrorType::ACL_ERROR_INVALID_PARAM);
+    ASDSIP_ECHECK(n > 0 && n <= UINT32_MAX, "blas asdBlasCsrot get n <= 0 or n > 2^32.",
+                  ErrorType::ACL_ERROR_INVALID_PARAM);
     float cosValue = c;
     float sinValue = s;
     OpParam::Rot::RotType rolType = OpParam::Rot::RotType::ROT_CSROT;
@@ -122,20 +120,24 @@ AspbStatus asdBlasMakeRotPlan(asdBlasHandle handle)
 {
     std::lock_guard<std::mutex> lock(blas_mtx);
     ASDSIP_ECHECK(handle != nullptr, "blas MakeRotPlan Fail.", ErrorType::ACL_ERROR_INTERNAL_ERROR);
+    // 重复绑定守卫：handle 只能初始化一次，防止 MakePlan 对已绑定 handle 静默失败导致 UAF（issue #129）
+    ASDSIP_ECHECK(!BlasPlanCache::doesPlanExist(handle),
+                  "blas handle already bound to a plan, repeated initialization is not allowed.",
+                  ErrorType::ACL_ERROR_INVALID_PARAM);
 
-    AsdSip::BlasPlan *plan = nullptr;
+    AsdSip::BlasPlan* plan = nullptr;
     try {
         plan = new AsdSip::BlasPlan();
         BlasPlanCache::MakePlan(handle, plan);
-    } catch (const std::exception &e) {
+    } catch (const std::exception& e) {
         if (plan != nullptr) {
             delete plan;
         }
-        delete static_cast<int *>(handle);
+        delete static_cast<int*>(handle);
         ASDSIP_ELOG(ErrorType::ACL_ERROR_INTERNAL_ERROR) << "Make Rot Plan failed: " << e.what();
         throw std::runtime_error("Make Rot Plan failed.");
     }
     plan->MarkInitialized();
     return ErrorType::ACL_SUCCESS;
 }
-}  // namespace AsdSip
+} // namespace AsdSip

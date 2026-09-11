@@ -19,11 +19,11 @@ class LogSinkFileSip : public LogSinkSip {
 public:
     LogSinkFileSip();
     ~LogSinkFileSip() override;
-    void LogSip(const char *log, uint64_t logLen) override;
+    void LogSip(const char* log, uint64_t logLen) override;
 
 private:
-    LogSinkFileSip(const LogSinkFileSip &) = delete;
-    const LogSinkFileSip &operator=(const LogSinkFileSip &) = delete;
+    LogSinkFileSip(const LogSinkFileSip&) = delete;
+    const LogSinkFileSip& operator=(const LogSinkFileSip&) = delete;
     void Init();
     void OpenFile();
     void DeleteOldestFile();
@@ -32,13 +32,12 @@ private:
     void MakeLogDir();
     void CloseFile();
     std::string GetHomeDir();
-    bool IsFileNameMatched(const std::string &fileName, std::string &createTime);
+    bool IsFileNameMatched(const std::string& fileName, std::string& createTime);
     ssize_t safeWriteAll(int fd, const void* buf, size_t count);
 
 private:
     std::string boostType_;
     std::string logDir_;
-    bool isFlush_ = false;
     int currentFd_ = -1;
     uint64_t currentFileSize_ = 0;
     std::mutex mutex_;

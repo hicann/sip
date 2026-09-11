@@ -20,9 +20,8 @@ namespace sip_pta {
  * A, B, C: ComplexFloat (Complex64)
  * transA, transB: int (0: N, 1: T, 2: C)
  */
-at::Tensor asdBlasCgemm(const at::Tensor& A, const at::Tensor& B, at::Tensor& C,
-                        const at::Scalar& alpha, const at::Scalar& beta, int64_t transA,
-                        int64_t transB)
+at::Tensor asdBlasCgemm(const at::Tensor& A, const at::Tensor& B, at::Tensor& C, const at::Scalar& alpha,
+                        const at::Scalar& beta, int64_t transA, int64_t transB)
 {
     // 基本校验：必须是复数类型
     TORCH_CHECK(A.scalar_type() == at::kComplexFloat && B.scalar_type() == at::kComplexFloat &&
@@ -57,13 +56,11 @@ at::Tensor asdBlasCgemm(const at::Tensor& A, const at::Tensor& B, at::Tensor& C,
 
     // 使用宏执行算子
     auto makePlan = [opA, opB, m, n, k, lda, ldb, ldc](AsdSip::asdBlasHandle handle) {
-        AsdSip::asdBlasMakeCgemmPlan(handle, opA, opB, m, n, k, lda, ldb, ldc);
+        return AsdSip::asdBlasMakeCgemmPlan(handle, opA, opB, m, n, k, lda, ldb, ldc);
     };
 
-    std::vector<int64_t> params = {
-        static_cast<int64_t>(opA), static_cast<int64_t>(opB), m, n, k, lda, ldb, ldc};
-    EXEC_BLAS_FUNC(AsdSip::asdBlasCgemm, makePlan, params, opA, opB, m, n, k, a_std, A, lda, B, ldb,
-                   b_std, C, ldc);
+    std::vector<int64_t> params = {static_cast<int64_t>(opA), static_cast<int64_t>(opB), m, n, k, lda, ldb, ldc};
+    EXEC_BLAS_FUNC(AsdSip::asdBlasCgemm, makePlan, params, opA, opB, m, n, k, a_std, A, lda, B, ldb, b_std, C, ldc);
 
     return C;
 }

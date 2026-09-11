@@ -54,12 +54,11 @@ at::Tensor asdBlasCtrmv(const at::Tensor& A, at::Tensor& x, int64_t uplo, int64_
 
     // 定义 Plan 构建函数
     auto makePlan = [uplo_val, n](AsdSip::asdBlasHandle handle) {
-        AsdSip::asdBlasMakeCtrmvPlan(handle, uplo_val, n);
+        return AsdSip::asdBlasMakeCtrmvPlan(handle, uplo_val, n);
     };
 
     // 执行底层算子
-    EXEC_BLAS_FUNC(AsdSip::asdBlasCtrmv, makePlan, planParam,
-                   uplo_val, trans_val, diag_val, n, A, lda, x, incx);
+    EXEC_BLAS_FUNC(AsdSip::asdBlasCtrmv, makePlan, planParam, uplo_val, trans_val, diag_val, n, A, lda, x, incx);
 
     // CTRMV 为原地修改算子，直接返回被修改后的 x
     return x;
@@ -72,8 +71,5 @@ TORCH_LIBRARY_FRAGMENT(torch_sip, m)
     m.def("asd_blas_ctrmv(Tensor A, Tensor(a!) x, int uplo, int trans, int diag) -> Tensor(a!)");
 }
 
-TORCH_LIBRARY_IMPL(torch_sip, PrivateUse1, m)
-{
-    m.impl("asd_blas_ctrmv", &asdBlasCtrmv);
-}
+TORCH_LIBRARY_IMPL(torch_sip, PrivateUse1, m) { m.impl("asd_blas_ctrmv", &asdBlasCtrmv); }
 } // namespace sip_pta

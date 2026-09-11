@@ -16,14 +16,12 @@ static BlasMixCache blasCache(16);
 
 BlasMixCache::BlasMixCache(int64_t c) noexcept : capacity(c) {}
 
-BlasCacheValue BlasMixCache::get(BlasCacheKey& cacheKey,
-                                 std::function<void(asdBlasHandle)> makePlanFunc)
+BlasCacheValue BlasMixCache::get(BlasCacheKey& cacheKey, std::function<AspbStatus(asdBlasHandle)> makePlanFunc)
 {
     std::lock_guard<std::mutex> guard(blasMutex);
 
     // 1. 查找缓存
-    auto it = std::find_if(list.begin(), list.end(),
-                           [&](BlasPair& pair) { return pair.first == cacheKey; });
+    auto it = std::find_if(list.begin(), list.end(), [&](BlasPair& pair) { return pair.first == cacheKey; });
     if (it != list.end()) {
         BlasPair tmp = *it;
         list.push_back(tmp);
@@ -33,16 +31,21 @@ BlasCacheValue BlasMixCache::get(BlasCacheKey& cacheKey,
 
     // 2. 淘汰逻辑
     if (static_cast<int>(list.size()) >= capacity && !list.empty()) {
-        destoryBlasHandle(list.front().second.handle);
+        destroyBlasHandle(list.front().second.handle);
         list.pop_front();
     }
 
-    // 3. 统一创建 Handle
+    // 3. 统一创建 Handle，失败返回空 handle（本次调用失败，下次调用可重建）
     BlasCacheValue value;
-    asdBlasCreate(value.handle); // <--- 统一在这里创建
+    if (asdBlasCreate(value.handle) != AsdSip::ErrorType::ACL_SUCCESS) {
+        return BlasCacheValue{};
+    }
 
-    // 4. 调用回调只做 MakePlan
-    makePlanFunc(value.handle);
+    // 4. 调用回调做 MakePlan；失败时销毁句柄且不入缓存，避免坏 handle 固化为持续故障（issue #128）
+    if (makePlanFunc(value.handle) != AsdSip::ErrorType::ACL_SUCCESS) {
+        asdBlasDestroy(value.handle);
+        return BlasCacheValue{};
+    }
 
     list.push_back(std::make_pair(cacheKey, value));
     return value;
@@ -57,7 +60,7 @@ void BlasMixCache::setCapacity(int64_t maxSize)
 
     capacity = maxSize;
     while (static_cast<int>(list.size()) > capacity && !list.empty()) {
-        destoryBlasHandle(list.front().second.handle);
+        destroyBlasHandle(list.front().second.handle);
         list.pop_front();
     }
 }
@@ -71,12 +74,12 @@ void BlasMixCache::clear()
     std::lock_guard<std::mutex> guard(blasMutex);
     for (auto it = list.begin(); it != list.end(); ++it) {
         BlasPair tmp = *it;
-        destoryBlasHandle(tmp.second.handle);
+        destroyBlasHandle(tmp.second.handle);
     }
     list.clear();
 }
 asdBlasHandle getBlasHandle(const std::string& opName, const std::vector<int64_t>& params,
-                        const std::function<void(asdBlasHandle)>& makePlanFunc)
+                            const std::function<AspbStatus(asdBlasHandle)>& makePlanFunc)
 {
     BlasCacheKey cacheKey;
     cacheKey.params = params;

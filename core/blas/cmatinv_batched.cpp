@@ -34,23 +34,22 @@ struct CmatinvBatchedImplParam {
     int64_t dtype;
     int64_t n;
     int64_t batchSize;
-    aclTensor *A;
-    aclTensor *Ainv;
+    aclTensor* A;
+    aclTensor* Ainv;
 };
-
 
 AspbStatus asdBlasCmatinvBatchedShapeCheck(CmatinvBatchedImplParam implParam)
 {
-    int64_t *AstorageDims = nullptr;
+    int64_t* AstorageDims = nullptr;
     uint64_t AstorageDimsNum = 0;
     CHECK_STATUS_WITH_ACL_RETURN(aclGetStorageShape(implParam.A, &AstorageDims, &AstorageDimsNum),
-        "asdBlasCmatinvBatched: aclGetStorageShape");
-    if (AstorageDimsNum != DIM_3 || AstorageDims[DIM_0] != implParam.batchSize ||
-        AstorageDims[DIM_1] != implParam.n || AstorageDims[DIM_2] != implParam.n) {
+                                 "asdBlasCmatinvBatched: aclGetStorageShape");
+    if (AstorageDimsNum != DIM_3 || AstorageDims[DIM_0] != implParam.batchSize || AstorageDims[DIM_1] != implParam.n ||
+        AstorageDims[DIM_2] != implParam.n) {
         delete[] AstorageDims;
         AstorageDims = nullptr;
-        ASDSIP_ELOG(ErrorType::ACL_ERROR_OP_INPUT_NOT_MATCH) <<
-            "blas asdBlasCmatinvBatched get wrong A tensor dim num.";
+        ASDSIP_ELOG(ErrorType::ACL_ERROR_OP_INPUT_NOT_MATCH)
+            << "blas asdBlasCmatinvBatched get wrong A tensor dim num.";
         return ErrorType::ACL_ERROR_OP_INPUT_NOT_MATCH;
     }
 
@@ -59,16 +58,16 @@ AspbStatus asdBlasCmatinvBatchedShapeCheck(CmatinvBatchedImplParam implParam)
         AstorageDims = nullptr;
     }
 
-    int64_t *AinvStorageDims = nullptr;
+    int64_t* AinvStorageDims = nullptr;
     uint64_t AinvStorageDimsNum = 0;
     CHECK_STATUS_WITH_ACL_RETURN(aclGetStorageShape(implParam.Ainv, &AinvStorageDims, &AinvStorageDimsNum),
-        "asdBlasCmatinvBatched: aclGetStorageShape");
+                                 "asdBlasCmatinvBatched: aclGetStorageShape");
     if (AinvStorageDimsNum != DIM_3 || AinvStorageDims[DIM_0] != implParam.batchSize ||
         AinvStorageDims[DIM_1] != implParam.n || AinvStorageDims[DIM_2] != implParam.n) {
         delete[] AinvStorageDims;
         AinvStorageDims = nullptr;
-        ASDSIP_ELOG(ErrorType::ACL_ERROR_OP_INPUT_NOT_MATCH) <<
-            "blas asdBlasCmatinvBatched get wrong Ainv tensor dim num.";
+        ASDSIP_ELOG(ErrorType::ACL_ERROR_OP_INPUT_NOT_MATCH)
+            << "blas asdBlasCmatinvBatched get wrong Ainv tensor dim num.";
         return ErrorType::ACL_ERROR_OP_INPUT_NOT_MATCH;
     }
 
@@ -79,13 +78,12 @@ AspbStatus asdBlasCmatinvBatchedShapeCheck(CmatinvBatchedImplParam implParam)
     return ErrorType::ACL_SUCCESS;
 }
 
-
 // n < 32
 AspbStatus runCmatinvBatchedOps(asdBlasHandle handle, CmatinvBatchedImplParam implParam)
 {
     try {
-        AsdSip::BlasCmatinvBatchedPlan &plan =
-            dynamic_cast<AsdSip::BlasCmatinvBatchedPlan &>(BlasPlanCache::getPlan(handle));
+        AsdSip::BlasCmatinvBatchedPlan& plan = dynamic_cast<AsdSip::BlasCmatinvBatchedPlan&>(
+            BlasPlanCache::getPlan(handle));
         ASDSIP_ECHECK(plan.IsInitialized(), "CmatinvBatched plan init Error!.", ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
         Status status;
@@ -97,29 +95,29 @@ AspbStatus runCmatinvBatchedOps(asdBlasHandle handle, CmatinvBatchedImplParam im
         opDesc.specificParam = param;
         ASDSIP_LOG(DEBUG) << "OpDesc: " << opDesc.opName << "; OpDesc info: " << param.ToString();
 
-        SVector<aclTensor *> inTensors{implParam.A, plan.uniMatAclReal, plan.uniMatAclImag, plan.offsetAclTensor};
-        SVector<aclTensor *> outTensors{implParam.Ainv};
+        SVector<aclTensor*> inTensors{implParam.A, plan.uniMatAclReal, plan.uniMatAclImag, plan.offsetAclTensor};
+        SVector<aclTensor*> outTensors{implParam.Ainv};
 
         status = RunAsdOpsV2(plan.GetStream(), opDesc, inTensors, outTensors, plan.GetWorkspace());
         ASDSIP_ECHECK(status.Ok(), status.Message(), ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
         ASDSIP_LOG(INFO) << "Execute asdBlasCmatinvBatched success when n < 32.";
         return ErrorType::ACL_SUCCESS;
-    } catch (std::bad_cast &e) {
+    } catch (std::bad_cast& e) {
         // Handle the exception
         ASDSIP_ELOG(ErrorType::ACL_ERROR_INTERNAL_ERROR) << "CmatinvBatched Error (n < 32): " << e.what();
         return ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }
 }
 
-
 // n >= 32
 AspbStatus runCgetriBatchedOps(asdBlasHandle handle, CmatinvBatchedImplParam implParam)
 {
     try {
-        AsdSip::BlasCgetriBatchedPlan &plan =
-            dynamic_cast<AsdSip::BlasCgetriBatchedPlan &>(BlasPlanCache::getPlan(handle));
-        ASDSIP_ECHECK(plan.IsInitialized(), "CmatinvBatched (n >= 32) plan init Error!.", ErrorType::ACL_ERROR_INTERNAL_ERROR);
+        AsdSip::BlasCgetriBatchedPlan& plan = dynamic_cast<AsdSip::BlasCgetriBatchedPlan&>(
+            BlasPlanCache::getPlan(handle));
+        ASDSIP_ECHECK(plan.IsInitialized(), "CmatinvBatched (n >= 32) plan init Error!.",
+                      ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
         Status status;
         OpDesc opDesc;
@@ -130,28 +128,27 @@ AspbStatus runCgetriBatchedOps(asdBlasHandle handle, CmatinvBatchedImplParam imp
         opDesc.specificParam = param;
         ASDSIP_LOG(DEBUG) << "OpDesc: " << opDesc.opName << "; OpDesc info: " << param.ToString();
 
-        SVector<aclTensor *> inTensors{implParam.A, plan.wBatchAcl, plan.gather1OffsetAcl,
-            plan.gather2OffsetAcl, plan.gather3OffsetAcl, plan.eyeBatchMatAcl, plan.aWorkAcl, plan.workGmAcl};
-        SVector<aclTensor *> outTensors{implParam.Ainv};
+        SVector<aclTensor*> inTensors{implParam.A,           plan.wBatchAcl,        plan.gather1OffsetAcl,
+                                      plan.gather2OffsetAcl, plan.gather3OffsetAcl, plan.eyeBatchMatAcl,
+                                      plan.aWorkAcl,         plan.workGmAcl};
+        SVector<aclTensor*> outTensors{implParam.Ainv};
 
         status = RunAsdOpsV2(plan.GetStream(), opDesc, inTensors, outTensors, plan.GetWorkspace());
         ASDSIP_ECHECK(status.Ok(), status.Message(), ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
         ASDSIP_LOG(INFO) << "Execute asdBlasCmatinvBatched success when n >= 32.";
         return ErrorType::ACL_SUCCESS;
-    } catch (std::bad_cast &e) {
+    } catch (std::bad_cast& e) {
         // Handle the exception
         ASDSIP_ELOG(ErrorType::ACL_ERROR_INTERNAL_ERROR) << "CmatinvBatched Error (n >= 32): " << e.what();
         return ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }
 }
 
-
 AspbStatus asdBlasCmatinvBatchedImpl(asdBlasHandle handle, CmatinvBatchedImplParam implParam)
 {
-    ASDSIP_ECHECK(BlasPlanCache::doesPlanExist(handle),
-        "blas CmatinvBatched get cached plan failed.",
-        ErrorType::ACL_ERROR_INTERNAL_ERROR);
+    ASDSIP_ECHECK(BlasPlanCache::doesPlanExist(handle), "blas CmatinvBatched get cached plan failed.",
+                  ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
     AsdSip::AspbStatus shapeCheckStatus = asdBlasCmatinvBatchedShapeCheck(implParam);
     if (shapeCheckStatus != AsdSip::ErrorType::ACL_SUCCESS) {
@@ -167,69 +164,66 @@ AspbStatus asdBlasCmatinvBatchedImpl(asdBlasHandle handle, CmatinvBatchedImplPar
     return runOpsStatus;
 }
 
-
-AspbStatus asdBlasCmatinvBatched(asdBlasHandle handle, const int64_t n, aclTensor *A,
-    const int64_t lda, aclTensor *Ainv, const int64_t lda_inv, aclTensor *info, int64_t batchSize)
+AspbStatus asdBlasCmatinvBatched(asdBlasHandle handle, const int64_t n, aclTensor* A, const int64_t lda,
+                                 aclTensor* Ainv, const int64_t lda_inv, aclTensor* info, int64_t batchSize)
 {
     (void)info;
     std::lock_guard<std::mutex> lock(blas_mtx);
     aclDataType dataType = aclDataType::ACL_DT_UNDEFINED;
     CHECK_STATUS_WITH_ACL_RETURN(aclGetDataType(A, &dataType), "asdBlasCmatinvBatched: aclGetDataType");
-    ASDSIP_ECHECK(dataType == aclDataType::ACL_COMPLEX64,
-        "blas asdBlasCmatinvBatched get wrong x tensor dtype.",
-        ErrorType::ACL_ERROR_UNSUPPORTED_DATA_TYPE);
+    ASDSIP_ECHECK(dataType == aclDataType::ACL_COMPLEX64, "blas asdBlasCmatinvBatched get wrong x tensor dtype.",
+                  ErrorType::ACL_ERROR_UNSUPPORTED_DATA_TYPE);
 
     CHECK_STATUS_WITH_ACL_RETURN(aclGetDataType(Ainv, &dataType), "asdBlasCmatinvBatched: aclGetDataType");
-    ASDSIP_ECHECK(dataType == aclDataType::ACL_COMPLEX64,
-        "blas asdBlasCmatinvBatched get wrong y tensor dtype.",
-        ErrorType::ACL_ERROR_UNSUPPORTED_DATA_TYPE);
+    ASDSIP_ECHECK(dataType == aclDataType::ACL_COMPLEX64, "blas asdBlasCmatinvBatched get wrong y tensor dtype.",
+                  ErrorType::ACL_ERROR_UNSUPPORTED_DATA_TYPE);
 
-    if (lda <= 0 || lda_inv <= 0) {
-        ASDSIP_LOG(INFO) << "blas asdBlasCmatinvBatched get lda <= 0 or lda_inv <= 0.";
-    }
+    // 对齐 ops-solver 行为与文档约束「当前约束为 n」：lda/lda_inv 非法时显式拦截（issue #138）
+    ASDSIP_ECHECK(lda > 0 && lda_inv > 0, "blas asdBlasCmatinvBatched get lda <= 0 or lda_inv <= 0.",
+                  ErrorType::ACL_ERROR_INVALID_PARAM);
+    ASDSIP_ECHECK(lda == n && lda_inv == n, "blas asdBlasCmatinvBatched only supports lda == n and lda_inv == n.",
+                  ErrorType::ACL_ERROR_INVALID_PARAM);
 
     ASDSIP_ECHECK(n > 0 && batchSize > 0, "blas asdBlasCmatinvBatched get n <= 0 || batchSize <= 0.",
-        ErrorType::ACL_ERROR_INVALID_PARAM);
+                  ErrorType::ACL_ERROR_INVALID_PARAM);
 
     ASDSIP_ECHECK(n <= MAX_MATRIX_SHAPE && batchSize <= MAX_MATRIX_BATCH,
-        "blas asdBlasCmatinvBatched get n <= 256 || batchSize <= 3000.",
-        ErrorType::ACL_ERROR_INVALID_PARAM);
+                  "blas asdBlasCmatinvBatched get n <= 256 || batchSize <= 3000.", ErrorType::ACL_ERROR_INVALID_PARAM);
 
     return asdBlasCmatinvBatchedImpl(handle, {DTYPE_COMPLEX64, n, batchSize, A, Ainv});
 }
 
-
-AspbStatus asdBlasHCmatinvBatched(asdBlasHandle handle, const int64_t n, aclTensor *A,
-    const int64_t lda, aclTensor *Ainv, const int64_t lda_inv, aclTensor *info, int64_t batchSize)
+AspbStatus asdBlasHCmatinvBatched(asdBlasHandle handle, const int64_t n, aclTensor* A, const int64_t lda,
+                                  aclTensor* Ainv, const int64_t lda_inv, aclTensor* info, int64_t batchSize)
 {
     (void)info;
     std::lock_guard<std::mutex> lock(blas_mtx);
     ASDSIP_ECHECK(n > 0 && batchSize > 0, "blas asdBlasHCmatinvBatched get n <= 0 || batchSize <= 0.",
-        ErrorType::ACL_ERROR_INVALID_PARAM);
+                  ErrorType::ACL_ERROR_INVALID_PARAM);
 
     ASDSIP_ECHECK(n <= MAX_MATRIX_SHAPE && batchSize <= MAX_MATRIX_BATCH,
-        "blas asdBlasHCmatinvBatched get n <= 256 || batchSize <= 3000.",
-        ErrorType::ACL_ERROR_INVALID_PARAM);
+                  "blas asdBlasHCmatinvBatched get n <= 256 || batchSize <= 3000.", ErrorType::ACL_ERROR_INVALID_PARAM);
 
-    if (lda <= 0 || lda_inv <= 0) {
-        ASDSIP_LOG(INFO) << "blas asdBlasHCmatinvBatched get lda <= 0 or lda_inv <= 0.";
-    }
+    // 对齐 ops-solver 行为与文档约束「当前约束为 n」：lda/lda_inv 非法时显式拦截（issue #138）
+    ASDSIP_ECHECK(lda > 0 && lda_inv > 0, "blas asdBlasHCmatinvBatched get lda <= 0 or lda_inv <= 0.",
+                  ErrorType::ACL_ERROR_INVALID_PARAM);
+    ASDSIP_ECHECK(lda == n && lda_inv == n, "blas asdBlasHCmatinvBatched only supports lda == n and lda_inv == n.",
+                  ErrorType::ACL_ERROR_INVALID_PARAM);
 
     return asdBlasCmatinvBatchedImpl(handle, {DTYPE_COMPLEX32, n, batchSize, A, Ainv});
 }
 
-
 AspbStatus makeCmatinvBatchedPlan(asdBlasHandle handle, const int64_t n)
 {
-    AsdSip::BlasCmatinvBatchedPlan *plan = nullptr;
+    AsdSip::BlasCmatinvBatchedPlan* plan = nullptr;
     try {
         plan = new AsdSip::BlasCmatinvBatchedPlan(n);
         BlasPlanCache::MakePlan(handle, plan);
-    } catch (const std::exception &e) {
+    } catch (const std::exception& e) {
         if (plan != nullptr) {
             delete plan;
         }
-        delete static_cast<int *>(handle);
+        delete static_cast<int*>(handle);
         ASDSIP_ELOG(ErrorType::ACL_ERROR_INTERNAL_ERROR) << "Make CmatinvBatched Plan failed: " << e.what();
         throw std::runtime_error("Make CmatinvBatched Plan failed.");
     }
@@ -242,40 +236,40 @@ AspbStatus makeCmatinvBatchedPlan(asdBlasHandle handle, const int64_t n)
     return ErrorType::ACL_SUCCESS;
 }
 
-
 AspbStatus makeCgetriBatchedPlan(asdBlasHandle handle, const int64_t n, const int64_t batchSize, int64_t dtype)
 {
-    AsdSip::BlasCgetriBatchedPlan *plan = nullptr;
+    AsdSip::BlasCgetriBatchedPlan* plan = nullptr;
     try {
         plan = new AsdSip::BlasCgetriBatchedPlan(n, batchSize, dtype);
         BlasPlanCache::MakePlan(handle, plan);
-    } catch (const std::exception &e) {
+    } catch (const std::exception& e) {
         if (plan != nullptr) {
             delete plan;
         }
-        delete static_cast<int *>(handle);
-        ASDSIP_ELOG(ErrorType::ACL_ERROR_INTERNAL_ERROR) <<
-            "Make CmatinvBatched (n >= 32) Plan failed: " << e.what();
+        delete static_cast<int*>(handle);
+        ASDSIP_ELOG(ErrorType::ACL_ERROR_INTERNAL_ERROR) << "Make CmatinvBatched (n >= 32) Plan failed: " << e.what();
         throw std::runtime_error("Make CmatinvBatched (n >= 32) Plan failed.");
     }
     if (plan->CreateTensor() != ErrorType::ACL_SUCCESS) {
         plan->MarkFailed();
-        ASDSIP_ELOG(ErrorType::ACL_ERROR_INTERNAL_ERROR) <<
-            "Fail to create blas CmatinvBatched (n >= 32) mask tensor.";
+        ASDSIP_ELOG(ErrorType::ACL_ERROR_INTERNAL_ERROR) << "Fail to create blas CmatinvBatched (n >= 32) mask tensor.";
         return ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }
     plan->MarkInitialized();
     return ErrorType::ACL_SUCCESS;
 }
 
-
 AspbStatus asdBlasMakeCmatinvBatchedPlan(asdBlasHandle handle, const int64_t n, const int64_t batchSize)
 {
     std::lock_guard<std::mutex> lock(blas_mtx);
     ASDSIP_ECHECK(handle != nullptr, "blas CmatinvBatched Make Plan failed.", ErrorType::ACL_ERROR_INTERNAL_ERROR);
+    // 重复绑定守卫：handle 只能初始化一次，防止 MakePlan 对已绑定 handle 静默失败导致 UAF（issue #129）
+    ASDSIP_ECHECK(!BlasPlanCache::doesPlanExist(handle),
+                  "blas handle already bound to a plan, repeated initialization is not allowed.",
+                  ErrorType::ACL_ERROR_INVALID_PARAM);
     ASDSIP_ECHECK(n > 0, "blas asdBlasMakeCmatinvBatchedPlan get n <= 0.", ErrorType::ACL_ERROR_INVALID_PARAM);
     ASDSIP_ECHECK(batchSize > 0, "blas asdBlasMakeCmatinvBatchedPlan get batchSize <= 0.",
-        ErrorType::ACL_ERROR_INVALID_PARAM);
+                  ErrorType::ACL_ERROR_INVALID_PARAM);
 
     if (n < MATRIX_SHAPE_LIMIT) {
         return makeCmatinvBatchedPlan(handle, n);
@@ -284,14 +278,17 @@ AspbStatus asdBlasMakeCmatinvBatchedPlan(asdBlasHandle handle, const int64_t n, 
     }
 }
 
-
 AspbStatus asdBlasMakeHCmatinvBatchedPlan(asdBlasHandle handle, const int64_t n, const int64_t batchSize)
 {
     std::lock_guard<std::mutex> lock(blas_mtx);
     ASDSIP_ECHECK(handle != nullptr, "blas HCmatinvBatched Make Plan failed.", ErrorType::ACL_ERROR_INTERNAL_ERROR);
+    // 重复绑定守卫：handle 只能初始化一次，防止 MakePlan 对已绑定 handle 静默失败导致 UAF（issue #129）
+    ASDSIP_ECHECK(!BlasPlanCache::doesPlanExist(handle),
+                  "blas handle already bound to a plan, repeated initialization is not allowed.",
+                  ErrorType::ACL_ERROR_INVALID_PARAM);
     ASDSIP_ECHECK(n > 0, "blas asdBlasMakeHCmatinvBatchedPlan get n <= 0.", ErrorType::ACL_ERROR_INVALID_PARAM);
     ASDSIP_ECHECK(batchSize > 0, "blas asdBlasMakeHCmatinvBatchedPlan get batchSize <= 0.",
-        ErrorType::ACL_ERROR_INVALID_PARAM);
+                  ErrorType::ACL_ERROR_INVALID_PARAM);
 
     if (n < MATRIX_SHAPE_LIMIT) {
         return makeCmatinvBatchedPlan(handle, n);
@@ -299,4 +296,4 @@ AspbStatus asdBlasMakeHCmatinvBatchedPlan(asdBlasHandle handle, const int64_t n,
         return makeCgetriBatchedPlan(handle, n, batchSize, DTYPE_COMPLEX32);
     }
 }
-}  // namespace AsdSip
+} // namespace AsdSip

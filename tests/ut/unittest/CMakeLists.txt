@@ -56,8 +56,8 @@ add_library(test_src_asd_mul OBJECT ${TEST_SRC_ASD_MUL})
 # aux_source_directory(${CMAKE_CURRENT_LIST_DIR}/blas/blas_api TEST_SRC_BLAS_API)
 # add_library(test_src_blas_api OBJECT ${TEST_SRC_BLAS_API})
 
-# aux_source_directory(${CMAKE_CURRENT_LIST_DIR}/blas/strmv TEST_SRC_STRMV)
-# add_library(test_src_strmv OBJECT ${TEST_SRC_STRMV})
+aux_source_directory(${CMAKE_CURRENT_LIST_DIR}/blas/strmv TEST_SRC_STRMV)
+add_library(test_src_strmv OBJECT ${TEST_SRC_STRMV})
 
 # aux_source_directory(${CMAKE_CURRENT_LIST_DIR}/blas/isamax TEST_SRC_ISAMAX)
 # add_library(test_src_isamax OBJECT ${TEST_SRC_ISAMAX})
@@ -71,8 +71,8 @@ add_library(test_src_ssyr2 OBJECT ${TEST_SRC_SSYR2})
 # aux_source_directory(${CMAKE_CURRENT_LIST_DIR}/blas/ctrmv TEST_SRC_CTRMV)
 # add_library(test_src_ctrmv OBJECT ${TEST_SRC_CTRMV})
 
-# aux_source_directory(${CMAKE_CURRENT_LIST_DIR}/blas/strmm TEST_SRC_STRMM)
-# add_library(test_src_strmm OBJECT ${TEST_SRC_STRMM})
+aux_source_directory(${CMAKE_CURRENT_LIST_DIR}/blas/strmm TEST_SRC_STRMM)
+add_library(test_src_strmm OBJECT ${TEST_SRC_STRMM})
 
 # aux_source_directory(${CMAKE_CURRENT_LIST_DIR}/blas/cgemm TEST_SRC_CGEMM)
 # add_library(test_src_cgemm OBJECT ${TEST_SRC_CGEMM})
@@ -158,6 +158,9 @@ add_library(test_src_ssyr OBJECT ${TEST_SRC_SSYR})
 # aux_source_directory(${CMAKE_CURRENT_LIST_DIR}/blas/hcgemm_batched TEST_SRC_HCGEMM_BATCHED)
 # add_library(test_src_hcgemm_batched OBJECT ${TEST_SRC_HCGEMM_BATCHED})
 
+aux_source_directory(${CMAKE_CURRENT_LIST_DIR}/blas/cmatinv_batched TEST_SRC_CMATINV_BATCHED)
+add_library(test_src_cmatinv_batched OBJECT ${TEST_SRC_CMATINV_BATCHED})
+
 # aux_source_directory(${CMAKE_CURRENT_LIST_DIR}/filter/convolve TEST_SRC_CONVOLVE)
 # add_library(test_src_convolve OBJECT ${TEST_SRC_CONVOLVE})
 
@@ -177,10 +180,10 @@ add_executable(ops_unittest
     # $<TARGET_OBJECTS:test_src_blas_api>
     # $<TARGET_OBJECTS:test_src_isamax>
     # $<TARGET_OBJECTS:test_src_icamax>
-    # $<TARGET_OBJECTS:test_src_strmv>
+    $<TARGET_OBJECTS:test_src_strmv>
     $<TARGET_OBJECTS:test_src_ssyr2>
     # $<TARGET_OBJECTS:test_src_ctrmv>
-    # $<TARGET_OBJECTS:test_src_strmm>
+    $<TARGET_OBJECTS:test_src_strmm>
     # $<TARGET_OBJECTS:test_src_cgemm>
     # $<TARGET_OBJECTS:test_src_sasum>
     # $<TARGET_OBJECTS:test_src_scasum>
@@ -198,6 +201,7 @@ add_executable(ops_unittest
     # $<TARGET_OBJECTS:test_src_sswap>
     # $<TARGET_OBJECTS:test_src_cswap>
     $<TARGET_OBJECTS:test_src_ssyr>
+    $<TARGET_OBJECTS:test_src_cmatinv_batched>
     # $<TARGET_OBJECTS:test_src_cgemv>
 	# $<TARGET_OBJECTS:test_src_cgerc>
     # $<TARGET_OBJECTS:test_src_csrot>
@@ -213,7 +217,7 @@ add_executable(ops_unittest
 )
 
 
-target_include_directories(ops_unittest PRIVATE ${CMAKE_CURRENT_LIST_DIR} 
+target_include_directories(ops_unittest PRIVATE ${CMAKE_CURRENT_LIST_DIR}
                                                 $ENV{CODE_ROOT}/3rdparty/googletest/include)
 
 target_link_directories(ops_unittest PRIVATE $ENV{CODE_ROOT}/3rdparty/googletest/lib)

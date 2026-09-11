@@ -857,6 +857,12 @@ AspbStatus asdFftMakePlan1D(asdFftHandle handle, int64_t fftSize, asdFftType fft
         return ErrorType::ACL_ERROR_INVALID_PARAM;
     }
 
+    // 重复初始化守卫：与头文件"Any given handle can only be initialized once"契约对齐（issue #137）
+    if (plan.isInitialized()) {
+        ASDSIP_LOG(ERROR) << "plan is already initialized, repeated initialization is not allowed.";
+        return ErrorType::ACL_ERROR_INVALID_PARAM;
+    }
+
     plan.fftType = fftType;
     plan.direction = direction;
     plan.fftSizes = {fftSize};
@@ -868,7 +874,14 @@ AspbStatus asdFftMakePlan1D(asdFftHandle handle, int64_t fftSize, asdFftType fft
         plan.batchSize = batchSize;
         plan.fftStrides = {1};
     }
-    addFFTSteps(plan, 0, batchSize);
+    // 内部初始化路径可能抛出异常（如不支持的长度），在 API 边界统一翻译为错误码（issue #131）
+    try {
+        addFFTSteps(plan, 0, batchSize);
+    } catch (const std::exception& e) {
+        plan.steps.clear();
+        ASDSIP_LOG(ERROR) << "asdFftMakePlan1D failed: " << e.what();
+        return ErrorType::ACL_ERROR_INVALID_PARAM;
+    }
     plan.markInitialized();
     return AsdSip::ErrorType::ACL_SUCCESS;
 }
@@ -931,6 +944,12 @@ AspbStatus asdFftMakePlan1D(asdFftHandle handle, int64_t fftSizeX, int64_t fftSi
     }
     FFTPlan& plan = FFTPlanCache::getPlan(handle);
 
+    // 重复初始化守卫：与头文件"Any given handle can only be initialized once"契约对齐（issue #137）
+    if (plan.isInitialized()) {
+        ASDSIP_LOG(ERROR) << "plan is already initialized, repeated initialization is not allowed.";
+        return ErrorType::ACL_ERROR_INVALID_PARAM;
+    }
+
     plan.fftType = fftType;
     plan.direction = direction;
     plan.batchSize = batchSize;
@@ -940,7 +959,14 @@ AspbStatus asdFftMakePlan1D(asdFftHandle handle, int64_t fftSizeX, int64_t fftSi
         plan.fftStrides = {fftSizeY};
     }
 
-    addFFTSteps(plan, 0, batchSize);
+    // 内部初始化路径可能抛出异常（如不支持的长度），在 API 边界统一翻译为错误码（issue #131）
+    try {
+        addFFTSteps(plan, 0, batchSize);
+    } catch (const std::exception& e) {
+        plan.steps.clear();
+        ASDSIP_LOG(ERROR) << "asdFftMakePlan1D failed: " << e.what();
+        return ErrorType::ACL_ERROR_INVALID_PARAM;
+    }
     plan.markInitialized();
 
     return AsdSip::ErrorType::ACL_SUCCESS;
@@ -966,7 +992,21 @@ AspbStatus asdFftMakePlan2D(asdFftHandle handle, int64_t fftSizeX, int64_t fftSi
         return checkStatus;
     }
 
+    // 2D 仅支持 C2C/C2R/R2C：如 C2C_SEP 落入 init2DSteps 的 default 分支会得到 0 步 plan
+    // 且仍被标记为已初始化，exec 阶段静默无计算（issue #124）
+    if (fftType != asdFftType::ASCEND_FFT_C2C && fftType != asdFftType::ASCEND_FFT_C2R &&
+        fftType != asdFftType::ASCEND_FFT_R2C) {
+        ASDSIP_LOG(ERROR) << "asdFftMakePlan2D: unsupported fftType " << static_cast<int>(fftType) << " for 2D plan.";
+        return ErrorType::ACL_ERROR_INVALID_PARAM;
+    }
+
     FFTPlan& plan = FFTPlanCache::getPlan(handle);
+
+    // 重复初始化守卫：与头文件"Any given handle can only be initialized once"契约对齐（issue #137）
+    if (plan.isInitialized()) {
+        ASDSIP_LOG(ERROR) << "plan is already initialized, repeated initialization is not allowed.";
+        return ErrorType::ACL_ERROR_INVALID_PARAM;
+    }
 
     plan.fftType = fftType;
     plan.direction = direction;
@@ -974,8 +1014,14 @@ AspbStatus asdFftMakePlan2D(asdFftHandle handle, int64_t fftSizeX, int64_t fftSi
     plan.fftSizes = {fftSizeX, fftSizeY};
     plan.fftStrides = {1, 1};
 
-    init2DSteps(plan);
-
+    // 内部初始化路径可能抛出异常（如 950 不支持的分解），在 API 边界统一翻译为错误码（issue #131）
+    try {
+        init2DSteps(plan);
+    } catch (const std::exception& e) {
+        plan.steps.clear();
+        ASDSIP_LOG(ERROR) << "asdFftMakePlan2D failed: " << e.what();
+        return ErrorType::ACL_ERROR_INVALID_PARAM;
+    }
     return AsdSip::ErrorType::ACL_SUCCESS;
 }
 
@@ -988,7 +1034,21 @@ AspbStatus asdFftMakePlan3D(asdFftHandle handle, int64_t fftSizeX, int64_t fftSi
         return checkStatus;
     }
 
+    // 3D 支持 C2C/C2R/R2C/C2C_SEP，其余类型（如 STFT_*）落入 init3DSteps 的 default 分支会得到
+    // 0 步 plan 且仍被标记为已初始化（issue #124）
+    if (fftType != asdFftType::ASCEND_FFT_C2C && fftType != asdFftType::ASCEND_FFT_C2R &&
+        fftType != asdFftType::ASCEND_FFT_R2C && fftType != asdFftType::ASCEND_FFT_C2C_SEP) {
+        ASDSIP_LOG(ERROR) << "asdFftMakePlan3D: unsupported fftType " << static_cast<int>(fftType) << " for 3D plan.";
+        return ErrorType::ACL_ERROR_INVALID_PARAM;
+    }
+
     FFTPlan& plan = FFTPlanCache::getPlan(handle);
+
+    // 重复初始化守卫：与头文件"Any given handle can only be initialized once"契约对齐（issue #137）
+    if (plan.isInitialized()) {
+        ASDSIP_LOG(ERROR) << "plan is already initialized, repeated initialization is not allowed.";
+        return ErrorType::ACL_ERROR_INVALID_PARAM;
+    }
 
     plan.fftType = fftType;
     plan.direction = direction;
@@ -996,7 +1056,14 @@ AspbStatus asdFftMakePlan3D(asdFftHandle handle, int64_t fftSizeX, int64_t fftSi
     plan.fftSizes = {fftSizeX, fftSizeY, fftSizeZ};
     plan.fftStrides = {1, 1, 1};
 
-    init3DSteps(plan);
+    // 内部初始化路径可能抛出异常（如 950 不支持的分解），在 API 边界统一翻译为错误码（issue #131）
+    try {
+        init3DSteps(plan);
+    } catch (const std::exception& e) {
+        plan.steps.clear();
+        ASDSIP_LOG(ERROR) << "asdFftMakePlan3D failed: " << e.what();
+        return ErrorType::ACL_ERROR_INVALID_PARAM;
+    }
     return AsdSip::ErrorType::ACL_SUCCESS;
 }
 
@@ -1324,7 +1391,7 @@ AspbStatus asdFftExecV2Separated(FFTPlan& plan, const aclTensor* inputReal, cons
                                  const aclTensor* outputReal, const aclTensor* outputImag)
 {
     if (!plan.isInitialized()) {
-        ASDSIP_LOG(ERROR) << "plan is not initilized.";
+        ASDSIP_LOG(ERROR) << "plan is not initialized.";
         return ErrorType::ACL_ERROR_INVALID_PARAM;
     }
 
@@ -1362,7 +1429,9 @@ AspbStatus asdFftExecV2Separated(FFTPlan& plan, const aclTensor* inputReal, cons
                                      wkspace);
         return AsdSip::ErrorType::ACL_SUCCESS;
     }
-    return AsdSip::ErrorType::ACL_SUCCESS;
+    // 步骤数不为 1 时分离实虚部执行无多步 ping-pong 支持，显式报错而非静默返回成功（issue #124）
+    ASDSIP_LOG(ERROR) << "asdFftExecV2Separated expects a single-step plan, but got " << plan.steps.size() << " steps.";
+    return AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR;
 }
 
 AspbStatus asdFftExecC2CSeparated(asdFftHandle handle, const aclTensor* inputReal, const aclTensor* inputImag,

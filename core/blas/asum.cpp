@@ -20,32 +20,30 @@ constexpr uint32_t RESULT_SIZE = 1;
 
 namespace AsdSip {
 
-AspbStatus asdBlasSasumImpl(
-    asdBlasHandle handle, const int64_t n, aclTensor *x, int64_t incx, aclTensor *result, int64_t scaSum)
+AspbStatus asdBlasSasumImpl(asdBlasHandle handle, const int64_t n, aclTensor* x, int64_t incx, aclTensor* result,
+                            int64_t scaSum)
 {
-    ASDSIP_ECHECK(
-        BlasPlanCache::doesPlanExist(handle), "blas asum get cached plan failed.", ErrorType::ACL_ERROR_INTERNAL_ERROR);
+    ASDSIP_ECHECK(BlasPlanCache::doesPlanExist(handle), "blas asum get cached plan failed.",
+                  ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
     aclFormat tensorFormat = aclFormat::ACL_FORMAT_UNDEFINED;
     CHECK_STATUS_WITH_ACL_RETURN(aclGetFormat(x, &tensorFormat), "asdBlasSasumImpl: aclGetFormat");
-    ASDSIP_ECHECK(tensorFormat == aclFormat::ACL_FORMAT_ND,
-        "blas asum get invalid x tensor format.",
-        ErrorType::ACL_ERROR_FORMAT_NOT_MATCH);
+    ASDSIP_ECHECK(tensorFormat == aclFormat::ACL_FORMAT_ND, "blas asum get invalid x tensor format.",
+                  ErrorType::ACL_ERROR_FORMAT_NOT_MATCH);
     CHECK_STATUS_WITH_ACL_RETURN(aclGetFormat(result, &tensorFormat), "asdBlasSasumImpl: aclGetFormat");
-    ASDSIP_ECHECK(tensorFormat == aclFormat::ACL_FORMAT_ND,
-        "blas asum get invalid result tensor format.",
-        ErrorType::ACL_ERROR_FORMAT_NOT_MATCH);
+    ASDSIP_ECHECK(tensorFormat == aclFormat::ACL_FORMAT_ND, "blas asum get invalid result tensor format.",
+                  ErrorType::ACL_ERROR_FORMAT_NOT_MATCH);
 
     aclDataType dataType = aclDataType::ACL_DT_UNDEFINED;
     CHECK_STATUS_WITH_ACL_RETURN(aclGetDataType(result, &dataType), "asdBlasSasumImpl: aclGetDataType");
-    ASDSIP_ECHECK(
-        dataType == aclDataType::ACL_FLOAT, "get wrong out tensor type.", ErrorType::ACL_ERROR_UNSUPPORTED_DATA_TYPE);
+    ASDSIP_ECHECK(dataType == aclDataType::ACL_FLOAT, "get wrong out tensor type.",
+                  ErrorType::ACL_ERROR_UNSUPPORTED_DATA_TYPE);
 
-    int64_t *storageDims = nullptr;
+    int64_t* storageDims = nullptr;
     uint64_t storageDimsNum = 0;
 
-    CHECK_STATUS_WITH_ACL_RETURN(
-        aclGetStorageShape(x, &storageDims, &storageDimsNum), "asdBlasSasumImpl: aclGetStorageShape");
+    CHECK_STATUS_WITH_ACL_RETURN(aclGetStorageShape(x, &storageDims, &storageDimsNum),
+                                 "asdBlasSasumImpl: aclGetStorageShape");
     int64_t xSize = scaSum == 0 ? *storageDims : *storageDims * ELEMENTS_EACH_COMPLEX64;
     if (xSize != n) {
         delete[] storageDims;
@@ -57,8 +55,8 @@ AspbStatus asdBlasSasumImpl(
     delete[] storageDims;
     storageDims = nullptr;
 
-    CHECK_STATUS_WITH_ACL_RETURN(
-        aclGetStorageShape(result, &storageDims, &storageDimsNum), "asdBlasSasumImpl: aclGetStorageShape");
+    CHECK_STATUS_WITH_ACL_RETURN(aclGetStorageShape(result, &storageDims, &storageDimsNum),
+                                 "asdBlasSasumImpl: aclGetStorageShape");
     if (*storageDims != RESULT_SIZE) {
         delete[] storageDims;
         storageDims = nullptr;
@@ -75,7 +73,7 @@ AspbStatus asdBlasSasumImpl(
     }
 
     try {
-        AsdSip::BlasAsumPlan &plan = dynamic_cast<AsdSip::BlasAsumPlan &>(BlasPlanCache::getPlan(handle));
+        AsdSip::BlasAsumPlan& plan = dynamic_cast<AsdSip::BlasAsumPlan&>(BlasPlanCache::getPlan(handle));
         ASDSIP_ECHECK(plan.IsInitialized(), "Asum plan init Error!.", ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
         Status status;
@@ -87,45 +85,44 @@ AspbStatus asdBlasSasumImpl(
         opDesc.specificParam = param;
         ASDSIP_LOG(DEBUG) << "OpDesc: " << opDesc.opName << "; OpDesc info: " << param.ToString();
 
-        SVector<aclTensor *> asumInTensors = {x};
-        SVector<aclTensor *> asumOutTensors = {result};
+        SVector<aclTensor*> asumInTensors = {x};
+        SVector<aclTensor*> asumOutTensors = {result};
 
         status = RunAsdOpsV2(plan.GetStream(), opDesc, asumInTensors, asumOutTensors, plan.GetWorkspace());
         ASDSIP_ECHECK(status.Ok(), status.Message(), ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
         ASDSIP_LOG(INFO) << "Execute asdBlasAsum success.";
         return ErrorType::ACL_SUCCESS;
-    } catch (std::bad_cast &e) {
+    } catch (std::bad_cast& e) {
         // Handle the op asum exception
         ASDSIP_ELOG(ErrorType::ACL_ERROR_INTERNAL_ERROR) << "Asum Error: " << e.what();
         return ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }
 }
 
-AspbStatus asdBlasSasum(asdBlasHandle handle, const int64_t n, aclTensor *x, const int64_t incx, aclTensor *result)
+AspbStatus asdBlasSasum(asdBlasHandle handle, const int64_t n, aclTensor* x, const int64_t incx, aclTensor* result)
 {
     std::lock_guard<std::mutex> lock(blas_mtx);
     aclDataType dataType = aclDataType::ACL_DT_UNDEFINED;
     CHECK_STATUS_WITH_ACL_RETURN(aclGetDataType(x, &dataType), "asdBlasSasumImpl: aclGetDataType");
-    ASDSIP_ECHECK(
-        dataType == aclDataType::ACL_FLOAT, "get wrong in tensor type.", ErrorType::ACL_ERROR_UNSUPPORTED_DATA_TYPE);
-    ASDSIP_ECHECK(
-        n > 0 && n <= UINT32_MAX, "blas asdBlasScasum get n <= 0 or n > 2^32.", ErrorType::ACL_ERROR_INVALID_PARAM);
+    ASDSIP_ECHECK(dataType == aclDataType::ACL_FLOAT, "get wrong in tensor type.",
+                  ErrorType::ACL_ERROR_UNSUPPORTED_DATA_TYPE);
+    ASDSIP_ECHECK(n > 0 && n <= UINT32_MAX, "blas asdBlasScasum get n <= 0 or n > 2^32.",
+                  ErrorType::ACL_ERROR_INVALID_PARAM);
 
     ASDSIP_LOG(INFO) << "Execute asdBlasSasum success.";
     return asdBlasSasumImpl(handle, n, x, incx, result, 0);
 }
 
-AspbStatus asdBlasScasum(asdBlasHandle handle, const int64_t n, aclTensor *x, const int64_t incx, aclTensor *result)
+AspbStatus asdBlasScasum(asdBlasHandle handle, const int64_t n, aclTensor* x, const int64_t incx, aclTensor* result)
 {
     std::lock_guard<std::mutex> lock(blas_mtx);
     aclDataType dataType = aclDataType::ACL_DT_UNDEFINED;
     CHECK_STATUS_WITH_ACL_RETURN(aclGetDataType(x, &dataType), "asdBlasSasumImpl: aclGetDataType");
-    ASDSIP_ECHECK(dataType == aclDataType::ACL_COMPLEX64,
-        "get wrong in tensor type.",
-        ErrorType::ACL_ERROR_UNSUPPORTED_DATA_TYPE);
-    ASDSIP_ECHECK(
-        n > 0 && n <= UINT32_MAX, "blas asdBlasScasum get n <= 0 or n > 2^32.", ErrorType::ACL_ERROR_INVALID_PARAM);
+    ASDSIP_ECHECK(dataType == aclDataType::ACL_COMPLEX64, "get wrong in tensor type.",
+                  ErrorType::ACL_ERROR_UNSUPPORTED_DATA_TYPE);
+    ASDSIP_ECHECK(n > 0 && n <= UINT32_MAX, "blas asdBlasScasum get n <= 0 or n > 2^32.",
+                  ErrorType::ACL_ERROR_INVALID_PARAM);
 
     ASDSIP_LOG(INFO) << "Execute asdBlasScasum success.";
     return asdBlasSasumImpl(handle, ELEMENTS_EACH_COMPLEX64 * n, x, incx, result, 1);
@@ -135,16 +132,20 @@ AspbStatus asdBlasMakeAsumPlan(asdBlasHandle handle)
 {
     std::lock_guard<std::mutex> lock(blas_mtx);
     ASDSIP_ECHECK(handle != nullptr, "blas MakeAsumPlan Fail.", ErrorType::ACL_ERROR_INTERNAL_ERROR);
+    // 重复绑定守卫：handle 只能初始化一次，防止 MakePlan 对已绑定 handle 静默失败导致 UAF（issue #129）
+    ASDSIP_ECHECK(!BlasPlanCache::doesPlanExist(handle),
+                  "blas handle already bound to a plan, repeated initialization is not allowed.",
+                  ErrorType::ACL_ERROR_INVALID_PARAM);
 
-    AsdSip::BlasAsumPlan *plan = nullptr;
+    AsdSip::BlasAsumPlan* plan = nullptr;
     try {
         plan = new AsdSip::BlasAsumPlan();
         BlasPlanCache::MakePlan(handle, plan);
-    } catch (const std::exception &e) {
+    } catch (const std::exception& e) {
         if (plan != nullptr) {
             delete plan;
         }
-        delete static_cast<int *>(handle);
+        delete static_cast<int*>(handle);
         ASDSIP_ELOG(ErrorType::ACL_ERROR_INTERNAL_ERROR) << "Make Asum Plan failed: " << e.what();
         throw std::runtime_error("Make Asum Plan failed.");
     }
@@ -152,4 +153,4 @@ AspbStatus asdBlasMakeAsumPlan(asdBlasHandle handle)
     ASDSIP_LOG(INFO) << "Execute asdBlasMakeAsumPlan success.";
     return ErrorType::ACL_SUCCESS;
 }
-}  // namespace AsdSip
+} // namespace AsdSip

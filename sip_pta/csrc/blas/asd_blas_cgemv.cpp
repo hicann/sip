@@ -22,8 +22,8 @@ namespace sip_pta {
 /**
  * @brief 复数矩阵-向量乘加算子 (CGEMV): y = alpha * op(A) * x + beta * y
  */
-at::Tensor asdBlasCgemv(const at::Tensor& A, const at::Tensor& x, at::Tensor& y,
-                        const at::Scalar& alpha, const at::Scalar& beta, int64_t trans)
+at::Tensor asdBlasCgemv(const at::Tensor& A, const at::Tensor& x, at::Tensor& y, const at::Scalar& alpha,
+                        const at::Scalar& beta, int64_t trans)
 {
     // 基本校验
     TORCH_CHECK(A.scalar_type() == at::kComplexFloat && x.scalar_type() == at::kComplexFloat &&
@@ -51,14 +51,12 @@ at::Tensor asdBlasCgemv(const at::Tensor& A, const at::Tensor& x, at::Tensor& y,
     auto acl_y = ConvertType(y);
     // 准备 Plan (注意处理 at::Tensor 到 aclTensor* 的转换)
     auto makePlan = [opA, m, n, acl_y, incy](AsdSip::asdBlasHandle handle) {
-        AsdSip::asdBlasMakeCgemvPlan(handle, opA, m, n, acl_y, incy);
+        return AsdSip::asdBlasMakeCgemvPlan(handle, opA, m, n, acl_y, incy);
     };
-    std::vector<int64_t> params = {static_cast<int64_t>(opA), m, n,
-                                   reinterpret_cast<int64_t>(acl_y), incy};
+    std::vector<int64_t> params = {static_cast<int64_t>(opA), m, n, reinterpret_cast<int64_t>(acl_y), incy};
     // 执行算子
     // 传递 A, x, y (at::Tensor 类型)，宏内部的 ConvertTypes 会处理转换
-    EXEC_BLAS_FUNC(AsdSip::asdBlasCgemv, makePlan, params, opA, m, n, a_std, A, lda, x, incx, b_std,
-                   acl_y, incy);
+    EXEC_BLAS_FUNC(AsdSip::asdBlasCgemv, makePlan, params, opA, m, n, a_std, A, lda, x, incx, b_std, acl_y, incy);
 
     return y;
 }

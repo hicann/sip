@@ -45,11 +45,10 @@ at::Tensor asdBlasStrmv(const at::Tensor& A, at::Tensor& x, int64_t uplo, int64_
 
     // 封装 MakePlan 函数逻辑
     auto makePlan = [uploEnum, transEnum, n](AsdSip::asdBlasHandle handle) {
-        AsdSip::asdBlasMakeStrmvPlan(handle, uploEnum, transEnum, n);
+        return AsdSip::asdBlasMakeStrmvPlan(handle, uploEnum, transEnum, n);
     };
 
-    EXEC_BLAS_FUNC(AsdSip::asdBlasStrmv, makePlan, params,
-                   uploEnum, transEnum, diagEnum, n, A, lda, x, incx);
+    EXEC_BLAS_FUNC(AsdSip::asdBlasStrmv, makePlan, params, uploEnum, transEnum, diagEnum, n, A, lda, x, incx);
 
     return x;
 }
@@ -62,9 +61,6 @@ TORCH_LIBRARY_FRAGMENT(torch_sip, m)
     m.def("asd_blas_strmv(Tensor A, Tensor(a!) x, int uplo, int trans, int diag) -> Tensor(a!)");
 }
 
-TORCH_LIBRARY_IMPL(torch_sip, PrivateUse1, m)
-{
-    m.impl("asd_blas_strmv", &asdBlasStrmv);
-}
+TORCH_LIBRARY_IMPL(torch_sip, PrivateUse1, m) { m.impl("asd_blas_strmv", &asdBlasStrmv); }
 
 } // namespace sip_pta

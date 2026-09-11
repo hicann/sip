@@ -26,7 +26,8 @@ namespace {
 constexpr float ATOL = 0.001;
 constexpr float RTOL = 0.001;
 
-std::string GetSsyrOutputDirectory() {
+std::string GetSsyrOutputDirectory()
+{
     const char* current_dir_env = std::getenv("CURRENT_DIR");
     if (current_dir_env) {
         return std::string(current_dir_env);
@@ -35,7 +36,8 @@ std::string GetSsyrOutputDirectory() {
     }
 }
 
-float GetRandomAlpha() {
+float GetRandomAlpha()
+{
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_real_distribution<float> distr(0.5f, 2.0f);
@@ -72,7 +74,8 @@ void RunSsyrTest(asdBlasFillMode_t uplo, const std::string& uploStr)
     Tensor inputTensorA = context.inTensors[1];
 
     for (size_t i = 0; i < context.inTensors.size(); i++) {
-        std::string filename = GetElementDtype(context.inTensors[i].desc.dtype) + "_input_" + std::to_string(i) + ".bin";
+        std::string filename = GetElementDtype(context.inTensors[i].desc.dtype) + "_input_" + std::to_string(i) +
+                               ".bin";
         if (SaveTensorToBin(context.inTensors[i], destPath + "/ssyr_data/" + filename)) {
             std::cout << "Tensor saved successfully: " << filename << std::endl;
         } else {
@@ -80,13 +83,14 @@ void RunSsyrTest(asdBlasFillMode_t uplo, const std::string& uploStr)
         }
     }
 
-    std::string gen_data_cmd = "cd " + ShellQuote(destPath + "/ssyr_data/") + " && python3 gen_data.py " + std::to_string(alpha) + " " + uploStr;
+    std::string gen_data_cmd = "cd " + ShellQuote(destPath + "/ssyr_data/") + " && python3 gen_data.py " +
+                               std::to_string(alpha) + " " + uploStr;
     system(gen_data_cmd.c_str());
 
-    aclTensor *aclInputX = nullptr;
-    aclTensor *aclInputA = nullptr;
-    void *inputXDeviceAddr = nullptr;
-    void *inputADeviceAddr = nullptr;
+    aclTensor* aclInputX = nullptr;
+    aclTensor* aclInputA = nullptr;
+    void* inputXDeviceAddr = nullptr;
+    void* inputADeviceAddr = nullptr;
 
     std::vector<float> inputXHostData(n);
     float* inputXDataPtr = static_cast<float*>(inputTensorX.hostData);
@@ -119,7 +123,7 @@ void RunSsyrTest(asdBlasFillMode_t uplo, const std::string& uploStr)
     blasStatus = asdBlasGetWorkspaceSize(handle, workSize);
     ASSERT_EQ(blasStatus, AsdSip::ErrorType::ACL_SUCCESS);
 
-    void *workspaceAddr = nullptr;
+    void* workspaceAddr = nullptr;
     if (workSize > 0) {
         ret = aclrtMalloc(&workspaceAddr, static_cast<int64_t>(workSize), ACL_MEM_MALLOC_HUGE_FIRST);
         ASSERT_EQ(ret, ::ACL_SUCCESS);
@@ -139,10 +143,7 @@ void RunSsyrTest(asdBlasFillMode_t uplo, const std::string& uploStr)
 
     asdBlasDestroy(handle);
 
-    ret = aclrtMemcpy(inputTensorA.hostData,
-                      inputTensorA.dataSize,
-                      inputADeviceAddr,
-                      inputTensorA.dataSize,
+    ret = aclrtMemcpy(inputTensorA.hostData, inputTensorA.dataSize, inputADeviceAddr, inputTensorA.dataSize,
                       ACL_MEMCPY_DEVICE_TO_HOST);
     ASSERT_EQ(ret, ::ACL_SUCCESS);
 
@@ -170,12 +171,39 @@ void RunSsyrTest(asdBlasFillMode_t uplo, const std::string& uploStr)
 }
 } // namespace
 
-TEST(TestBlasSsyr, TestSsyrLower)
-{
-    RunSsyrTest(asdBlasFillMode_t::ASDBLAS_FILL_MODE_LOWER, "lower");
-}
+TEST(TestBlasSsyr, TestSsyrLower) { RunSsyrTest(asdBlasFillMode_t::ASDBLAS_FILL_MODE_LOWER, "lower"); }
 
-TEST(TestBlasSsyr, TestSsyrUpper)
+TEST(TestBlasSsyr, TestSsyrUpper) { RunSsyrTest(asdBlasFillMode_t::ASDBLAS_FILL_MODE_UPPER, "upper"); }
+
+// 负向校验（issue #130）：A 元素数不足 n*n 时应被拦截，而非 kernel 越界写
+TEST(TestBlasSsyr, TestSsyrRejectInvalidAShape)
 {
-    RunSsyrTest(asdBlasFillMode_t::ASDBLAS_FILL_MODE_UPPER, "upper");
+    int deviceId = 0;
+    MkiRtStream stream = OpTestInit(deviceId);
+
+    const int64_t n = 4;
+    std::vector<float> xHost(n, 1.0f);
+    std::vector<float> aHost(n * n - 8, 1.0f); // 元素数 8 < n*n=16
+    aclTensor* aclX = nullptr;
+    aclTensor* aclA = nullptr;
+    void* xAddr = nullptr;
+    void* aAddr = nullptr;
+    ASSERT_EQ(CreateAclTensor(xHost, std::vector<int64_t>{n}, &xAddr, aclDataType::ACL_FLOAT, &aclX), 0);
+    ASSERT_EQ(CreateAclTensor(aHost, std::vector<int64_t>{n * n - 8}, &aAddr, aclDataType::ACL_FLOAT, &aclA), 0);
+
+    asdBlasHandle handle;
+    ASSERT_EQ(asdBlasCreate(handle), AsdSip::ErrorType::ACL_SUCCESS);
+    ASSERT_EQ(asdBlasMakeSsyrPlan(handle), AsdSip::ErrorType::ACL_SUCCESS);
+
+    EXPECT_EQ(asdBlasSsyr(handle, asdBlasFillMode_t::ASDBLAS_FILL_MODE_LOWER, n, 1.0f, aclX, 1, aclA, n),
+              AsdSip::ErrorType::ACL_ERROR_OP_INPUT_NOT_MATCH);
+
+    asdBlasDestroy(handle);
+    aclDestroyTensor(aclX);
+    aclDestroyTensor(aclA);
+    aclrtFree(xAddr);
+    aclrtFree(aAddr);
+
+    TensorContext context;
+    OpTestEnd(deviceId, context, stream);
 }

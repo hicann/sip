@@ -20,24 +20,24 @@ namespace AsdSip {
 
 struct DotImplParam {
     int64_t n;
-    aclTensor *x;
+    aclTensor* x;
     int64_t incx;
-    aclTensor *y;
+    aclTensor* y;
     int64_t incy;
-    aclTensor *result;
+    aclTensor* result;
     int64_t isConj;
 };
 
 AspbStatus asdBlasDotImpl(asdBlasHandle handle, DotImplParam implParam, int64_t sdot)
 {
-    ASDSIP_ECHECK(BlasPlanCache::doesPlanExist(handle),
-        "blas Dot get cached plan failed.", ErrorType::ACL_ERROR_INTERNAL_ERROR);
+    ASDSIP_ECHECK(BlasPlanCache::doesPlanExist(handle), "blas Dot get cached plan failed.",
+                  ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
-    int64_t *storageDims = nullptr;
+    int64_t* storageDims = nullptr;
     uint64_t dotStorageDimsNum = 0;
     int64_t checkSize = 0;
     CHECK_STATUS_WITH_ACL_RETURN(aclGetStorageShape(implParam.x, &storageDims, &dotStorageDimsNum),
-        "asdBlasDotImpl: aclGetStorageShape");
+                                 "asdBlasDotImpl: aclGetStorageShape");
     checkSize = sdot == 1 ? *storageDims : *storageDims * ELEMENTS_EACH_COMPLEX64;
     if (checkSize != implParam.n) {
         delete[] storageDims;
@@ -50,7 +50,7 @@ AspbStatus asdBlasDotImpl(asdBlasHandle handle, DotImplParam implParam, int64_t 
     storageDims = nullptr;
 
     CHECK_STATUS_WITH_ACL_RETURN(aclGetStorageShape(implParam.y, &storageDims, &dotStorageDimsNum),
-        "asdBlasDotImpl: aclGetStorageShape");
+                                 "asdBlasDotImpl: aclGetStorageShape");
     checkSize = sdot == 1 ? *storageDims : *storageDims * ELEMENTS_EACH_COMPLEX64;
     if (checkSize != implParam.n) {
         delete[] storageDims;
@@ -65,7 +65,7 @@ AspbStatus asdBlasDotImpl(asdBlasHandle handle, DotImplParam implParam, int64_t 
     }
 
     ASDSIP_ECHECK(implParam.n > 0, "blas asdBlasDotImpl get wrong input n, please check.",
-        ErrorType::ACL_ERROR_INVALID_PARAM);
+                  ErrorType::ACL_ERROR_INVALID_PARAM);
 
     if (implParam.incx <= 0) {
         ASDSIP_LOG(INFO) << "blas asdBlasDotImpl get incx <= 0,change to 1.";
@@ -86,11 +86,11 @@ AspbStatus asdBlasDotImpl(asdBlasHandle handle, DotImplParam implParam, int64_t 
     opDesc.specificParam = param;
     ASDSIP_LOG(DEBUG) << "OpDesc: " << opDesc.opName << "; OpDesc info: " << param.ToString();
 
-    SVector<aclTensor *> dotInTensors{implParam.x, implParam.y};
-    SVector<aclTensor *> dotOutTensors{implParam.result};
+    SVector<aclTensor*> dotInTensors{implParam.x, implParam.y};
+    SVector<aclTensor*> dotOutTensors{implParam.result};
 
     try {
-        AsdSip::BlasDotPlan &plan = dynamic_cast<AsdSip::BlasDotPlan &>(BlasPlanCache::getPlan(handle));
+        AsdSip::BlasDotPlan& plan = dynamic_cast<AsdSip::BlasDotPlan&>(BlasPlanCache::getPlan(handle));
         ASDSIP_ECHECK(plan.IsInitialized(), "Dot plan init Error!.", ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
         status = RunAsdOpsV2(plan.GetStream(), opDesc, dotInTensors, dotOutTensors, plan.GetWorkspace());
@@ -98,15 +98,15 @@ AspbStatus asdBlasDotImpl(asdBlasHandle handle, DotImplParam implParam, int64_t 
 
         ASDSIP_LOG(INFO) << "Execute asdBlasDot success.";
         return ErrorType::ACL_SUCCESS;
-    } catch (std::bad_cast &e) {
+    } catch (std::bad_cast& e) {
         // Handle the op dot exception
         ASDSIP_ELOG(ErrorType::ACL_ERROR_INTERNAL_ERROR) << "Dot Error: " << e.what();
         return ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }
 }
 
-AspbStatus asdBlasSdot(asdBlasHandle handle, const int64_t n, aclTensor *x, const int64_t incx, aclTensor *y,
-                       const int64_t incy, aclTensor *result)
+AspbStatus asdBlasSdot(asdBlasHandle handle, const int64_t n, aclTensor* x, const int64_t incx, aclTensor* y,
+                       const int64_t incy, aclTensor* result)
 {
     std::lock_guard<std::mutex> lock(blas_mtx);
     aclDataType dataType = aclDataType::ACL_DT_UNDEFINED;
@@ -124,8 +124,8 @@ AspbStatus asdBlasSdot(asdBlasHandle handle, const int64_t n, aclTensor *x, cons
     return asdBlasDotImpl(handle, param, 1);
 }
 
-AspbStatus asdBlasCdotu(asdBlasHandle handle, const int64_t n, aclTensor *x, const int64_t incx, aclTensor *y,
-                        const int64_t incy, aclTensor *result)
+AspbStatus asdBlasCdotu(asdBlasHandle handle, const int64_t n, aclTensor* x, const int64_t incx, aclTensor* y,
+                        const int64_t incy, aclTensor* result)
 {
     std::lock_guard<std::mutex> lock(blas_mtx);
     aclDataType dataType = aclDataType::ACL_DT_UNDEFINED;
@@ -139,14 +139,14 @@ AspbStatus asdBlasCdotu(asdBlasHandle handle, const int64_t n, aclTensor *x, con
     CHECK_STATUS_WITH_ACL_RETURN(aclGetDataType(result, &dataType), "asdBlasCdotu: aclGetDataType");
     ASDSIP_ECHECK(dataType == aclDataType::ACL_COMPLEX64, "blas asdBlasCdotu get wrong result tensor dtype.",
                   ErrorType::ACL_ERROR_UNSUPPORTED_DATA_TYPE);
-    ASDSIP_ECHECK(n > 0 && n <= UINT32_MAX,
-                  "blas asdBlasCdotu get n <= 0 or n > 2^32.", ErrorType::ACL_ERROR_INVALID_PARAM);
+    ASDSIP_ECHECK(n > 0 && n <= UINT32_MAX, "blas asdBlasCdotu get n <= 0 or n > 2^32.",
+                  ErrorType::ACL_ERROR_INVALID_PARAM);
     DotImplParam param = {ELEMENTS_EACH_COMPLEX64 * n, x, incx, y, incy, result, 0};
     return asdBlasDotImpl(handle, param, 0);
 }
 
-AspbStatus asdBlasCdotc(asdBlasHandle handle, const int64_t n, aclTensor *x, const int64_t incx, aclTensor *y,
-                        const int64_t incy, aclTensor *result)
+AspbStatus asdBlasCdotc(asdBlasHandle handle, const int64_t n, aclTensor* x, const int64_t incx, aclTensor* y,
+                        const int64_t incy, aclTensor* result)
 {
     std::lock_guard<std::mutex> lock(blas_mtx);
     aclDataType dataType = aclDataType::ACL_DT_UNDEFINED;
@@ -160,8 +160,8 @@ AspbStatus asdBlasCdotc(asdBlasHandle handle, const int64_t n, aclTensor *x, con
     CHECK_STATUS_WITH_ACL_RETURN(aclGetDataType(result, &dataType), "asdBlasCdotc: aclGetDataType");
     ASDSIP_ECHECK(dataType == aclDataType::ACL_COMPLEX64, "blas asdBlasCdotc get wrong result tensor dtype.",
                   ErrorType::ACL_ERROR_UNSUPPORTED_DATA_TYPE);
-    ASDSIP_ECHECK(n > 0 && n <= UINT32_MAX,
-                  "blas asdBlasCdotc get n <= 0 or n > 2^32.", ErrorType::ACL_ERROR_INVALID_PARAM);
+    ASDSIP_ECHECK(n > 0 && n <= UINT32_MAX, "blas asdBlasCdotc get n <= 0 or n > 2^32.",
+                  ErrorType::ACL_ERROR_INVALID_PARAM);
     DotImplParam param = {ELEMENTS_EACH_COMPLEX64 * n, x, incx, y, incy, result, 1};
     return asdBlasDotImpl(handle, param, 0);
 }
@@ -170,8 +170,12 @@ AspbStatus asdBlasMakeDotPlan(asdBlasHandle handle)
 {
     std::lock_guard<std::mutex> lock(blas_mtx);
     ASDSIP_ECHECK(handle != nullptr, "blas MakeDotPlan Fail.", ErrorType::ACL_ERROR_INTERNAL_ERROR);
+    // 重复绑定守卫：handle 只能初始化一次，防止 MakePlan 对已绑定 handle 静默失败导致 UAF（issue #129）
+    ASDSIP_ECHECK(!BlasPlanCache::doesPlanExist(handle),
+                  "blas handle already bound to a plan, repeated initialization is not allowed.",
+                  ErrorType::ACL_ERROR_INVALID_PARAM);
 
-    AsdSip::BlasDotPlan *plan = nullptr;
+    AsdSip::BlasDotPlan* plan = nullptr;
     try {
         plan = new AsdSip::BlasDotPlan();
         BlasPlanCache::MakePlan(handle, plan);
@@ -186,4 +190,4 @@ AspbStatus asdBlasMakeDotPlan(asdBlasHandle handle)
     plan->MarkInitialized();
     return ErrorType::ACL_SUCCESS;
 }
-}
+} // namespace AsdSip

@@ -12,6 +12,7 @@
 #include <cstring>
 #include <clocale>
 #include <cctype>
+#include <cerrno>
 #include <syscall.h>
 #include <mutex>
 #include <sstream>
@@ -79,6 +80,24 @@ LogSinkFileSip::LogSinkFileSip() { Init(); }
 
 LogSinkFileSip::~LogSinkFileSip() { CloseFile(); }
 
+// 完整写入防护：循环写入直到累计长度达到 count；EINTR 中断时重试，其他错误返回 -1（issue #127）
+ssize_t LogSinkFileSip::safeWriteAll(int fd, const void* buf, size_t count)
+{
+    size_t written = 0;
+    const char* ptr = static_cast<const char*>(buf);
+    while (written < count) {
+        ssize_t ret = write(fd, ptr + written, count - written);
+        if (ret < 0) {
+            if (errno == EINTR) {
+                continue;
+            }
+            return -1;
+        }
+        written += static_cast<size_t>(ret);
+    }
+    return static_cast<ssize_t>(written);
+}
+
 void LogSinkFileSip::LogSip(const char* log, uint64_t logLen)
 {
     std::lock_guard<std::mutex> guard(mutex_);
@@ -94,10 +113,11 @@ void LogSinkFileSip::LogSip(const char* log, uint64_t logLen)
         return;
     }
 
-    ssize_t writeSize = write(currentFd_, log, logLen);
+    // 部分写/EINTR 由 safeWriteAll 内部重试，仅在彻底失败时丢弃本条日志（issue #127）
+    ssize_t writeSize = safeWriteAll(currentFd_, log, logLen);
     if (writeSize != static_cast<ssize_t>(logLen)) {
         std::cout << "asdsip_log write file fail, want to write size: " << logLen
-                  << ", success write size:" << writeSize;
+                  << ", success write size:" << writeSize << std::endl;
         CloseFile();
         return;
     }
@@ -311,10 +331,10 @@ static std::string ResolveAndValidatePath(const std::string& inputPath)
 
 void LogSinkFileSip::Init()
 {
-    const char* env = "asdsip";
-    boostType_ = env && strlen(env) <= MAX_ENV_STRING_LEN && IsValidFileName(env) ? std::string(env) : "asdsip";
+    // 日志前缀固定为 asdsip（此前以伪环境变量形态硬编码，易误导维护者以为可配置，issue #140）
+    boostType_ = "asdsip";
 
-    env = std::getenv("ASCEND_PROCESS_LOG_PATH") ? std::getenv("ASCEND_PROCESS_LOG_PATH") : "asdsip";
+    const char* env = std::getenv("ASCEND_PROCESS_LOG_PATH") ? std::getenv("ASCEND_PROCESS_LOG_PATH") : "asdsip";
     std::string logRootDir = env && strlen(env) <= MAX_ENV_STRING_LEN && IsValidFileName(env) ? std::string(env) :
                                                                                                 GetHomeDir();
 
@@ -327,9 +347,6 @@ void LogSinkFileSip::Init()
     }
 
     logDir_ = logRootDir + "/log" + "/" + boostType_;
-
-    env = "1";
-    isFlush_ = env && strlen(env) <= MAX_ENV_STRING_LEN ? std::string(env) == "1" : false;
 }
 
 bool LogSinkFileSip::IsFileNameMatched(const std::string& fileName, std::string& createTime)

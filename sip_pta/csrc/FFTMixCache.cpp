@@ -28,12 +28,16 @@ FFTCacheValue FFTMixCache::get(FFTCacheKey& cacheKey)
     }
 
     if (static_cast<int>(list.size()) >= capacity) {
-        destoryFftHandle(list.front().second.handle);
+        destroyFftHandle(list.front().second.handle);
         list.pop_front();
     }
 
     FFTCacheValue value;
     value.handle = createFftHandle(cacheKey.fftParam);
+    if (value.handle == nullptr) {
+        // 创建失败：不入缓存，避免坏 handle 固化为持续故障，下次调用可重建（issue #132）
+        return value;
+    }
     list.push_back(std::make_pair(cacheKey, value));
     return value;
 }
@@ -47,7 +51,7 @@ void FFTMixCache::setCapacity(int64_t maxSize)
 
     capacity = maxSize;
     while (static_cast<int>(list.size()) > capacity) {
-        destoryFftHandle(list.front().second.handle);
+        destroyFftHandle(list.front().second.handle);
         list.pop_front();
     }
 }
@@ -60,7 +64,7 @@ void FFTMixCache::clear()
 {
     for (auto it = list.begin(); it != list.end(); ++it) {
         FFTPair tmp = *it;
-        destoryFftHandle(tmp.second.handle);
+        destroyFftHandle(tmp.second.handle);
     }
     list.clear();
 }

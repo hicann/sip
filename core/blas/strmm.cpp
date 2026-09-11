@@ -16,9 +16,9 @@ using namespace Mki;
 
 namespace AsdSip {
 struct StrmmTensorParam {
-    const aclTensor *A;
-    const aclTensor *B;
-    const aclTensor *C;
+    const aclTensor* A;
+    const aclTensor* B;
+    const aclTensor* C;
 };
 
 AspbStatus StrmmDtypeCheck(struct StrmmTensorParam parm)
@@ -32,38 +32,35 @@ AspbStatus StrmmDtypeCheck(struct StrmmTensorParam parm)
 
 AspbStatus StrmmShapeCheck(struct StrmmTensorParam parm, const int64_t m, const int64_t n, asdBlasSideMode_t side)
 {
-    ASDSIP_ECHECK(
-        n > 0 && n <= UINT32_MAX, "blas asdBlasSswap get n <= 0 or n > 2^32.", ErrorType::ACL_ERROR_INVALID_PARAM);
-    ASDSIP_ECHECK(
-        m > 0 && m <= UINT32_MAX, "blas asdBlasSswap get m <= 0 or m > 2^32.", ErrorType::ACL_ERROR_INVALID_PARAM);
+    ASDSIP_ECHECK(n > 0 && n <= UINT32_MAX, "blas asdBlasStrmm get n <= 0 or n > 2^32.",
+                  ErrorType::ACL_ERROR_INVALID_PARAM);
+    ASDSIP_ECHECK(m > 0 && m <= UINT32_MAX, "blas asdBlasStrmm get m <= 0 or m > 2^32.",
+                  ErrorType::ACL_ERROR_INVALID_PARAM);
     int64_t aNum = (side == asdBlasSideMode_t::ASDBLAS_SIDE_LEFT) ? (m * m) : (n * n);
     SIP_OP_CHECK_NUM_NOT_MATCH(parm.A, aNum, ErrorType::ACL_ERROR_OP_INPUT_NOT_MATCH);
     SIP_OP_CHECK_NUM_NOT_MATCH(parm.B, m * n, ErrorType::ACL_ERROR_OP_INPUT_NOT_MATCH);
-    SIP_OP_CHECK_NUM_NOT_MATCH(parm.B, m * n, ErrorType::ACL_ERROR_OP_INPUT_NOT_MATCH);
+    SIP_OP_CHECK_NUM_NOT_MATCH(parm.C, m * n, ErrorType::ACL_ERROR_OP_INPUT_NOT_MATCH);
     return ErrorType::ACL_SUCCESS;
 }
 
 AspbStatus asdBlasStrmm(asdBlasHandle handle, asdBlasSideMode_t side, asdBlasFillMode_t uplo, asdBlasOperation_t trans,
-    asdBlasDiagType_t diag, const int64_t m, const int64_t n, const float &alpha, aclTensor *A, const int64_t lda,
-    aclTensor *B, const int64_t ldb, aclTensor *C, const int64_t ldc)
+                        asdBlasDiagType_t diag, const int64_t m, const int64_t n, const float& alpha, aclTensor* A,
+                        const int64_t lda, aclTensor* B, const int64_t ldb, aclTensor* C, const int64_t ldc)
 {
     std::lock_guard<std::mutex> lock(blas_mtx);
-    ASDSIP_ECHECK(BlasPlanCache::doesPlanExist(handle),
-        "blas Strmm get cached plan failed.",
-        ErrorType::ACL_ERROR_INTERNAL_ERROR);
+    ASDSIP_ECHECK(BlasPlanCache::doesPlanExist(handle), "blas Strmm get cached plan failed.",
+                  ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
     struct StrmmTensorParam parm {
         A, B, C
     };
-    ASDSIP_CHECK(StrmmDtypeCheck(parm) == ErrorType::ACL_SUCCESS,
-        "blas asdBlasStrmm dtype check failed.",
-        return ErrorType::ACL_ERROR_UNSUPPORTED_DATA_TYPE);
+    ASDSIP_CHECK(StrmmDtypeCheck(parm) == ErrorType::ACL_SUCCESS, "blas asdBlasStrmm dtype check failed.",
+                 return ErrorType::ACL_ERROR_UNSUPPORTED_DATA_TYPE);
     auto ret = StrmmShapeCheck(parm, m, n, side);
     ASDSIP_CHECK(ret == ErrorType::ACL_SUCCESS, "blas asdBlasStrmm shape check failed.", return ret);
 
-    ASDSIP_ECHECK(diag == asdBlasDiagType_t::ASDBLAS_DIAG_NON_UNIT,
-        "blas asdBlasStrmm get diag unit.",
-        ErrorType::ACL_ERROR_INVALID_PARAM);
+    ASDSIP_ECHECK(diag == asdBlasDiagType_t::ASDBLAS_DIAG_NON_UNIT, "blas asdBlasStrmm get diag unit.",
+                  ErrorType::ACL_ERROR_INVALID_PARAM);
 
     if (lda <= 0) {
         ASDSIP_LOG(INFO) << "blas asdBlasStrmm get lda <= 0.";
@@ -78,7 +75,7 @@ AspbStatus asdBlasStrmm(asdBlasHandle handle, asdBlasSideMode_t side, asdBlasFil
     }
 
     try {
-        AsdSip::BlasStrmmPlan &plan = dynamic_cast<AsdSip::BlasStrmmPlan &>(BlasPlanCache::getPlan(handle));
+        AsdSip::BlasStrmmPlan& plan = dynamic_cast<AsdSip::BlasStrmmPlan&>(BlasPlanCache::getPlan(handle));
         ASDSIP_ECHECK(plan.IsInitialized(), "Strmm plan init Error!.", ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
         Status strmmStatus;
@@ -139,7 +136,7 @@ AspbStatus asdBlasStrmm(asdBlasHandle handle, asdBlasSideMode_t side, asdBlasFil
         opDesc.specificParam = param;
         ASDSIP_LOG(DEBUG) << "OpDesc: " << opDesc.opName << "; OpDesc info: " << param.ToString();
 
-        SVector<aclTensor *> strmmInTensors{};
+        SVector<aclTensor*> strmmInTensors{};
 
         if (sideInt == 0) {
             strmmInTensors.push_back(A);
@@ -149,14 +146,14 @@ AspbStatus asdBlasStrmm(asdBlasHandle handle, asdBlasSideMode_t side, asdBlasFil
             strmmInTensors.push_back(A);
         }
 
-        SVector<aclTensor *> strmmOutTensors{C};
+        SVector<aclTensor*> strmmOutTensors{C};
 
         strmmStatus = RunAsdOpsV2(plan.GetStream(), opDesc, strmmInTensors, strmmOutTensors, plan.GetWorkspace());
         ASDSIP_ECHECK(strmmStatus.Ok(), strmmStatus.Message(), ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
-        ASDSIP_LOG(INFO) << "Execute asdBlasAsum success.";
+        ASDSIP_LOG(INFO) << "Execute asdBlasStrmm success.";
         return ErrorType::ACL_SUCCESS;
-    } catch (std::bad_cast &e) {
+    } catch (std::bad_cast& e) {
         // Handle the Strmm exception
         ASDSIP_ELOG(ErrorType::ACL_ERROR_INTERNAL_ERROR) << "Strmm Error: " << e.what();
         return ErrorType::ACL_ERROR_INTERNAL_ERROR;
@@ -167,20 +164,24 @@ AspbStatus asdBlasMakeStrmmPlan(asdBlasHandle handle)
 {
     std::lock_guard<std::mutex> lock(blas_mtx);
     ASDSIP_ECHECK(handle != nullptr, "blas MakeStrmmPlan Fail.", ErrorType::ACL_ERROR_INTERNAL_ERROR);
+    // 重复绑定守卫：handle 只能初始化一次，防止 MakePlan 对已绑定 handle 静默失败导致 UAF（issue #129）
+    ASDSIP_ECHECK(!BlasPlanCache::doesPlanExist(handle),
+                  "blas handle already bound to a plan, repeated initialization is not allowed.",
+                  ErrorType::ACL_ERROR_INVALID_PARAM);
 
-    AsdSip::BlasStrmmPlan *plan = nullptr;
+    AsdSip::BlasStrmmPlan* plan = nullptr;
     try {
         plan = new AsdSip::BlasStrmmPlan();
         BlasPlanCache::MakePlan(handle, plan);
-    } catch (const std::exception &e) {
+    } catch (const std::exception& e) {
         if (plan != nullptr) {
             delete plan;
         }
-        delete static_cast<int *>(handle);
+        delete static_cast<int*>(handle);
         ASDSIP_ELOG(ErrorType::ACL_ERROR_INTERNAL_ERROR) << "Make Strmm Plan failed: " << e.what();
         throw std::runtime_error("Make Strmm Plan failed.");
     }
     plan->MarkInitialized();
     return ErrorType::ACL_SUCCESS;
 }
-}  // namespace AsdSip
+} // namespace AsdSip

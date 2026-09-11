@@ -115,7 +115,7 @@ function fn_compile_and_pack()
 function fn_install_lcov()
 {
     LCOV_PACK_PATH=${CODE_ROOT}/lcov-1.16
-    LCOV_BIN_PATH=/${CODE_ROOT}/lcov
+    LCOV_BIN_PATH=${CODE_ROOT}/lcov
     if [ ! -d $LCOV_BIN_PATH ]; then
         if [ ! -d $LCOV_PACK_PATH ]; then
             wget --no-check-certificate https://github.com/linux-test-project/lcov/archive/refs/tags/v1.16.tar.gz
@@ -154,7 +154,7 @@ function fn_build_coverage()
 {
 
     export GCOV_DIR=$CACHE_DIR/gcov
-    PYYTHON_FILTER_TOOL=$CODE_ROOT/tests/ut/framework/test_util/FilterTool.py
+    PYTHON_FILTER_TOOL=$CODE_ROOT/tests/ut/framework/test_util/FilterTool.py
     LCOV_PATH=${CODE_ROOT}/lcov/bin/lcov
 
     rm -rf $CACHE_DIR/core/CMakeFiles/asdops_static.dir/
@@ -174,7 +174,7 @@ function fn_build_coverage()
     # $LCOV_PATH -c --directory ${CURRENT_DIR} --output-file tmp_coverage.info --rc lcov_branch_coverage=1 >> $GCOV_DIR/log.txt
     # $LCOV_PATH -r tmp_coverage.info '*/3rdparty/*' '*/build/*' '*torch/*' '*c10/*' '*ATen/*' '*/c++/7*' '*tests/*' '*tools/*' '*torch_extension/*' '/opt/*'  '*/core/tbe/stubs/*' '/usr/*' '*/ascend-op-common-lib/*' '*/asdops/*' '*/Ascend/*' -output-file test_coverage.info --rc lcov_branch_coverage=1 >> $GCOV_DIR/log.txt
     # $LCOV_PATH -a test_coverage.info -o main_coverage.info --rc lcov_branch_coverage=1 >> $GCOV_DIR/log.txt
-    # python3 $PYYTHON_FILTER_TOOL --input ./main_coverage.info --output ./final.info --root $CACHE_DIR --debug 1 >> $GCOV_DIR/log.txt
+    # python3 $PYTHON_FILTER_TOOL --input ./main_coverage.info --output ./final.info --root $CACHE_DIR --debug 1 >> $GCOV_DIR/log.txt
     # ${CODE_ROOT}/lcov/bin/genhtml --branch-coverage final.info -o cover_result --rc lcov_branch_coverage=1 >> $GCOV_DIR/log.txt
     # [[ ! -d ./cov_info ]] && mkdir cov_info
     # cp final.info ./cov_info
@@ -309,8 +309,7 @@ function fn_main()
             export VERBOSE=1
             ;;
         "--mssanitizer")
-            MSSANITIZER_SWITCH=ON
-            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_MSSANITIZER=OFF"
+            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_MSSANITIZER=ON"
             ;;
         esac
         shift
@@ -373,7 +372,6 @@ LOG_NAME="cann_asdsip_install.log"
 export COMPILE_OPTIONS="-DNO_WERROR=ON"
 export USE_VERBOSE=OFF
 export USE_CXX11_ABI="OFF"
-MSSANITIZER_SWITCH=OFF
 BUILD_OPTION_LIST="ops_unit ut st ft smoke_pr smoke_all --ut --dev --clean --help"
 BUILD_CONFIGURE_LIST=("--output=.*" "--use_cxx11_abi=0" "--use_cxx11_abi=1 --verbose --mssanitizer")
 

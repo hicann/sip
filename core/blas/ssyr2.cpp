@@ -16,9 +16,9 @@ using namespace Mki;
 
 namespace AsdSip {
 struct Ssyr2TensorParam {
-    const aclTensor *x;
-    const aclTensor *y;
-    const aclTensor *A;
+    const aclTensor* x;
+    const aclTensor* y;
+    const aclTensor* A;
 };
 
 AspbStatus Ssyr2DtypeCheck(struct Ssyr2TensorParam parm)
@@ -39,13 +39,12 @@ AspbStatus Ssyr2ShapeCheck(struct Ssyr2TensorParam parm, const int64_t n)
     return ErrorType::ACL_SUCCESS;
 }
 
-AspbStatus asdBlasSsyr2(asdBlasHandle handle, asdBlasFillMode_t uplo, const int64_t n, const float &alpha, aclTensor *x,
-    int64_t incx, aclTensor *y, int64_t incy, aclTensor *A, const int64_t lda)
+AspbStatus asdBlasSsyr2(asdBlasHandle handle, asdBlasFillMode_t uplo, const int64_t n, const float& alpha, aclTensor* x,
+                        int64_t incx, aclTensor* y, int64_t incy, aclTensor* A, const int64_t lda)
 {
     std::lock_guard<std::mutex> lock(blas_mtx);
-    ASDSIP_ECHECK(BlasPlanCache::doesPlanExist(handle),
-        "blas Ssyr2 get cached plan failed.",
-        ErrorType::ACL_ERROR_INTERNAL_ERROR);
+    ASDSIP_ECHECK(BlasPlanCache::doesPlanExist(handle), "blas Ssyr2 get cached plan failed.",
+                  ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
     struct Ssyr2TensorParam parm {
         x, y, A
@@ -76,7 +75,7 @@ AspbStatus asdBlasSsyr2(asdBlasHandle handle, asdBlasFillMode_t uplo, const int6
     }
 
     try {
-        AsdSip::BlasPlan &plan = dynamic_cast<AsdSip::BlasPlan &>(BlasPlanCache::getPlan(handle));
+        AsdSip::BlasPlan& plan = dynamic_cast<AsdSip::BlasPlan&>(BlasPlanCache::getPlan(handle));
         ASDSIP_ECHECK(plan.IsInitialized(), "Ssyr2 plan init Error!.", ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
         Status status;
@@ -91,15 +90,15 @@ AspbStatus asdBlasSsyr2(asdBlasHandle handle, asdBlasFillMode_t uplo, const int6
         opDesc.specificParam = param;
         ASDSIP_LOG(DEBUG) << "OpDesc: " << opDesc.opName << "; OpDesc info: " << param.ToString();
 
-        SVector<aclTensor *> ssyr2InTensors{x, y};
-        SVector<aclTensor *> ssyr2OutTensors{A};
+        SVector<aclTensor*> ssyr2InTensors{x, y};
+        SVector<aclTensor*> ssyr2OutTensors{A};
 
         status = RunAsdOpsV2(plan.GetStream(), opDesc, ssyr2InTensors, ssyr2OutTensors, plan.GetWorkspace());
         ASDSIP_ECHECK(status.Ok(), status.Message(), ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
         ASDSIP_LOG(INFO) << "Execute asdBlasSsyr2 success.";
         return ErrorType::ACL_SUCCESS;
-    } catch (std::bad_cast &e) {
+    } catch (std::bad_cast& e) {
         // Handle the op ssyr2 exception
         ASDSIP_ELOG(ErrorType::ACL_ERROR_INTERNAL_ERROR) << "Ssyr2 Error: " << e.what();
         return ErrorType::ACL_ERROR_INTERNAL_ERROR;
@@ -110,20 +109,24 @@ AspbStatus asdBlasMakeSsyr2Plan(asdBlasHandle handle)
 {
     std::lock_guard<std::mutex> lock(blas_mtx);
     ASDSIP_ECHECK(handle != nullptr, "blas MakeSsyr2Plan Fail.", ErrorType::ACL_ERROR_INTERNAL_ERROR);
+    // 重复绑定守卫：handle 只能初始化一次，防止 MakePlan 对已绑定 handle 静默失败导致 UAF（issue #129）
+    ASDSIP_ECHECK(!BlasPlanCache::doesPlanExist(handle),
+                  "blas handle already bound to a plan, repeated initialization is not allowed.",
+                  ErrorType::ACL_ERROR_INVALID_PARAM);
 
-    AsdSip::BlasPlan *plan = nullptr;
+    AsdSip::BlasPlan* plan = nullptr;
     try {
         plan = new AsdSip::BlasPlan();
         BlasPlanCache::MakePlan(handle, plan);
-    } catch (const std::exception &e) {
+    } catch (const std::exception& e) {
         if (plan != nullptr) {
             delete plan;
         }
-        delete static_cast<int *>(handle);
+        delete static_cast<int*>(handle);
         ASDSIP_ELOG(ErrorType::ACL_ERROR_INTERNAL_ERROR) << "Make Ssyr2 Plan failed: " << e.what();
         throw std::runtime_error("Make Ssyr2 Plan failed.");
     }
     plan->MarkInitialized();
     return ErrorType::ACL_SUCCESS;
 }
-}  // namespace AsdSip
+} // namespace AsdSip

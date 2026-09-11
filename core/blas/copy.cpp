@@ -19,22 +19,22 @@ namespace AsdSip {
 
 struct CopyImplParam {
     int64_t n;
-    aclTensor *x;
+    aclTensor* x;
     int64_t incx;
-    aclTensor *y;
+    aclTensor* y;
     int64_t incy;
 };
 
 AspbStatus asdBlasCopyImpl(asdBlasHandle handle, CopyImplParam implParam, int64_t cCopy)
 {
-    ASDSIP_ECHECK(
-        BlasPlanCache::doesPlanExist(handle), "blas Copy get cached plan failed.", ErrorType::ACL_ERROR_INTERNAL_ERROR);
+    ASDSIP_ECHECK(BlasPlanCache::doesPlanExist(handle), "blas Copy get cached plan failed.",
+                  ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
-    int64_t *storageDims = nullptr;
+    int64_t* storageDims = nullptr;
     uint64_t copyStorageDimsNum = 0;
     int64_t checkSize = 0;
-    CHECK_STATUS_WITH_ACL_RETURN(
-        aclGetStorageShape(implParam.x, &storageDims, &copyStorageDimsNum), "asdBlasCopyImpl: aclGetStorageShape");
+    CHECK_STATUS_WITH_ACL_RETURN(aclGetStorageShape(implParam.x, &storageDims, &copyStorageDimsNum),
+                                 "asdBlasCopyImpl: aclGetStorageShape");
     checkSize = cCopy == 1 ? *storageDims * DOUBLE : *storageDims;
     if (checkSize != implParam.n) {
         delete[] storageDims;
@@ -46,8 +46,8 @@ AspbStatus asdBlasCopyImpl(asdBlasHandle handle, CopyImplParam implParam, int64_
     delete[] storageDims;
     storageDims = nullptr;
 
-    CHECK_STATUS_WITH_ACL_RETURN(
-        aclGetStorageShape(implParam.y, &storageDims, &copyStorageDimsNum), "asdBlasCopyImpl: aclGetStorageShape");
+    CHECK_STATUS_WITH_ACL_RETURN(aclGetStorageShape(implParam.y, &storageDims, &copyStorageDimsNum),
+                                 "asdBlasCopyImpl: aclGetStorageShape");
     checkSize = cCopy == 1 ? *storageDims * DOUBLE : *storageDims;
     if (checkSize != implParam.n) {
         delete[] storageDims;
@@ -76,12 +76,12 @@ AspbStatus asdBlasCopyImpl(asdBlasHandle handle, CopyImplParam implParam, int64_
     AsdSip::OpParam::Copy param;
     param.n = implParam.n;
     opDesc.specificParam = param;
-    SVector<aclTensor *> inTensors{implParam.x};
-    SVector<aclTensor *> outTensors{implParam.y};
+    SVector<aclTensor*> inTensors{implParam.x};
+    SVector<aclTensor*> outTensors{implParam.y};
     ASDSIP_LOG(DEBUG) << "OpDesc: " << opDesc.opName << "; OpDesc info: " << param.ToString();
 
     try {
-        AsdSip::BlasCopyPlan &plan = dynamic_cast<AsdSip::BlasCopyPlan &>(BlasPlanCache::getPlan(handle));
+        AsdSip::BlasCopyPlan& plan = dynamic_cast<AsdSip::BlasCopyPlan&>(BlasPlanCache::getPlan(handle));
         ASDSIP_ECHECK(plan.IsInitialized(), "Copy plan init Error!.", ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
         Status status = RunAsdOpsV2(plan.GetStream(), opDesc, inTensors, outTensors, plan.GetWorkspace());
@@ -89,49 +89,45 @@ AspbStatus asdBlasCopyImpl(asdBlasHandle handle, CopyImplParam implParam, int64_
 
         ASDSIP_LOG(INFO) << "Execute asdBlasCopy success.";
         return ErrorType::ACL_SUCCESS;
-    } catch (std::bad_cast &e) {
+    } catch (std::bad_cast& e) {
         // Handle the op copy exception
         ASDSIP_ELOG(ErrorType::ACL_ERROR_INTERNAL_ERROR) << "Copy Error: " << e.what();
         return ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }
 }
 
-AspbStatus asdBlasScopy(
-    asdBlasHandle handle, const int64_t n, aclTensor *x, const int64_t incx, aclTensor *y, const int64_t incy)
+AspbStatus asdBlasScopy(asdBlasHandle handle, const int64_t n, aclTensor* x, const int64_t incx, aclTensor* y,
+                        const int64_t incy)
 {
     std::lock_guard<std::mutex> lock(blas_mtx);
     aclDataType dataType = aclDataType::ACL_DT_UNDEFINED;
     CHECK_STATUS_WITH_ACL_RETURN(aclGetDataType(x, &dataType), "asdBlasScopy: aclGetDataType");
-    ASDSIP_ECHECK(dataType == aclDataType::ACL_FLOAT,
-        "blas asdBlasScopy get wrong x tensor dtype.",
-        ErrorType::ACL_ERROR_UNSUPPORTED_DATA_TYPE);
+    ASDSIP_ECHECK(dataType == aclDataType::ACL_FLOAT, "blas asdBlasScopy get wrong x tensor dtype.",
+                  ErrorType::ACL_ERROR_UNSUPPORTED_DATA_TYPE);
 
     CHECK_STATUS_WITH_ACL_RETURN(aclGetDataType(y, &dataType), "asdBlasScopy: aclGetDataType");
-    ASDSIP_ECHECK(dataType == aclDataType::ACL_FLOAT,
-        "blas asdBlasScopy get wrong y tensor dtype.",
-        ErrorType::ACL_ERROR_UNSUPPORTED_DATA_TYPE);
-    ASDSIP_ECHECK(
-        n > 0 && n <= UINT32_MAX, "blas asdBlasScopy get n <= 0 or n > 2^32.", ErrorType::ACL_ERROR_INVALID_PARAM);
+    ASDSIP_ECHECK(dataType == aclDataType::ACL_FLOAT, "blas asdBlasScopy get wrong y tensor dtype.",
+                  ErrorType::ACL_ERROR_UNSUPPORTED_DATA_TYPE);
+    ASDSIP_ECHECK(n > 0 && n <= UINT32_MAX, "blas asdBlasScopy get n <= 0 or n > 2^32.",
+                  ErrorType::ACL_ERROR_INVALID_PARAM);
     CopyImplParam param = {n, x, incx, y, incy};
     return asdBlasCopyImpl(handle, param, 0);
 }
 
-AspbStatus asdBlasCcopy(
-    asdBlasHandle handle, const int64_t n, aclTensor *x, const int64_t incx, aclTensor *y, const int64_t incy)
+AspbStatus asdBlasCcopy(asdBlasHandle handle, const int64_t n, aclTensor* x, const int64_t incx, aclTensor* y,
+                        const int64_t incy)
 {
     std::lock_guard<std::mutex> lock(blas_mtx);
     aclDataType dataType = aclDataType::ACL_DT_UNDEFINED;
     CHECK_STATUS_WITH_ACL_RETURN(aclGetDataType(x, &dataType), "asdBlasCcopy: aclGetDataType");
-    ASDSIP_ECHECK(dataType == aclDataType::ACL_COMPLEX64,
-        "blas asdBlasCcopy get wrong x tensor dtype.",
-        ErrorType::ACL_ERROR_UNSUPPORTED_DATA_TYPE);
+    ASDSIP_ECHECK(dataType == aclDataType::ACL_COMPLEX64, "blas asdBlasCcopy get wrong x tensor dtype.",
+                  ErrorType::ACL_ERROR_UNSUPPORTED_DATA_TYPE);
 
     CHECK_STATUS_WITH_ACL_RETURN(aclGetDataType(y, &dataType), "asdBlasCcopy: aclGetDataType");
-    ASDSIP_ECHECK(dataType == aclDataType::ACL_COMPLEX64,
-        "blas asdBlasCcopy get wrong y tensor dtype.",
-        ErrorType::ACL_ERROR_UNSUPPORTED_DATA_TYPE);
-    ASDSIP_ECHECK(
-        n > 0 && n <= UINT32_MAX, "blas asdBlasCcopy get n <= 0 or n > 2^32.", ErrorType::ACL_ERROR_INVALID_PARAM);
+    ASDSIP_ECHECK(dataType == aclDataType::ACL_COMPLEX64, "blas asdBlasCcopy get wrong y tensor dtype.",
+                  ErrorType::ACL_ERROR_UNSUPPORTED_DATA_TYPE);
+    ASDSIP_ECHECK(n > 0 && n <= UINT32_MAX, "blas asdBlasCcopy get n <= 0 or n > 2^32.",
+                  ErrorType::ACL_ERROR_INVALID_PARAM);
     CopyImplParam param = {DOUBLE * n, x, incx, y, incy};
     return asdBlasCopyImpl(handle, param, 1);
 }
@@ -140,20 +136,24 @@ AspbStatus asdBlasMakeCopyPlan(asdBlasHandle handle)
 {
     std::lock_guard<std::mutex> lock(blas_mtx);
     ASDSIP_ECHECK(handle != nullptr, "blas MakeCopyPlan Fail.", ErrorType::ACL_ERROR_INTERNAL_ERROR);
+    // 重复绑定守卫：handle 只能初始化一次，防止 MakePlan 对已绑定 handle 静默失败导致 UAF（issue #129）
+    ASDSIP_ECHECK(!BlasPlanCache::doesPlanExist(handle),
+                  "blas handle already bound to a plan, repeated initialization is not allowed.",
+                  ErrorType::ACL_ERROR_INVALID_PARAM);
 
-    AsdSip::BlasCopyPlan *plan = nullptr;
+    AsdSip::BlasCopyPlan* plan = nullptr;
     try {
         plan = new AsdSip::BlasCopyPlan();
         BlasPlanCache::MakePlan(handle, plan);
-    } catch (const std::exception &e) {
+    } catch (const std::exception& e) {
         if (plan != nullptr) {
             delete plan;
         }
-        delete static_cast<int *>(handle);
+        delete static_cast<int*>(handle);
         ASDSIP_ELOG(ErrorType::ACL_ERROR_INTERNAL_ERROR) << "Make Copy Plan failed: " << e.what();
         throw std::runtime_error("Make Copy Plan failed.");
     }
     plan->MarkInitialized();
     return ErrorType::ACL_SUCCESS;
 }
-}  // namespace AsdSip
+} // namespace AsdSip
