@@ -2,14 +2,29 @@
 
 ## 产品支持情况
 
-|产品             |  是否支持  |
-|:-------------------------|:----------:|
-|  <term>Atlas 200I/500 A2 推理产品</term>    |     ×    |
-|  <term>Atlas 推理系列产品</term>    |     ×    |
-|  <term>Atlas 训练系列产品</term>    |     ×    |
-|  <term>Atlas A3 训练系列产品/Atlas A3 推理系列产品</term>   |     √    |
-|  <term>Atlas A2 训练系列产品/Atlas A2 推理系列产品</term>     |     √    |
-|  <term>Ascend 950PR/Ascend 950DT</term>   |     ×    |
+<!-- npu="950" id1 -->
+- <term>Ascend 950PR/Ascend 950DT</term>：不支持
+<!-- end id1 -->
+
+<!-- npu="A3" id2 -->
+- <term>Atlas A3 训练系列产品/Atlas A3 推理系列产品</term>：支持
+<!-- end id2 -->
+
+<!-- npu="910b" id3 -->
+- <term>Atlas A2 训练系列产品/Atlas A2 推理系列产品</term>：支持
+<!-- end id3 -->
+
+<!-- npu="310b" id4 -->
+- <term>Atlas 200I/500 A2 推理产品</term>：不支持
+<!-- end id4 -->
+
+<!-- npu="310p" id5 -->
+- <term>Atlas 推理系列产品</term>：不支持
+<!-- end id5 -->
+
+<!-- npu="910" id6 -->
+- <term>Atlas 训练系列产品</term>：不支持
+<!-- end id6 -->
 
 ## 功能说明
 
@@ -37,7 +52,7 @@ asdBlasCgemmBatched：用于计算两批复数矩阵的乘积。
 调用“asdBlasCgemmBatched”算子后，输出“C”为：\
 [   [ -1+9i, -7+13i ],
     [ -7+17i, -21+21i ]  ]
- 
+
 ## 函数原型
 
 ```Cpp
@@ -47,20 +62,20 @@ AspbStatus asdBlasMakeCgemmBatchedPlan(
 
 ```Cpp
 AspbStatus asdBlasCgemmBatched(
-  asdBlasHandle                     handle, 
-  asdBlasOperation_t                transa, 
-  asdBlasOperation_t                transb, 
+  asdBlasHandle                     handle,
+  asdBlasOperation_t                transa,
+  asdBlasOperation_t                transb,
   const int64_t                     m,
-  const int64_t                     n, 
-  const int64_t                     k, 
-  const std::complex<float> &       alpha, 
+  const int64_t                     n,
+  const int64_t                     k,
+  const std::complex<float> &       alpha,
   aclTensor *                       A,
-  const int64_t                     lda, 
-  aclTensor *                       B, 
-  const int64_t                     ldb, 
+  const int64_t                     lda,
+  aclTensor *                       B,
+  const int64_t                     ldb,
   const std::complex<float> &       beta,
-  aclTensor *                       C, 
-  const int64_t                     ldc, 
+  aclTensor *                       C,
+  const int64_t                     ldc,
   const int64_t                     batchCount)
 ```
 
@@ -184,7 +199,7 @@ AspbStatus asdBlasCgemmBatched(
     </tr>
     </tbody>
     </table>
-    
+
 - **返回值**：
 
   返回状态码，具体参见[SiP返回码](../../context/SiP返回码.md)。

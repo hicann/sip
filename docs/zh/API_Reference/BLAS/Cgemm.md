@@ -2,14 +2,29 @@
 
 ## 产品支持情况
 
-|产品             |  是否支持  |
-|:-------------------------|:----------:|
-|  <term>Atlas 200I/500 A2 推理产品</term>    |     ×    |
-|  <term>Atlas 推理系列产品</term>    |     ×    |
-|  <term>Atlas 训练系列产品</term>    |     ×    |
-|  <term>Atlas A3 训练系列产品/Atlas A3 推理系列产品</term>   |     √    |
-|  <term>Atlas A2 训练系列产品/Atlas A2 推理系列产品</term>     |     √    |
-|  <term>Ascend 950PR/Ascend 950DT</term>   |     ×    |
+<!-- npu="950" id1 -->
+- <term>Ascend 950PR/Ascend 950DT</term>：不支持
+<!-- end id1 -->
+
+<!-- npu="A3" id2 -->
+- <term>Atlas A3 训练系列产品/Atlas A3 推理系列产品</term>：支持
+<!-- end id2 -->
+
+<!-- npu="910b" id3 -->
+- <term>Atlas A2 训练系列产品/Atlas A2 推理系列产品</term>：支持
+<!-- end id3 -->
+
+<!-- npu="310b" id4 -->
+- <term>Atlas 200I/500 A2 推理产品</term>：不支持
+<!-- end id4 -->
+
+<!-- npu="310p" id5 -->
+- <term>Atlas 推理系列产品</term>：不支持
+<!-- end id5 -->
+
+<!-- npu="910" id6 -->
+- <term>Atlas 训练系列产品</term>：不支持
+<!-- end id6 -->
 
 ## 功能说明
 
@@ -19,7 +34,7 @@ asdBlasCgemm：矩阵乘法运算中的一种，用于计算两个复数矩阵�
 - 计算公式：
   $$
   C= alpha * op(A)*op(B) + beta * C\\
-  其中，op(X)= X \ \ \  \text{or} \ \ \  op(X) = X^T \ \ \  \text{or} \ \ \   op(X) = X^H 
+  其中，op(X)= X \ \ \  \text{or} \ \ \  op(X) = X^T \ \ \  \text{or} \ \ \   op(X) = X^H
   $$
   示例：\
 输入“inTensorA”为：\
@@ -37,37 +52,37 @@ asdBlasCgemm：矩阵乘法运算中的一种，用于计算两个复数矩阵�
 调用“Cgemm”算子后，输出“outTensor”为：\
 [   [ -15+19i, -27+19i ],
     [ -37+21i, -57+13i ]  ]
- 
+
 ## 函数原型
 
 ```Cpp
 AspbStatus asdBlasMakeCgemmPlan(
-  asdBlasHandle      handle, 
-  asdBlasOperation_t transa, 
-  asdBlasOperation_t transb, 
+  asdBlasHandle      handle,
+  asdBlasOperation_t transa,
+  asdBlasOperation_t transb,
   int64_t            m,
-  int64_t            n, 
-  int64_t            k, 
-  int64_t            lda, 
-  int64_t            ldb, 
+  int64_t            n,
+  int64_t            k,
+  int64_t            lda,
+  int64_t            ldb,
   int64_t            ldc)
 ```
 
 ```Cpp
 AspbStatus asdBlasCgemm(
-  asdBlasHandle             handle, 
-  asdBlasOperation_t        transa, 
-  asdBlasOperation_t        transb, 
+  asdBlasHandle             handle,
+  asdBlasOperation_t        transa,
+  asdBlasOperation_t        transb,
   const int64_t             m,
-  const int64_t             n, 
-  const int64_t             k, 
-  const std::complex<float> *alpha, 
+  const int64_t             n,
+  const int64_t             k,
+  const std::complex<float> *alpha,
   aclTensor *               A,
-  const int64_t             lda, 
-  aclTensor *               B, 
-  const int64_t             ldb, 
+  const int64_t             lda,
+  aclTensor *               B,
+  const int64_t             ldb,
   const std::complex<float> *beta,
-  aclTensor *               C, 
+  aclTensor *               C,
   const int64_t             ldc)
 ```
 

@@ -2,14 +2,29 @@
 
 ## 产品支持情况
 
-|产品             |  是否支持  |
-|:-------------------------|:----------:|
-|  <term>Atlas 200I/500 A2 推理产品</term>    |     ×    |
-|  <term>Atlas 推理系列产品</term>    |     ×    |
-|  <term>Atlas 训练系列产品</term>    |     ×    |
-|  <term>Atlas A3 训练系列产品/Atlas A3 推理系列产品</term>   |     √    |
-|  <term>Atlas A2 训练系列产品/Atlas A2 推理系列产品</term>     |     √    |
-|  <term>Ascend 950PR/Ascend 950DT</term>   |     ×    |
+<!-- npu="950" id1 -->
+- <term>Ascend 950PR/Ascend 950DT</term>：不支持
+<!-- end id1 -->
+
+<!-- npu="A3" id2 -->
+- <term>Atlas A3 训练系列产品/Atlas A3 推理系列产品</term>：支持
+<!-- end id2 -->
+
+<!-- npu="910b" id3 -->
+- <term>Atlas A2 训练系列产品/Atlas A2 推理系列产品</term>：支持
+<!-- end id3 -->
+
+<!-- npu="310b" id4 -->
+- <term>Atlas 200I/500 A2 推理产品</term>：不支持
+<!-- end id4 -->
+
+<!-- npu="310p" id5 -->
+- <term>Atlas 推理系列产品</term>：不支持
+<!-- end id5 -->
+
+<!-- npu="910" id6 -->
+- <term>Atlas 训练系列产品</term>：不支持
+<!-- end id6 -->
 
 ## 功能说明
 
@@ -18,7 +33,7 @@ asdBlasMakeStrmmPlan：初始化该句柄对应的Strmm算子配置。\
 asdBlasStrmm：单精度算子，其功能是将一个三角矩阵A乘一个矩阵B，得到一个新的矩阵C。
 - 计算公式：
   $$
-  c = 
+  c =
   \begin{cases}
   alpha*op(A)*B & if side == ASDBLAS\_SIDE\_LEFT \\
   alpha*B*op(A) & if side == ASDBLAS\_SIDE\_RIGHT \\
@@ -48,19 +63,19 @@ AspbStatus asdBlasMakeStrmmPlan(
 
 ```Cpp
 AspbStatus asdBlasStrmm(
-  asdBlasHandle          handle, 
-  asdBlasSideMode_t      side, 
-  asdBlasFillMode_t      uplo, 
+  asdBlasHandle          handle,
+  asdBlasSideMode_t      side,
+  asdBlasFillMode_t      uplo,
   asdBlasOperation_t      trans,
-  asdBlasDiagType_t       diag, 
-  const int64_t           m, 
-  const int64_t           n, 
-  const float &           alpha, 
+  asdBlasDiagType_t       diag,
+  const int64_t           m,
+  const int64_t           n,
+  const float &           alpha,
   aclTensor *             A,
-  const int64_t           lda, 
-  aclTensor *             B, 
-  const int64_t           ldb, 
-  aclTensor *             C, 
+  const int64_t           lda,
+  aclTensor *             B,
+  const int64_t           ldb,
+  aclTensor *             C,
   const int64_t           ldc)
 ```
 
@@ -183,7 +198,7 @@ AspbStatus asdBlasStrmm(
     </tr>
     </tbody>
     </table>
-    
+
 - **返回值**：
 
   返回状态码，具体参见[SiP返回码](../../context/SiP返回码.md)。

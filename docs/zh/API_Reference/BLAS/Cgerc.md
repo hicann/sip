@@ -2,14 +2,29 @@
 
 ## 产品支持情况
 
-|产品             |  是否支持  |
-|:-------------------------|:----------:|
-|  <term>Atlas 200I/500 A2 推理产品</term>    |     ×    |
-|  <term>Atlas 推理系列产品</term>    |     ×    |
-|  <term>Atlas 训练系列产品</term>    |     ×    |
-|  <term>Atlas A3 训练系列产品/Atlas A3 推理系列产品</term>   |     √    |
-|  <term>Atlas A2 训练系列产品/Atlas A2 推理系列产品</term>     |     √    |
-|  <term>Ascend 950PR/Ascend 950DT</term>   |     ×    |
+<!-- npu="950" id1 -->
+- <term>Ascend 950PR/Ascend 950DT</term>：不支持
+<!-- end id1 -->
+
+<!-- npu="A3" id2 -->
+- <term>Atlas A3 训练系列产品/Atlas A3 推理系列产品</term>：支持
+<!-- end id2 -->
+
+<!-- npu="910b" id3 -->
+- <term>Atlas A2 训练系列产品/Atlas A2 推理系列产品</term>：支持
+<!-- end id3 -->
+
+<!-- npu="310b" id4 -->
+- <term>Atlas 200I/500 A2 推理产品</term>：不支持
+<!-- end id4 -->
+
+<!-- npu="310p" id5 -->
+- <term>Atlas 推理系列产品</term>：不支持
+<!-- end id5 -->
+
+<!-- npu="910" id6 -->
+- <term>Atlas 训练系列产品</term>：不支持
+<!-- end id6 -->
 
 ## 功能说明
 
@@ -168,12 +183,13 @@ AspbStatus asdBlasCgerc(
 示例代码如下，该样例旨在提供快速上手、开发和调试算子的最小化实现，其核心目标是使用最精简的代码展示算子的核心功能，而非提供生产级的安全保障。不推荐用户直接将示例代码作为业务代码，若用户将示例代码应用在自身的真实业务场景中且发生了安全问题，则需用户自行承担。
 
 ```Cpp
+#include <complex>
 #include <iostream>
 #include <vector>
-#include "asdsip.h"
-#include <complex>
+
 #include "acl/acl.h"
 #include "acl_meta.h"
+#include "asdsip.h"
 
 using namespace AsdSip;
 
@@ -182,7 +198,7 @@ using namespace AsdSip;
         AsdSip::AspbStatus err_ = (err);                       \
         if (err_ != AsdSip::ErrorType::ACL_SUCCESS) {          \
             std::cout << "Execute failed." << std::endl;       \
-            exit(-1);                                          \
+            return -1;                                         \
         } else {                                               \
             std::cout << "Execute successfully." << std::endl; \
         }                                                      \
@@ -313,7 +329,6 @@ int main(int argc, char** argv)
     CHECK_RET(ret == ::ACL_SUCCESS, return ret);
     ret = CreateAclTensor(tensorInYData, yShape, &inputYDeviceAddr, aclDataType::ACL_COMPLEX64, &inputY);
     CHECK_RET(ret == ::ACL_SUCCESS, return ret);
-    CHECK_RET(ret == ::ACL_SUCCESS, return ret);
     ret = CreateAclTensor(tensorInAData, aShape, &inputADeviceAddr, aclDataType::ACL_COMPLEX64, &inputA);
     CHECK_RET(ret == ::ACL_SUCCESS, return ret);
 
@@ -357,5 +372,6 @@ int main(int argc, char** argv)
     aclFinalize();
     return 0;
 }
+
 
 ```

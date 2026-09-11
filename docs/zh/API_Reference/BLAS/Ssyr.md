@@ -2,14 +2,29 @@
 
 ## 产品支持情况
 
-|产品             |  是否支持  |
-|:-------------------------|:----------:|
-|  <term>Atlas 200I/500 A2 推理产品</term>    |     ×    |
-|  <term>Atlas 推理系列产品</term>    |     ×    |
-|  <term>Atlas 训练系列产品</term>    |     ×    |
-|  <term>Atlas A3 训练系列产品/Atlas A3 推理系列产品</term>   |     √    |
-|  <term>Atlas A2 训练系列产品/Atlas A2 推理系列产品</term>     |     √    |
-|  <term>Ascend 950PR/Ascend 950DT</term>   |     ×    |
+<!-- npu="950" id1 -->
+- <term>Ascend 950PR/Ascend 950DT</term>：不支持
+<!-- end id1 -->
+
+<!-- npu="A3" id2 -->
+- <term>Atlas A3 训练系列产品/Atlas A3 推理系列产品</term>：支持
+<!-- end id2 -->
+
+<!-- npu="910b" id3 -->
+- <term>Atlas A2 训练系列产品/Atlas A2 推理系列产品</term>：支持
+<!-- end id3 -->
+
+<!-- npu="310b" id4 -->
+- <term>Atlas 200I/500 A2 推理产品</term>：不支持
+<!-- end id4 -->
+
+<!-- npu="310p" id5 -->
+- <term>Atlas 推理系列产品</term>：不支持
+<!-- end id5 -->
+
+<!-- npu="910" id6 -->
+- <term>Atlas 训练系列产品</term>：不支持
+<!-- end id6 -->
 
 ## 功能说明
 
@@ -46,13 +61,13 @@ AspbStatus asdBlasMakeSsyrPlan(
 
 ```Cpp
 AspbStatus asdBlasSsyr(
-  asdBlasHandle         handle, 
-  asdBlasFillMode_t     uplo, 
-  const int64_t         n, 
-  const float *         alpha, 
-  aclTensor *           x, 
-  const int64_t         incx, 
-  aclTensor *           A, 
+  asdBlasHandle         handle,
+  asdBlasFillMode_t     uplo,
+  const int64_t         n,
+  const float *         alpha,
+  aclTensor *           x,
+  const int64_t         incx,
+  aclTensor *           A,
   const int64_t         lda)
 ```
 
@@ -143,7 +158,6 @@ AspbStatus asdBlasSsyr(
       <td>输入</td>
       <td>矩阵A的每列元素的存储步长（当前约束为n）。</td>
     </tr>
-    
     </tbody>
     </table>
 - **返回值**：
