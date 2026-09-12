@@ -25,14 +25,11 @@ BlasIamaxPlan::BlasIamaxPlan() : BlasPlan()
     zeroTensor.hostData = nullptr;
 };
 
-BlasIamaxPlan::~BlasIamaxPlan()
-{
-    BlasPlan::DestroyPlanData();
-}
+BlasIamaxPlan::~BlasIamaxPlan() { BlasPlan::DestroyPlanData(); }
 
 AsdSip::AspbStatus BlasIamaxPlan::CreateTensor()
 {
-    int32_t *zeroData = nullptr;
+    int32_t* zeroData = nullptr;
     try {
         zeroData = new int32_t[1];
     } catch (std::bad_alloc& e) {
@@ -55,7 +52,7 @@ AsdSip::AspbStatus BlasIamaxPlan::CreateTensor()
     }
     toAclTensor(zeroTensor, zeroAclTensor);
     if (zeroAclTensor == nullptr) {
-        ASDSIP_LOG(ERROR) << "convert to aclnTensor fail.";
+        ASDSIP_LOG(ERROR) << "convert to aclTensor fail.";
         return ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }
     zeroData = nullptr;
@@ -69,9 +66,9 @@ AsdSip::AspbStatus BlasIamaxPlan::FreeTensor()
         zeroTensor.data = nullptr;
     }
     if (zeroTensor.hostData != nullptr) {
-        delete[] static_cast<int32_t *>(zeroTensor.hostData);
+        delete[] static_cast<int32_t*>(zeroTensor.hostData);
         zeroTensor.hostData = nullptr;
     }
     return ErrorType::ACL_SUCCESS;
 }
-}
+} // namespace AsdSip

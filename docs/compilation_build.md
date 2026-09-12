@@ -31,7 +31,7 @@ SiP的基本编译命令是`bash build.sh`，在默认构建模式下，该命�
   bash build.sh
   ```
 
-  可通过使用--help参数获取build.sh脚本功能已及对应的指令。
+  可通过使用--help参数获取build.sh脚本功能以及对应的指令。
 
   ```sh
   --help                         Displays help message.

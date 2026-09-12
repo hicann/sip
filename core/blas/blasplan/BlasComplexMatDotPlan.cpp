@@ -35,7 +35,7 @@ AsdSip::AspbStatus BlasComplexMatDotPlan::CreateTensor()
 {
     uint32_t complexCount = MAX_DATA_COUNT / 2;
 
-    uint32_t *augData = nullptr;
+    uint32_t* augData = nullptr;
     try {
         augData = new uint32_t[MAX_DATA_COUNT];
     } catch (std::bad_alloc& e) {
@@ -57,12 +57,12 @@ AsdSip::AspbStatus BlasComplexMatDotPlan::CreateTensor()
         delete[] augData;
         augData = nullptr;
         augDotTensor.hostData = nullptr;
-        ASDSIP_LOG(ERROR) <<"augTensor in device malloc failed.";
+        ASDSIP_LOG(ERROR) << "augTensor in device malloc failed.";
         return ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }
     toAclTensor(augDotTensor, augAclTensor);
     if (augAclTensor == nullptr) {
-        ASDSIP_LOG(ERROR) << "convert to aclnTensor fail.";
+        ASDSIP_LOG(ERROR) << "convert to aclTensor fail.";
         return ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }
     augData = nullptr;
@@ -76,14 +76,11 @@ AsdSip::AspbStatus BlasComplexMatDotPlan::FreeTensor()
         augDotTensor.data = nullptr;
     }
     if (augDotTensor.hostData != nullptr) {
-        delete[] static_cast<uint32_t *>(augDotTensor.hostData);
+        delete[] static_cast<uint32_t*>(augDotTensor.hostData);
         augDotTensor.hostData = nullptr;
     }
     return ErrorType::ACL_SUCCESS;
 }
 
-BlasComplexMatDotPlan::~BlasComplexMatDotPlan()
-{
-    BlasPlan::DestroyPlanData();
-}
-}
+BlasComplexMatDotPlan::~BlasComplexMatDotPlan() { BlasPlan::DestroyPlanData(); }
+} // namespace AsdSip

@@ -42,7 +42,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated-copy")
 message(STATUS "CMAKE_CXX_FLAGS:${CMAKE_CXX_FLAGS}")
 
 if("$ENV{TEST_TYPE}" STREQUAL "UT")
-    add_definitions(-DUNITTESET)
+    add_definitions(-DUNITTEST)
 endif()
 
 ADD_LINK_OPTIONS(-s)

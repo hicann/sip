@@ -24,14 +24,14 @@ namespace AsdSip {
 constexpr uint64_t DIMS_TWO = 2;
 constexpr uint64_t BASE_COL_BLOCK = 128;
 
-AsdSip::AspbStatus asdConvolve(const aclTensor *signal, const aclTensor *kernel, aclTensor *output,
-    asdConvolveMode_t mode, void *stream, void *workspace)
+AsdSip::AspbStatus asdConvolve(const aclTensor* signal, const aclTensor* kernel, aclTensor* output,
+                               asdConvolveMode_t mode, void* stream, void* workspace)
 {
     (void)mode;
-    int64_t *storageDims = nullptr;
+    int64_t* storageDims = nullptr;
     uint64_t storageDimsNum = 0;
     CHECK_STATUS_WITH_ACL_RETURN(
-        aclGetStorageShape(static_cast<const aclTensor *>(signal), &storageDims, &storageDimsNum),
+        aclGetStorageShape(static_cast<const aclTensor*>(signal), &storageDims, &storageDimsNum),
         "asdConvolve: aclGetStorageShape");
     if (*storageDims <= 0 || storageDimsNum > DIMS_TWO) {
         delete[] storageDims;
@@ -47,7 +47,7 @@ AsdSip::AspbStatus asdConvolve(const aclTensor *signal, const aclTensor *kernel,
     storageDims = nullptr;
 
     CHECK_STATUS_WITH_ACL_RETURN(
-        aclGetStorageShape(static_cast<const aclTensor *>(kernel), &storageDims, &storageDimsNum),
+        aclGetStorageShape(static_cast<const aclTensor*>(kernel), &storageDims, &storageDimsNum),
         "asdConvolve: aclGetStorageShape");
     if (*storageDims <= 0 || storageDimsNum > DIMS_TWO) {
         delete[] storageDims;
@@ -63,20 +63,17 @@ AsdSip::AspbStatus asdConvolve(const aclTensor *signal, const aclTensor *kernel,
     op::DataType dataType = op::DataType::DT_UNDEFINED;
     dataType = signal->GetDataType();
     ASDSIP_ECHECK(dataType == op::DataType::DT_COMPLEX64 || dataType == op::DataType::DT_COMPLEX32,
-        "asdConvolve get wrong singal tensor dtype.",
-        ErrorType::ACL_ERROR_UNSUPPORTED_DATA_TYPE);
+                  "asdConvolve get wrong signal tensor dtype.", ErrorType::ACL_ERROR_UNSUPPORTED_DATA_TYPE);
 
     dataType = op::DataType::DT_UNDEFINED;
     dataType = kernel->GetDataType();
     ASDSIP_ECHECK(dataType == op::DataType::DT_FLOAT || dataType == op::DataType::DT_FLOAT16,
-        "asdConvolve get wrong kernel tensor dtype.",
-        ErrorType::ACL_ERROR_UNSUPPORTED_DATA_TYPE);
+                  "asdConvolve get wrong kernel tensor dtype.", ErrorType::ACL_ERROR_UNSUPPORTED_DATA_TYPE);
 
     dataType = op::DataType::DT_UNDEFINED;
     dataType = output->GetDataType();
     ASDSIP_ECHECK(dataType == op::DataType::DT_COMPLEX64 || dataType == op::DataType::DT_COMPLEX32,
-        "asdConvolve get wrong output tensor dtype.",
-        ErrorType::ACL_ERROR_UNSUPPORTED_DATA_TYPE);
+                  "asdConvolve get wrong output tensor dtype.", ErrorType::ACL_ERROR_UNSUPPORTED_DATA_TYPE);
 
     OpDesc opDesc;
     opDesc.opName = "ConvolveOperation";
@@ -88,22 +85,21 @@ AsdSip::AspbStatus asdConvolve(const aclTensor *signal, const aclTensor *kernel,
     opDesc.specificParam = param;
     ASDSIP_LOG(DEBUG) << "OpDesc: " << opDesc.opName << "; OpDesc info: " << param.ToString();
 
-    SVector<aclTensor *> inTensors{const_cast<aclTensor *>(static_cast<const aclTensor *>(signal)),
-        const_cast<aclTensor *>(static_cast<const aclTensor *>(kernel))};
-    SVector<aclTensor *> outTensors{const_cast<aclTensor *>(static_cast<const aclTensor *>(output))};
+    SVector<aclTensor*> inTensors{const_cast<aclTensor*>(static_cast<const aclTensor*>(signal)),
+                                  const_cast<aclTensor*>(static_cast<const aclTensor*>(kernel))};
+    SVector<aclTensor*> outTensors{const_cast<aclTensor*>(static_cast<const aclTensor*>(output))};
 
-    Status status = RunAsdOpsV2(stream, opDesc, inTensors, outTensors, reinterpret_cast<uint8_t *>(workspace));
+    Status status = RunAsdOpsV2(stream, opDesc, inTensors, outTensors, reinterpret_cast<uint8_t*>(workspace));
     ASDSIP_ECHECK(status.Ok(), status.Message(), ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
     ASDSIP_LOG(INFO) << "Execute asdConvolve success.";
     return AsdSip::ErrorType::ACL_SUCCESS;
 }
 
-AspbStatus asdConvolveGetWorkspaceSize(int64_t signalLen, int64_t kernelLen, size_t &size)
+AspbStatus asdConvolveGetWorkspaceSize(int64_t signalLen, int64_t kernelLen, size_t& size)
 {
-    ASDSIP_ECHECK(signalLen > 0 && kernelLen > 0,
-        "asdConvolveGetWorkspaceSize get invalid params",
-        AsdSip::ErrorType::ACL_ERROR_INVALID_PARAM);
+    ASDSIP_ECHECK(signalLen > 0 && kernelLen > 0, "asdConvolveGetWorkspaceSize get invalid params",
+                  AsdSip::ErrorType::ACL_ERROR_INVALID_PARAM);
 
     size_t workspaceColNum = BASE_COL_BLOCK + static_cast<size_t>(kernelLen * DIMS_TWO - DIMS_TWO);
     size_t workspaceRowNum = workspaceColNum + static_cast<size_t>(kernelLen * DIMS_TWO - DIMS_TWO);
@@ -112,4 +108,4 @@ AspbStatus asdConvolveGetWorkspaceSize(int64_t signalLen, int64_t kernelLen, siz
 
     return ErrorType::ACL_SUCCESS;
 }
-}  // namespace AsdSip
+} // namespace AsdSip

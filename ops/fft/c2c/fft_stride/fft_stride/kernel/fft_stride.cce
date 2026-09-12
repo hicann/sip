@@ -173,7 +173,7 @@ __aicore__ __inline__ void SeperateRI(__gm__ float *__restrict__ gm_dst, __gm__ 
 
     AscendC::GlobalTensor<float> gm_src_tensor;
     AscendC::GlobalTensor<float> gm_dst_tensor;
- 
+
     gm_src_tensor.SetGlobalBuffer(reinterpret_cast<__gm__ float *>(gm_src));
     gm_dst_tensor.SetGlobalBuffer(reinterpret_cast<__gm__ float *>(gm_dst));
 
@@ -227,7 +227,7 @@ __aicore__ __inline__ void SeperateRI(__gm__ float *__restrict__ gm_dst, __gm__ 
                            n_repeat_current, dValue * COMPLEX_DOUBLE, srcDValue * COMPLEX_DOUBLE);
         SET_FLAG(MTE2, V, event_id);
         WAIT_FLAG(MTE2, V, event_id);
-        // seperate
+        // separate
         int32_t repeat_count = n_repeat_current * dValue * COMPLEX_DOUBLE / (BLOCK_PER_REPEAT * BLOCK_SIZE);
         uint64_t rsvdCnt = 0;
         vreducev2(reinterpret_cast<__ubuf__ uint32_t *>(real_buf), reinterpret_cast<__ubuf__ uint32_t *>(complex_buf),
@@ -280,7 +280,7 @@ __aicore__ __inline__ void TransposeWithStrideAndCombineRI(__gm__ float *__restr
 
     AscendC::GlobalTensor<float> gm_src_tensor;
     AscendC::GlobalTensor<float> gm_dst_tensor;
- 
+
     gm_src_tensor.SetGlobalBuffer(reinterpret_cast<__gm__ float *>(gm_src));
     gm_dst_tensor.SetGlobalBuffer(reinterpret_cast<__gm__ float *>(gm_dst));
 
@@ -338,7 +338,7 @@ __aicore__ __inline__ void TransposeWithStrideAndCombineRI(__gm__ float *__restr
 
             // vtranspose
             for (int32_t i = 0; i < current_repeat_cnt * dValue / 64; i++) {
-                tranpose_v<ArchType::ASCEND_V220, uint16_t>(
+                transpose_v<ArchType::ASCEND_V220, uint16_t>(
                     buf1_tensor[i * 128].template ReinterpretCast<uint16_t>(),
                     buf0_tensor[i * 128].template ReinterpretCast<uint16_t>()
                 );
@@ -372,7 +372,7 @@ __aicore__ __inline__ void TransposeWithStrideAndCombineRI(__gm__ float *__restr
 
             // vtranspose
             for (int32_t i = 0; i < current_repeat_cnt * dValue / 64; i++) {
-                tranpose_v<ArchType::ASCEND_V220, uint16_t>(
+                transpose_v<ArchType::ASCEND_V220, uint16_t>(
                     buf1_tensor[i * 128].template ReinterpretCast<uint16_t>(),
                     buf0_tensor[i * 128].template ReinterpretCast<uint16_t>()
                 );
@@ -736,7 +736,7 @@ __aicore__ __inline__ void TransposeAndMatmul(__gm__ float *__restrict__ gm_c, _
                                     0,                             // indexID
                                     k0_round / R0,         // repeat
                                     M0 / R0,               // srcStride
-                                    1,                             // dstGap 
+                                    1,                             // dstGap
                                     0,                             // dstFracStride
                                     inc                           // addrmode
                                 )
@@ -797,7 +797,7 @@ __aicore__ __inline__ void TransposeAndMatmul(__gm__ float *__restrict__ gm_c, _
                                 0,                             // indexID
                                 k0_round / R0,         // repeat
                                 N0 / R0,               // srcStride
-                                2 * n_round / R0 - 1,  // dstGap 
+                                2 * n_round / R0 - 1,  // dstGap
                                 n_round / R0 - 1,      // dstFracStride
                                 inc                           // addrmode
                             )

@@ -305,7 +305,7 @@ function delete_installed_files() {
     chmod 700 -R "$install_dir"
     cd "$install_dir"
     if [ ! -f "$csv_path" ];then
-        print "INFO" "filelist.csv is not founded, uninstall by delete whole folder."
+        print "INFO" "filelist.csv is not found, uninstall by delete whole folder."
         [ -n "$1" ] && rm -rf "$1"
         return 0
     fi

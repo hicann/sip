@@ -157,7 +157,7 @@ int main(int argc, char **argv)
 {
     // Set the device ID used by the operator
     int deviceId = 0;
-    // (Fixed写法) Create execution stream
+    // (Fixed pattern) Create execution stream
     aclrtStream stream;
     Init(deviceId, &stream);
 

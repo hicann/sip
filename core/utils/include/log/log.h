@@ -11,7 +11,7 @@
 #ifndef ASDSIP_LOG_H
 #define ASDSIP_LOG_H
 
-#ifdef UNITTESET
+#ifdef UNITTEST
 
 #include <mki/utils/log/log_stream.h>
 #include <mki/utils/log/log_core.h>
@@ -27,101 +27,101 @@
 
 #endif
 
-#ifdef UNITTESET
+#ifdef UNITTEST
 
 #define ASDSIP_LOG(level) ASDSIP_LOG_##level
-#define ASDSIP_ELOG(err_code)                                                                                          \
-    if (Mki::LogLevel::ERROR >= Mki::LogCore::Instance().GetLogLevel())                                                \
-        Mki::LogStream(__FILE__, __LINE__, __FUNCTION__, Mki::LogLevel::ERROR)
+#define ASDSIP_ELOG(err_code)                                           \
+    if (Mki::LogLevel::ERROR >= Mki::LogCore::Instance().GetLogLevel()) \
+    Mki::LogStream(__FILE__, __LINE__, __FUNCTION__, Mki::LogLevel::ERROR)
 
 #define ASDSIP_FLOG(level, format, ...) ASDSIP_FLOG_##level(format, __VA_ARGS__)
- 
-#define ASDSIP_LOG_IF(condition, level)                                                                                \
-    if (condition)                                                                                                     \
+
+#define ASDSIP_LOG_IF(condition, level) \
+    if (condition)                      \
     ASDSIP_LOG(level)
- 
-#define ASDSIP_LOG_TRACE                                                                                               \
-    if (Mki::LogLevel::TRACE >= Mki::LogCore::Instance().GetLogLevel())                                                \
+
+#define ASDSIP_LOG_TRACE                                                \
+    if (Mki::LogLevel::TRACE >= Mki::LogCore::Instance().GetLogLevel()) \
     Mki::LogStream(__FILE__, __LINE__, __FUNCTION__, Mki::LogLevel::TRACE)
-#define ASDSIP_LOG_DEBUG                                                                                               \
-    if (Mki::LogLevel::DEBUG >= Mki::LogCore::Instance().GetLogLevel())                                                \
+#define ASDSIP_LOG_DEBUG                                                \
+    if (Mki::LogLevel::DEBUG >= Mki::LogCore::Instance().GetLogLevel()) \
     Mki::LogStream(__FILE__, __LINE__, __FUNCTION__, Mki::LogLevel::DEBUG)
-#define ASDSIP_LOG_INFO                                                                                                \
-    if (Mki::LogLevel::INFO >= Mki::LogCore::Instance().GetLogLevel())                                                 \
+#define ASDSIP_LOG_INFO                                                \
+    if (Mki::LogLevel::INFO >= Mki::LogCore::Instance().GetLogLevel()) \
     Mki::LogStream(__FILE__, __LINE__, __FUNCTION__, Mki::LogLevel::INFO)
-#define ASDSIP_LOG_WARN                                                                                                \
-    if (Mki::LogLevel::WARN >= Mki::LogCore::Instance().GetLogLevel())                                                 \
+#define ASDSIP_LOG_WARN                                                \
+    if (Mki::LogLevel::WARN >= Mki::LogCore::Instance().GetLogLevel()) \
     Mki::LogStream(__FILE__, __LINE__, __FUNCTION__, Mki::LogLevel::WARN)
-#define ASDSIP_LOG_ERROR                                                                                               \
-    if (Mki::LogLevel::ERROR >= Mki::LogCore::Instance().GetLogLevel())                                                \
+#define ASDSIP_LOG_ERROR                                                \
+    if (Mki::LogLevel::ERROR >= Mki::LogCore::Instance().GetLogLevel()) \
     Mki::LogStream(__FILE__, __LINE__, __FUNCTION__, Mki::LogLevel::ERROR)
-#define ASDSIP_LOG_FATAL                                                                                               \
-    if (Mki::LogLevel::FATAL >= Mki::LogCore::Instance().GetLogLevel())                                                \
+#define ASDSIP_LOG_FATAL                                                \
+    if (Mki::LogLevel::FATAL >= Mki::LogCore::Instance().GetLogLevel()) \
     Mki::LogStream(__FILE__, __LINE__, __FUNCTION__, Mki::LogLevel::FATAL)
- 
-#define ASDSIP_FLOG_TRACE(format, ...)                                                                                 \
-    if (Mki::LogLevel::TRACE >= Mki::LogCore::Instance().GetLogLevel())                                                \
+
+#define ASDSIP_FLOG_TRACE(format, ...)                                  \
+    if (Mki::LogLevel::TRACE >= Mki::LogCore::Instance().GetLogLevel()) \
     Mki::LogStream(__FILE__, __LINE__, __FUNCTION__, Mki::LogLevel::TRACE).Format(format, __VA_ARGS__)
-#define ASDSIP_FLOG_DEBUG(format, ...)                                                                                 \
-    if (Mki::LogLevel::DEBUG >= Mki::LogCore::Instance().GetLogLevel())                                                \
+#define ASDSIP_FLOG_DEBUG(format, ...)                                  \
+    if (Mki::LogLevel::DEBUG >= Mki::LogCore::Instance().GetLogLevel()) \
     Mki::LogStream(__FILE__, __LINE__, __FUNCTION__, Mki::LogLevel::DEBUG).Format(format, __VA_ARGS__)
-#define ASDSIP_FLOG_INFO(format, ...)                                                                                  \
-    if (Mki::LogLevel::INFO >= Mki::LogCore::Instance().GetLogLevel())                                                 \
+#define ASDSIP_FLOG_INFO(format, ...)                                  \
+    if (Mki::LogLevel::INFO >= Mki::LogCore::Instance().GetLogLevel()) \
     Mki::LogStream(__FILE__, __LINE__, __FUNCTION__, Mki::LogLevel::INFO).Format(format, __VA_ARGS__)
-#define ASDSIP_FLOG_WARN(format, ...)                                                                                  \
-    if (Mki::LogLevel::WARN >= Mki::LogCore::Instance().GetLogLevel())                                                 \
+#define ASDSIP_FLOG_WARN(format, ...)                                  \
+    if (Mki::LogLevel::WARN >= Mki::LogCore::Instance().GetLogLevel()) \
     Mki::LogStream(__FILE__, __LINE__, __FUNCTION__, Mki::LogLevel::WARN).Format(format, __VA_ARGS__)
-#define ASDSIP_FLOG_ERROR(format, ...)                                                                                 \
-    if (Mki::LogLevel::ERROR >= Mki::LogCore::Instance().GetLogLevel())                                                \
+#define ASDSIP_FLOG_ERROR(format, ...)                                  \
+    if (Mki::LogLevel::ERROR >= Mki::LogCore::Instance().GetLogLevel()) \
     Mki::LogStream(__FILE__, __LINE__, __FUNCTION__, Mki::LogLevel::ERROR).Format(format, __VA_ARGS__)
-#define ASDSIP_FLOG_FATAL(format, ...)                                                                                 \
-    if (Mki::LogLevel::FATAL >= Mki::LogCore::Instance().GetLogLevel())                                                \
+#define ASDSIP_FLOG_FATAL(format, ...)                                  \
+    if (Mki::LogLevel::FATAL >= Mki::LogCore::Instance().GetLogLevel()) \
     Mki::LogStream(__FILE__, __LINE__, __FUNCTION__, Mki::LogLevel::FATAL).Format(format, __VA_ARGS__)
 
 #else
 
 #define ASDSIP_LOG(level) ASDSIP_LOG_##level
 
-#define ASDSIP_ELOG(err_code)                                                                                          \
-    if (AsdSip::LogLevel::ERROR >= AsdSip::LogCoreSip::InstanceSip().GetLogLevel())                                    \
-        AsdSip::LogStreamSip(__FILE__, __LINE__, __FUNCTION__, AsdSip::LogLevel::ERROR, err_code)
+#define ASDSIP_ELOG(err_code)                                                       \
+    if (AsdSip::LogLevel::ERROR >= AsdSip::LogCoreSip::InstanceSip().GetLogLevel()) \
+    AsdSip::LogStreamSip(__FILE__, __LINE__, __FUNCTION__, AsdSip::LogLevel::ERROR, err_code)
 
 #define ASDSIP_FLOG(level, format, ...) ASDSIP_FLOG_##level(format, __VA_ARGS__)
 
-#define ASDSIP_LOG_IF(condition, level)                                                                                \
-    if (condition)                                                                                                     \
+#define ASDSIP_LOG_IF(condition, level) \
+    if (condition)                      \
     ASDSIP_LOG(level)
 
-#define ASDSIP_LOG_DEBUG                                                                                               \
-    if (AsdSip::LogLevel::DEBUG >= AsdSip::LogCoreSip::InstanceSip().GetLogLevel())                                    \
+#define ASDSIP_LOG_DEBUG                                                            \
+    if (AsdSip::LogLevel::DEBUG >= AsdSip::LogCoreSip::InstanceSip().GetLogLevel()) \
     AsdSip::LogStreamSip(__FILE__, __LINE__, __FUNCTION__, AsdSip::LogLevel::DEBUG)
-#define ASDSIP_LOG_INFO                                                                                                \
-    if (AsdSip::LogLevel::INFO >= AsdSip::LogCoreSip::InstanceSip().GetLogLevel())                                     \
+#define ASDSIP_LOG_INFO                                                            \
+    if (AsdSip::LogLevel::INFO >= AsdSip::LogCoreSip::InstanceSip().GetLogLevel()) \
     AsdSip::LogStreamSip(__FILE__, __LINE__, __FUNCTION__, AsdSip::LogLevel::INFO)
-#define ASDSIP_LOG_WARN                                                                                                \
-    if (AsdSip::LogLevel::WARN >= AsdSip::LogCoreSip::InstanceSip().GetLogLevel())                                     \
+#define ASDSIP_LOG_WARN                                                            \
+    if (AsdSip::LogLevel::WARN >= AsdSip::LogCoreSip::InstanceSip().GetLogLevel()) \
     AsdSip::LogStreamSip(__FILE__, __LINE__, __FUNCTION__, AsdSip::LogLevel::WARN)
-#define ASDSIP_LOG_ERROR                                                                                               \
-    if (AsdSip::LogLevel::ERROR >= AsdSip::LogCoreSip::InstanceSip().GetLogLevel())                                    \
+#define ASDSIP_LOG_ERROR                                                            \
+    if (AsdSip::LogLevel::ERROR >= AsdSip::LogCoreSip::InstanceSip().GetLogLevel()) \
     AsdSip::LogStreamSip(__FILE__, __LINE__, __FUNCTION__, AsdSip::LogLevel::ERROR)
-#define ASDSIP_LOG_FATAL                                                                                               \
-    if (AsdSip::LogLevel::FATAL >= AsdSip::LogCoreSip::InstanceSip().GetLogLevel())                                    \
+#define ASDSIP_LOG_FATAL                                                            \
+    if (AsdSip::LogLevel::FATAL >= AsdSip::LogCoreSip::InstanceSip().GetLogLevel()) \
     AsdSip::LogStreamSip(__FILE__, __LINE__, __FUNCTION__, AsdSip::LogLevel::FATAL)
 
-#define ASDSIP_FLOG_DEBUG(format, ...)                                                                                 \
-    if (AsdSip::LogLevel::DEBUG >= AsdSip::LogCoreSip::InstanceSip().GetLogLevel())                                    \
+#define ASDSIP_FLOG_DEBUG(format, ...)                                              \
+    if (AsdSip::LogLevel::DEBUG >= AsdSip::LogCoreSip::InstanceSip().GetLogLevel()) \
     AsdSip::LogStreamSip(__FILE__, __LINE__, __FUNCTION__, AsdSip::LogLevel::DEBUG).FormatSip(format, __VA_ARGS__)
-#define ASDSIP_FLOG_INFO(format, ...)                                                                                  \
-    if (AsdSip::LogLevel::INFO >= AsdSip::LogCoreSip::InstanceSip().GetLogLevel())                                     \
+#define ASDSIP_FLOG_INFO(format, ...)                                              \
+    if (AsdSip::LogLevel::INFO >= AsdSip::LogCoreSip::InstanceSip().GetLogLevel()) \
     AsdSip::LogStreamSip(__FILE__, __LINE__, __FUNCTION__, AsdSip::LogLevel::INFO).FormatSip(format, __VA_ARGS__)
-#define ASDSIP_FLOG_WARN(format, ...)                                                                                  \
-    if (AsdSip::LogLevel::WARN >= AsdSip::LogCoreSip::InstanceSip().GetLogLevel())                                     \
+#define ASDSIP_FLOG_WARN(format, ...)                                              \
+    if (AsdSip::LogLevel::WARN >= AsdSip::LogCoreSip::InstanceSip().GetLogLevel()) \
     AsdSip::LogStreamSip(__FILE__, __LINE__, __FUNCTION__, AsdSip::LogLevel::WARN).FormatSip(format, __VA_ARGS__)
-#define ASDSIP_FLOG_ERROR(format, ...)                                                                                 \
-    if (AsdSip::LogLevel::ERROR >= AsdSip::LogCoreSip::InstanceSip().GetLogLevel())                                    \
+#define ASDSIP_FLOG_ERROR(format, ...)                                              \
+    if (AsdSip::LogLevel::ERROR >= AsdSip::LogCoreSip::InstanceSip().GetLogLevel()) \
     AsdSip::LogStreamSip(__FILE__, __LINE__, __FUNCTION__, AsdSip::LogLevel::ERROR).FormatSip(format, __VA_ARGS__)
-#define ASDSIP_FLOG_FATAL(format, ...)                                                                                 \
-    if (AsdSip::LogLevel::FATAL >= AsdSip::LogCoreSip::InstanceSip().GetLogLevel())                                    \
+#define ASDSIP_FLOG_FATAL(format, ...)                                              \
+    if (AsdSip::LogLevel::FATAL >= AsdSip::LogCoreSip::InstanceSip().GetLogLevel()) \
     AsdSip::LogStreamSip(__FILE__, __LINE__, __FUNCTION__, AsdSip::LogLevel::FATAL).FormatSip(format, __VA_ARGS__)
 #endif
 

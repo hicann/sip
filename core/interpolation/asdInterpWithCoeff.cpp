@@ -30,13 +30,13 @@ constexpr int64_t MAX_BATCH = 1024;
 constexpr int64_t INTERP_RS_TWO = 2;
 constexpr int64_t INTERP_RS_FOUR = 4;
 constexpr int64_t MAX_TOTAL_SUBCARRIER = 32760;
-constexpr int64_t MAX_SINGAL_NUM = 14;
+constexpr int64_t MAX_SIGNAL_NUM = 14;
 constexpr int DIMS_TWO = 2;
 
 namespace AsdSip {
-int64_t *getInputShape(const aclTensor *x)
+int64_t* getInputShape(const aclTensor* x)
 {
-    int64_t *storageDims = nullptr;
+    int64_t* storageDims = nullptr;
     uint64_t storageDimsNum = 0;
     auto ret = aclGetStorageShape(x, &storageDims, &storageDimsNum);
     if (ret != ACL_SUCCESS || *storageDims <= 0 || storageDimsNum != INTERP_DIMS_THREE) {
@@ -47,8 +47,8 @@ int64_t *getInputShape(const aclTensor *x)
         ASDSIP_ELOG(ErrorType::ACL_ERROR_OP_INPUT_NOT_MATCH) << "interpByCoeff get wrong input tensor.";
         return nullptr;
     }
-    if (storageDims[0] > MAX_BATCH || (storageDims[1] != INTERP_RS_TWO && storageDims[1] != INTERP_RS_FOUR)
-        || storageDims[DIMS_TWO] > MAX_TOTAL_SUBCARRIER) {
+    if (storageDims[0] > MAX_BATCH || (storageDims[1] != INTERP_RS_TWO && storageDims[1] != INTERP_RS_FOUR) ||
+        storageDims[DIMS_TWO] > MAX_TOTAL_SUBCARRIER) {
         delete[] storageDims;
         storageDims = nullptr;
         ASDSIP_ELOG(ErrorType::ACL_ERROR_OP_INPUT_NOT_MATCH) << "interpByCoeff do not support input tensor shape.";
@@ -57,14 +57,13 @@ int64_t *getInputShape(const aclTensor *x)
     return storageDims;
 }
 
-
-int64_t *getCoeffShape(const aclTensor *coefficient)
+int64_t* getCoeffShape(const aclTensor* coefficient)
 {
-    int64_t *coeffDims = nullptr;
+    int64_t* coeffDims = nullptr;
     uint64_t coeffDimsNum = 0;
     auto ret = aclGetStorageShape(coefficient, &coeffDims, &coeffDimsNum);
     if (ret != ACL_SUCCESS || *coeffDims <= 0 || coeffDimsNum != INTERP_DIMS_THREE || coeffDims[1] < 0 ||
-        coeffDims[1] > MAX_SINGAL_NUM) {
+        coeffDims[1] > MAX_SIGNAL_NUM) {
         delete[] coeffDims;
         coeffDims = nullptr;
         ASDSIP_ELOG(ErrorType::ACL_ERROR_OP_INPUT_NOT_MATCH) << "interpByCoeff get wrong coefficient tensor.";
@@ -72,8 +71,7 @@ int64_t *getCoeffShape(const aclTensor *coefficient)
     return coeffDims;
 }
 
-
-void cleanAcl(int64_t *storageDims, int64_t *coeffDims)
+void cleanAcl(int64_t* storageDims, int64_t* coeffDims)
 {
     if (storageDims != nullptr) {
         delete[] storageDims;
@@ -85,13 +83,12 @@ void cleanAcl(int64_t *storageDims, int64_t *coeffDims)
     }
 }
 
-
-AspbStatus asdInterpWithCoeff(const aclTensor *x, const aclTensor *coefficient, aclTensor *output,
-                              void *stream, void *workSpace)
+AspbStatus asdInterpWithCoeff(const aclTensor* x, const aclTensor* coefficient, aclTensor* output, void* stream,
+                              void* workSpace)
 {
-    int64_t *storageDims = getInputShape(x);
+    int64_t* storageDims = getInputShape(x);
     ASDSIP_ECHECK(storageDims != nullptr, "InterpWithCoeff failed.", ErrorType::ACL_ERROR_OP_INPUT_NOT_MATCH);
-    int64_t *coeffDims = getCoeffShape(coefficient);
+    int64_t* coeffDims = getCoeffShape(coefficient);
     ASDSIP_ECHECK(coeffDims != nullptr, "InterpWithCoeff failed.", ErrorType::ACL_ERROR_OP_INPUT_NOT_MATCH);
     if (storageDims[0] != coeffDims[0] || storageDims[1] != coeffDims[DIMS_TWO]) {
         cleanAcl(storageDims, coeffDims);
@@ -110,9 +107,9 @@ AspbStatus asdInterpWithCoeff(const aclTensor *x, const aclTensor *coefficient, 
 
     cleanAcl(storageDims, coeffDims);
 
-    SVector<aclTensor *> inTensors{const_cast<aclTensor*>(x), const_cast<aclTensor*>(coefficient)};
-    SVector<aclTensor *> outTensors{output};
-    Mki::Status status = RunAsdOpsV2(stream, opDesc, inTensors, outTensors, (uint8_t *)workSpace);
+    SVector<aclTensor*> inTensors{const_cast<aclTensor*>(x), const_cast<aclTensor*>(coefficient)};
+    SVector<aclTensor*> outTensors{output};
+    Mki::Status status = RunAsdOpsV2(stream, opDesc, inTensors, outTensors, (uint8_t*)workSpace);
     ASDSIP_ECHECK(status.Ok(), status.Message(), ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
     output = outTensors.at(0);
@@ -120,11 +117,10 @@ AspbStatus asdInterpWithCoeff(const aclTensor *x, const aclTensor *coefficient, 
     return ErrorType::ACL_SUCCESS;
 }
 
-
-AspbStatus asdInterpWithCoeffGetWorkspaceSize(size_t &workspaceSize)
+AspbStatus asdInterpWithCoeffGetWorkspaceSize(size_t& workspaceSize)
 {
     workspaceSize = INTERP_WORKSPACE_SIZE;
     return ErrorType::ACL_SUCCESS;
 }
 
-}
+} // namespace AsdSip

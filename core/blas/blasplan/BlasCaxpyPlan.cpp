@@ -33,7 +33,7 @@ AsdSip::AspbStatus BlasCaxpyPlan::CreateTensor()
     uint32_t maxDataCount = K_FACTOR_38 * K_FACTOR_1024 / sizeof(float);
     uint32_t complexCount = maxDataCount / COMPLEX_NUM;
 
-    uint32_t *augData = nullptr;
+    uint32_t* augData = nullptr;
     try {
         augData = new uint32_t[maxDataCount];
     } catch (std::bad_alloc& e) {
@@ -63,17 +63,17 @@ AsdSip::AspbStatus BlasCaxpyPlan::CreateTensor()
 
     toAclTensor(augTensor, augAclTensor);
     if (augAclTensor == nullptr) {
-        ASDSIP_LOG(ERROR) << "convert to aclnTensor fail.";
+        ASDSIP_LOG(ERROR) << "convert to aclTensor fail.";
         return ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }
-    
+
     return ErrorType::ACL_SUCCESS;
 }
 
 AsdSip::AspbStatus BlasCaxpyPlan::FreeTensor()
 {
     if (augTensor.hostData != nullptr) {
-        delete[] static_cast<uint32_t *>(augTensor.hostData);
+        delete[] static_cast<uint32_t*>(augTensor.hostData);
         augTensor.hostData = nullptr;
     }
     if (augTensor.data != nullptr) {
@@ -83,9 +83,6 @@ AsdSip::AspbStatus BlasCaxpyPlan::FreeTensor()
     return ErrorType::ACL_SUCCESS;
 }
 
-BlasCaxpyPlan::~BlasCaxpyPlan()
-{
-    BlasPlan::DestroyPlanData();
-}
+BlasCaxpyPlan::~BlasCaxpyPlan() { BlasPlan::DestroyPlanData(); }
 
-}
+} // namespace AsdSip

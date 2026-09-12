@@ -47,7 +47,7 @@ function print() {
     if [ x"$log_file" = x ]; then
         echo -e "[asdsip] [$(date +%Y%m%d-%H:%M:%S)] [$1] $2"
     else
-        if [ $(stat -c %s $log_file) -gt $MAX_LOG_SIZE ];then 
+        if [ $(stat -c %s $log_file) -gt $MAX_LOG_SIZE ];then
             echo -e "[asdsip] [$(date +%Y%m%d-%H:%M:%S)] [$1] log file is bigger than $MAX_LOG_SIZE, stop write log to file"
             echo -e "[asdsip] [$(date +%Y%m%d-%H:%M:%S)] [$1] $2"
         else
@@ -85,7 +85,7 @@ function delete_installed_files() {
     chmod 700 -R "$install_dir"
     cd $install_dir
     if [ ! -f "$csv_path" ];then
-        print "INFO" "filelist.csv is not founded, uninstall by delete whole folder."
+        print "INFO" "filelist.csv is not found, uninstall by delete whole folder."
         [ -n "$1" ] && rm -rf "$1"
         return 0
     fi

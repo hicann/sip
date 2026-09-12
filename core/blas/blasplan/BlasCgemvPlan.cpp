@@ -84,7 +84,7 @@ AsdSip::AspbStatus BlasCgemvPlan::SetMaskTensor()
     }
     toAclTensor(maskTensor, maskAclTensor);
     if (maskAclTensor == nullptr) {
-        ASDSIP_LOG(ERROR) << "convert to aclnTensor fail.";
+        ASDSIP_LOG(ERROR) << "convert to aclTensor fail.";
         return ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }
     maskData = nullptr;
@@ -138,7 +138,7 @@ AsdSip::AspbStatus BlasCgemvPlan::SetyInTensor(aclTensor* y)
 
     toAclTensor(yInTensor, yInAclTensor);
     if (yInAclTensor == nullptr) {
-        ASDSIP_LOG(ERROR) << "convert to aclnTensor fail.";
+        ASDSIP_LOG(ERROR) << "convert to aclTensor fail.";
         return ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }
     return ErrorType::ACL_SUCCESS;

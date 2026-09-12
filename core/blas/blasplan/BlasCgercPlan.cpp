@@ -30,7 +30,7 @@ AsdSip::AspbStatus BlasCgercPlan::CreateTensor()
 {
     uint32_t gatherOffsetSize = MAX_DATACOUNT;
 
-    uint32_t *offsetData = nullptr;
+    uint32_t* offsetData = nullptr;
     try {
         offsetData = new uint32_t[gatherOffsetSize];
     } catch (std::bad_alloc& e) {
@@ -52,12 +52,12 @@ AsdSip::AspbStatus BlasCgercPlan::CreateTensor()
         delete[] offsetData;
         offsetData = nullptr;
         gatherOffset.hostData = nullptr;
-        ASDSIP_LOG(ERROR) <<"gatherOffset in device malloc failed.";
+        ASDSIP_LOG(ERROR) << "gatherOffset in device malloc failed.";
         return ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }
     toAclTensor(gatherOffset, gatherAclOffset);
     if (gatherAclOffset == nullptr) {
-        ASDSIP_LOG(ERROR) << "convert to aclnTensor fail.";
+        ASDSIP_LOG(ERROR) << "convert to aclTensor fail.";
         return ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }
     offsetData = nullptr;
@@ -72,14 +72,11 @@ AsdSip::AspbStatus BlasCgercPlan::FreeTensor()
         gatherOffset.data = nullptr;
     }
     if (gatherOffset.hostData != nullptr) {
-        delete[] static_cast<uint32_t *>(gatherOffset.hostData);
+        delete[] static_cast<uint32_t*>(gatherOffset.hostData);
         gatherOffset.hostData = nullptr;
     }
     return ErrorType::ACL_SUCCESS;
 }
 
-BlasCgercPlan::~BlasCgercPlan()
-{
-    BlasPlan::DestroyPlanData();
-}
-}
+BlasCgercPlan::~BlasCgercPlan() { BlasPlan::DestroyPlanData(); }
+} // namespace AsdSip

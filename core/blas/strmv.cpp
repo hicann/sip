@@ -94,7 +94,7 @@ AspbStatus asdBlasStrmv(asdBlasHandle handle, asdBlasFillMode_t uplo, asdBlasOpe
         opDesc.specificParam = param;
         ASDSIP_LOG(DEBUG) << "OpDesc: " << opDesc.opName << "; OpDesc info: " << param.ToString();
 
-        SVector<aclTensor*> inTensors{A, x, plan.GetmMaskAclTensor()};
+        SVector<aclTensor*> inTensors{A, x, plan.GetMaskAclTensor()};
         SVector<aclTensor*> outTensors{x};
 
         Status status = RunAsdOpsV2(plan.GetStream(), opDesc, inTensors, outTensors, plan.GetWorkspace());

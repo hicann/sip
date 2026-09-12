@@ -19,21 +19,15 @@ public:
     AsdSip::AspbStatus CreateTensor() override;
     AsdSip::AspbStatus SetMaskTensor();
     AsdSip::AspbStatus FreeTensor() override;
-    Mki::Tensor GetmMaskTensor()
-    {
-        return this->maskTensor;
-    }
-    aclTensor *GetmMaskAclTensor()
-    {
-        return this->maskAclTensor;
-    }
+    Mki::Tensor GetMaskTensor() { return this->maskTensor; }
+    aclTensor* GetMaskAclTensor() { return this->maskAclTensor; }
     int64_t GetWorkspaceSize() override;
 
 private:
     asdBlasFillMode_t uplo;   // 上下三角矩阵
-    asdBlasOperation_t trans;  // 方阵的阶
+    asdBlasOperation_t trans; // 方阵的阶
     int64_t n;
     Mki::Tensor maskTensor;
-    aclTensor *maskAclTensor = nullptr;
+    aclTensor* maskAclTensor = nullptr;
 };
-}  // namespace AsdSip
+} // namespace AsdSip

@@ -26,17 +26,14 @@ BlasCtrmvPlan::BlasCtrmvPlan(asdBlasFillMode_t uplo, int64_t n) : BlasPlan(), up
     uploTensor.hostData = nullptr;
 };
 
-AsdSip::AspbStatus BlasCtrmvPlan::CreateTensor()
-{
-    return SetUploTensor();
-}
+AsdSip::AspbStatus BlasCtrmvPlan::CreateTensor() { return SetUploTensor(); }
 
 AsdSip::AspbStatus BlasCtrmvPlan::SetUploTensor()
 {
     int64_t blockSize = N0 * N0 * static_cast<int64_t>(sizeof(float));
     float ele = (uplo == asdBlasFillMode_t::ASDBLAS_FILL_MODE_LOWER) ? 0 : 1;
 
-    float *uploMatrixData = nullptr;
+    float* uploMatrixData = nullptr;
     try {
         uploMatrixData = new float[blockSize];
     } catch (std::bad_alloc& e) {
@@ -69,7 +66,7 @@ AsdSip::AspbStatus BlasCtrmvPlan::SetUploTensor()
     }
     toAclTensor(uploTensor, uploAclTensor);
     if (uploAclTensor == nullptr) {
-        ASDSIP_LOG(ERROR) << "convert to aclnTensor fail.";
+        ASDSIP_LOG(ERROR) << "convert to aclTensor fail.";
         return ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }
     uploMatrixData = nullptr;
@@ -83,19 +80,13 @@ AsdSip::AspbStatus BlasCtrmvPlan::FreeTensor()
         uploTensor.data = nullptr;
     }
     if (uploTensor.hostData != nullptr) {
-        delete[] static_cast<float *>(uploTensor.hostData);
+        delete[] static_cast<float*>(uploTensor.hostData);
         uploTensor.hostData = nullptr;
     }
     return ErrorType::ACL_SUCCESS;
 }
 
-BlasCtrmvPlan::~BlasCtrmvPlan()
-{
-    BlasPlan::DestroyPlanData();
-}
+BlasCtrmvPlan::~BlasCtrmvPlan() { BlasPlan::DestroyPlanData(); }
 
-int64_t BlasCtrmvPlan::GetWorkspaceSize()
-{
-    return n * ELEMENTS_PER_COMPLEX * sizeof(float);
-}
-}
+int64_t BlasCtrmvPlan::GetWorkspaceSize() { return n * ELEMENTS_PER_COMPLEX * sizeof(float); }
+} // namespace AsdSip

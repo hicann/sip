@@ -23,18 +23,18 @@ constexpr int64_t M0 = 128;
 constexpr int64_t N0 = 128;
 constexpr int64_t K0 = 128;
 
-constexpr uint32_t BLAS_CGEMM_WORKSPACE_SIZE = 16 * 1024 * 1024;  // 16:flattenNum
+constexpr uint32_t BLAS_CGEMM_WORKSPACE_SIZE = 16 * 1024 * 1024; // 16:flattenNum
 
 using namespace Mki;
 
 namespace AsdSip {
 BlasCgemmPlan::BlasCgemmPlan(CgemmPlanParam planParam) : BlasPlan(), planParam{planParam} {};
 
-AsdSip::AspbStatus MallocTensorImpl(SVector<Tensor> &tensorList, int tensorNum,
-    int tensorSize, SVector<aclTensor *> &aclTensorList)
+AsdSip::AspbStatus MallocTensorImpl(SVector<Tensor>& tensorList, int tensorNum, int tensorSize,
+                                    SVector<aclTensor*>& aclTensorList)
 {
     for (int i = 0; i < tensorNum; i++) {
-        float *tensorData = nullptr;
+        float* tensorData = nullptr;
         try {
             tensorData = new float[tensorSize];
         } catch (std::bad_alloc& e) {
@@ -55,13 +55,13 @@ AsdSip::AspbStatus MallocTensorImpl(SVector<Tensor> &tensorList, int tensorNum,
         }
         tensorList.push_back(curr);
 
-        aclTensor *augAclTensor = nullptr;
+        aclTensor* augAclTensor = nullptr;
         toAclTensor(curr, augAclTensor);
         if (augAclTensor == nullptr) {
-            ASDSIP_LOG(ERROR) << "convert to aclnTensor fail.";
+            ASDSIP_LOG(ERROR) << "convert to aclTensor fail.";
             return ErrorType::ACL_ERROR_INTERNAL_ERROR;
         }
-    
+
         aclTensorList.push_back(augAclTensor);
 
         tensorData = nullptr;
@@ -75,18 +75,18 @@ AsdSip::AspbStatus BlasCgemmPlan::CreateTensor()
     int augCNum = 4;
 
     int64_t lda_pad = (planParam.transa == asdBlasOperation_t::ASDBLAS_OP_N) ?
-        ((planParam.m + PAD_NUM - 1) / PAD_NUM * PAD_NUM) :
-        ((planParam.k + PAD_NUM - 1) / PAD_NUM * PAD_NUM);
+                          ((planParam.m + PAD_NUM - 1) / PAD_NUM * PAD_NUM) :
+                          ((planParam.k + PAD_NUM - 1) / PAD_NUM * PAD_NUM);
     int64_t ldb_pad = (planParam.transb == asdBlasOperation_t::ASDBLAS_OP_N) ?
-        ((planParam.k + PAD_NUM - 1) / PAD_NUM * PAD_NUM) :
-        ((planParam.n + PAD_NUM - 1) / PAD_NUM * PAD_NUM);
+                          ((planParam.k + PAD_NUM - 1) / PAD_NUM * PAD_NUM) :
+                          ((planParam.n + PAD_NUM - 1) / PAD_NUM * PAD_NUM);
 
     int64_t ASize = ((planParam.transa == asdBlasOperation_t::ASDBLAS_OP_N) ?
-        (lda_pad * (planParam.k + K0 - 1) / K0 * K0) :
-        (lda_pad * (planParam.m + M0 - 1) / M0 * M0));
+                         (lda_pad * (planParam.k + K0 - 1) / K0 * K0) :
+                         (lda_pad * (planParam.m + M0 - 1) / M0 * M0));
     int64_t BSize = ((planParam.transb == asdBlasOperation_t::ASDBLAS_OP_N) ?
-        (ldb_pad * (planParam.n + N0 - 1) / N0 * N0) :
-        (ldb_pad * (planParam.k + K0 - 1) / K0 * K0));
+                         (ldb_pad * (planParam.n + N0 - 1) / N0 * N0) :
+                         (ldb_pad * (planParam.k + K0 - 1) / K0 * K0));
     int64_t CSize = planParam.ldc * planParam.n;
 
     AsdSip::AspbStatus status;
@@ -119,12 +119,12 @@ void BlasCgemmPlan::FreeGivenTensor(Mki::Tensor tensor) const
         tensor.data = nullptr;
     }
     if (tensor.hostData != nullptr) {
-        delete[] static_cast<float *>(tensor.hostData);
+        delete[] static_cast<float*>(tensor.hostData);
         tensor.hostData = nullptr;
     }
 }
 
-void BlasCgemmPlan::FreeAclTensors(Mki::SVector<aclTensor *> aclTensorList) const
+void BlasCgemmPlan::FreeAclTensors(Mki::SVector<aclTensor*> aclTensorList) const
 {
     for (auto* ptr : aclTensorList) {
         aclDestroyTensor(ptr);
@@ -149,13 +149,7 @@ AsdSip::AspbStatus BlasCgemmPlan::FreeTensor()
     return ErrorType::ACL_SUCCESS;
 }
 
-BlasCgemmPlan::~BlasCgemmPlan()
-{
-    BlasPlan::DestroyPlanData();
-}
+BlasCgemmPlan::~BlasCgemmPlan() { BlasPlan::DestroyPlanData(); }
 
-int64_t BlasCgemmPlan::GetWorkspaceSize()
-{
-    return BLAS_CGEMM_WORKSPACE_SIZE;
-}
-}
+int64_t BlasCgemmPlan::GetWorkspaceSize() { return BLAS_CGEMM_WORKSPACE_SIZE; }
+} // namespace AsdSip

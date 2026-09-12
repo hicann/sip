@@ -19,7 +19,7 @@
 using namespace Mki;
 using namespace AsdSip;
 
-static Status MallocOutTensor(LaunchParam &launchParam, const Operation *op, SVector<Tensor> &outTensorList)
+static Status MallocOutTensor(LaunchParam& launchParam, const Operation* op, SVector<Tensor>& outTensorList)
 {
     AsdSip::OpDesc opDesc;
     opDesc.specificParam = launchParam.GetParam();
@@ -44,11 +44,11 @@ static Status MallocOutTensor(LaunchParam &launchParam, const Operation *op, SVe
     }
 
     for (int64_t i = 0; i < outTensorNum; i++) {
-        Tensor &tensor = launchParam.GetOutTensor(i);
-        Tensor &outTensor = outTensorList.at(i);
+        Tensor& tensor = launchParam.GetOutTensor(i);
+        Tensor& outTensor = outTensorList.at(i);
 
-        tensor.dataSize =
-            static_cast<size_t>(tensor.Numel()) * static_cast<size_t>(GetTensorElementSize(tensor.desc.dtype));
+        tensor.dataSize = static_cast<size_t>(tensor.Numel()) *
+                          static_cast<size_t>(GetTensorElementSize(tensor.desc.dtype));
 
         outTensor.dataSize = tensor.dataSize;
         outTensor.desc = tensor.desc;
@@ -64,29 +64,29 @@ static Status MallocOutTensor(LaunchParam &launchParam, const Operation *op, SVe
     return Status::OkStatus();
 }
 
-static Status MallocAndSetWorkspace(const KernelInfo &kernelInfo, RunInfo &runInfo)
+static Status MallocAndSetWorkspace(const KernelInfo& kernelInfo, RunInfo& runInfo)
 {
     size_t bufferSize = kernelInfo.GetTotalScratchSize();
     if (bufferSize == 0) {
         ASDSIP_LOG(INFO) << "no workspace";
         return Status::OkStatus();
     }
-    uint8_t *deviceBuffer = nullptr;
+    uint8_t* deviceBuffer = nullptr;
     void* tempDevicePtr = nullptr;
     int ret = MkiRtMemMallocDevice(&tempDevicePtr, bufferSize, MKIRT_MEM_DEFAULT);
     if (ret != MKIRT_SUCCESS) {
         ASDSIP_LOG(ERROR) << "MkiRtMemMallocDevice fail, errCode:" << ret << ", errName:" << MkiRtErrorName(ret)
-                       << "errDesc:" << MkiRtErrorDesc(ret);
+                          << "errDesc:" << MkiRtErrorDesc(ret);
         return Status::FailStatus(-1, "malloc Workspace memory fail");
     }
-    deviceBuffer = static_cast<uint8_t *>(tempDevicePtr);
+    deviceBuffer = static_cast<uint8_t*>(tempDevicePtr);
     runInfo.SetScratchDeviceAddr(deviceBuffer);
     return Status::OkStatus();
 }
 
-static Status FreeWorkspace(const KernelInfo &kernelInfo, RunInfo &runInfo)
+static Status FreeWorkspace(const KernelInfo& kernelInfo, RunInfo& runInfo)
 {
-    uint8_t *deviceBuffer = runInfo.GetScratchDeviceAddr();
+    uint8_t* deviceBuffer = runInfo.GetScratchDeviceAddr();
     size_t bufferSize = kernelInfo.GetTotalScratchSize();
     if (deviceBuffer != nullptr && bufferSize != 0) {
         MkiRtStreamSynchronize(runInfo.GetStream());
@@ -96,10 +96,10 @@ static Status FreeWorkspace(const KernelInfo &kernelInfo, RunInfo &runInfo)
     return Status::OkStatus();
 }
 
-static Status RunAsdOpsImpl(LaunchParam &launchParam, const AsdSip::OpDesc &opDesc, RunInfo &runInfo,
-                            const SVector<Tensor> &inTensorList, SVector<Tensor> &outTensorList, uint8_t *workspace)
+static Status RunAsdOpsImpl(LaunchParam& launchParam, const AsdSip::OpDesc& opDesc, RunInfo& runInfo,
+                            const SVector<Tensor>& inTensorList, SVector<Tensor>& outTensorList, uint8_t* workspace)
 {
-    Operation *op = AsdSip::Ops::Instance().GetOperationByName(opDesc.opName);
+    Operation* op = AsdSip::Ops::Instance().GetOperationByName(opDesc.opName);
     if (op == nullptr) {
         return Status::FailStatus(-1, "Get operation failed.");
     }
@@ -121,7 +121,7 @@ static Status RunAsdOpsImpl(LaunchParam &launchParam, const AsdSip::OpDesc &opDe
     kernel->Init(launchParam);
 
     if (workspace == nullptr) {
-        const KernelInfo &kernelInfo = kernel->GetKernelInfo();
+        const KernelInfo& kernelInfo = kernel->GetKernelInfo();
         statusInfo = MallocAndSetWorkspace(kernelInfo, runInfo);
         if (!statusInfo.Ok()) {
             return statusInfo;
@@ -149,8 +149,8 @@ static Status RunAsdOpsImpl(LaunchParam &launchParam, const AsdSip::OpDesc &opDe
     return statusInfo;
 }
 
-Status RunAsdOps(MkiRtStream stream, const AsdSip::OpDesc &opDesc, const SVector<Tensor> &inTensorList,
-                 SVector<Tensor> &outTensorList, uint8_t *workspace)
+Status RunAsdOps(MkiRtStream stream, const AsdSip::OpDesc& opDesc, const SVector<Tensor>& inTensorList,
+                 SVector<Tensor>& outTensorList, uint8_t* workspace)
 {
     if (stream == nullptr) {
         ASDSIP_LOG(ERROR) << "stream is nullptr!";
@@ -173,7 +173,7 @@ Status RunAsdOps(MkiRtStream stream, const AsdSip::OpDesc &opDesc, const SVector
     return Status::OkStatus();
 }
 
-Status MallocTensorInDevice(Tensor &tensor)
+Status MallocTensorInDevice(Tensor& tensor)
 {
     int st = MkiRtMemMallocDevice(&tensor.data, tensor.dataSize, MKIRT_MEM_DEFAULT);
     if (st != MKIRT_SUCCESS) {
@@ -190,7 +190,7 @@ Status MallocTensorInDevice(Tensor &tensor)
     return Status::OkStatus();
 }
 
-Status CopyOutTensorToHost(Tensor &tensor)
+Status CopyOutTensorToHost(Tensor& tensor)
 {
     if (tensor.hostData == nullptr) {
         tensor.hostData = malloc(tensor.dataSize);
@@ -208,16 +208,16 @@ Status CopyOutTensorToHost(Tensor &tensor)
     return Status::OkStatus();
 }
 
-Status FreeTensorInDevice(const Tensor &tensor)
+Status FreeTensorInDevice(const Tensor& tensor)
 {
     MkiRtMemFreeDevice(tensor.data);
     return Status::OkStatus();
 }
 
-static Status RunAsdOpsImplV2(LaunchParam &launchParam, const AsdSip::OpDesc &opDesc,
-                              RunInfo &runInfo, uint8_t *workspace)
+static Status RunAsdOpsImplV2(LaunchParam& launchParam, const AsdSip::OpDesc& opDesc, RunInfo& runInfo,
+                              uint8_t* workspace)
 {
-    Operation *op = AsdSip::Ops::Instance().GetOperationByName(opDesc.opName);
+    Operation* op = AsdSip::Ops::Instance().GetOperationByName(opDesc.opName);
     if (op == nullptr) {
         return Status::FailStatus(-1, "Get operation failed.");
     }
@@ -233,7 +233,7 @@ static Status RunAsdOpsImplV2(LaunchParam &launchParam, const AsdSip::OpDesc &op
     kernel->SetLaunchWithTiling(true);
     kernel->Init(launchParam);
     if (workspace == nullptr) {
-        const KernelInfo &kernelInfo = kernel->GetKernelInfo();
+        const KernelInfo& kernelInfo = kernel->GetKernelInfo();
         status = MallocAndSetWorkspace(kernelInfo, runInfo);
         if (!status.Ok()) {
             return status;
@@ -260,8 +260,8 @@ static Status RunAsdOpsImplV2(LaunchParam &launchParam, const AsdSip::OpDesc &op
     return status;
 }
 
-Status RunAsdOpsV2(MkiRtStream stream, const AsdSip::OpDesc &opDesc, const SVector<aclTensor *> &inTensorList,
-                   SVector<aclTensor *> &outTensorList, uint8_t *workspace)
+Status RunAsdOpsV2(MkiRtStream stream, const AsdSip::OpDesc& opDesc, const SVector<aclTensor*>& inTensorList,
+                   SVector<aclTensor*>& outTensorList, uint8_t* workspace)
 {
     if (stream == nullptr) {
         ASDSIP_LOG(ERROR) << "stream is nullptr!";
@@ -289,8 +289,8 @@ Status RunAsdOpsV2(MkiRtStream stream, const AsdSip::OpDesc &opDesc, const SVect
     return Status::OkStatus();
 }
 
-// #ifndef UNITTESET
-Status toAclTensor(const Tensor &inTensor, aclTensor *&outTensor, std::vector<int64_t> stride)
+// #ifndef UNITTEST
+Status toAclTensor(const Tensor& inTensor, aclTensor*& outTensor, std::vector<int64_t> stride)
 {
     SVector<int64_t> shape = inTensor.desc.dims;
 
@@ -300,19 +300,19 @@ Status toAclTensor(const Tensor &inTensor, aclTensor *&outTensor, std::vector<in
             stride[i] = shape[i + 1] * stride[i + 1];
         }
         outTensor = aclCreateTensor(shape.data(), shape.size(), static_cast<aclDataType>(inTensor.desc.dtype),
-            stride.data(), inTensor.desc.offset, static_cast<aclFormat>(inTensor.desc.format), shape.data(),
-            shape.size(), inTensor.data);
+                                    stride.data(), inTensor.desc.offset, static_cast<aclFormat>(inTensor.desc.format),
+                                    shape.data(), shape.size(), inTensor.data);
     } else {
         int64_t max_id = 0;
         if (stride.size() < shape.size()) {
             ASDSIP_LOG(ERROR) << "tensor stride size is not equal shape size!"
                               << "expected stride size is [ " << shape.size() << " ],"
                               << "actually is [ " << stride.size() << " ].";
-            size_t strideOrignalSize = stride.size();
-            for (auto i = strideOrignalSize; i < shape.size(); i++) {
+            size_t strideOriginalSize = stride.size();
+            for (auto i = strideOriginalSize; i < shape.size(); i++) {
                 stride.push_back(1);
             }
-            for (auto i = shape.size() - 2; i >= strideOrignalSize; i--) {
+            for (auto i = shape.size() - 2; i >= strideOriginalSize; i--) {
                 stride[i] = shape[i + 1] * stride[i + 1];
             }
         }
@@ -323,8 +323,8 @@ Status toAclTensor(const Tensor &inTensor, aclTensor *&outTensor, std::vector<in
         }
         std::vector<int64_t> storageShape{stride[max_id] * shape[max_id] + inTensor.desc.offset};
         outTensor = aclCreateTensor(shape.data(), shape.size(), static_cast<aclDataType>(inTensor.desc.dtype),
-            stride.data(), inTensor.desc.offset, static_cast<aclFormat>(inTensor.desc.format), storageShape.data(),
-            storageShape.size(), inTensor.data);
+                                    stride.data(), inTensor.desc.offset, static_cast<aclFormat>(inTensor.desc.format),
+                                    storageShape.data(), storageShape.size(), inTensor.data);
     }
     return Status::OkStatus();
 }
