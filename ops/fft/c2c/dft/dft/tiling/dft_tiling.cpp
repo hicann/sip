@@ -19,15 +19,15 @@
 
 namespace AsdSip {
 
-using Mki::Status;
-using Mki::LaunchParam;
-using Mki::KernelInfo;
 using Mki::AnyCast;
+using Mki::CoreType;
+using Mki::KernelInfo;
+using Mki::LaunchParam;
 using Mki::PlatformInfo;
 using Mki::PlatformType;
-using Mki::CoreType;
-using Mki::TENSOR_DTYPE_COMPLEX64;
+using Mki::Status;
 using Mki::TENSOR_DTYPE_COMPLEX32;
+using Mki::TENSOR_DTYPE_COMPLEX64;
 
 constexpr uint32_t DFT_SIZE_MULTIPLIER = 2;
 constexpr uint32_t WORKSPACE_SIZE = 32;
@@ -35,7 +35,7 @@ constexpr uint32_t MAX_WORKSPACE_SIZE = 192 * 1024 * 40 * 4; // UB * 40
 constexpr int64_t UB_SIZE = 192 * 1024;
 constexpr uint32_t SUB_BLOCK_NUM = 2;
 
-AsdSip::AspbStatus DftTilingForComplex32(DftTilingData *tilingDataPtr, uint32_t maxCore)
+AsdSip::AspbStatus DftTilingForComplex32(DftTilingData* tilingDataPtr, uint32_t maxCore)
 {
     int32_t maxBatchPreCore = static_cast<int32_t>(UB_SIZE / 3 / sizeof(int16_t) / tilingDataPtr->n);
     int32_t vecNum = static_cast<int32_t>(maxCore * SUB_BLOCK_NUM);
@@ -58,13 +58,13 @@ AsdSip::AspbStatus DftTilingForComplex32(DftTilingData *tilingDataPtr, uint32_t 
     return AsdSip::ErrorType::ACL_SUCCESS;
 }
 
-AsdSip::AspbStatus DftTiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
+AsdSip::AspbStatus DftTiling(const LaunchParam& launchParam, KernelInfo& kernelInfo)
 {
-    const auto &param = AnyCast<OpParam::Dft>(launchParam.GetParam());
+    const auto& param = AnyCast<OpParam::Dft>(launchParam.GetParam());
 
-    DftTilingData *tilingDataPtr = reinterpret_cast<AsdSip::DftTilingData *>(kernelInfo.GetTilingHostAddr());
+    DftTilingData* tilingDataPtr = reinterpret_cast<AsdSip::DftTilingData*>(kernelInfo.GetTilingHostAddr());
     ASDSIP_CHECK(tilingDataPtr != nullptr, "tilingDataPtr should not be empty",
-              return AsdSip::ErrorType::ACL_ERROR_INVALID_PARAM);
+                 return AsdSip::ErrorType::ACL_ERROR_INVALID_PARAM);
 
     const int thresholdK = 32768;
     const int cubeDataCountPerLoopSmall = 128;
@@ -76,7 +76,8 @@ AsdSip::AspbStatus DftTiling(const LaunchParam &launchParam, KernelInfo &kernelI
     tilingDataPtr->k = param.fftN * DFT_SIZE_MULTIPLIER;
     tilingDataPtr->transA = 0;
     tilingDataPtr->transB = 0;
-    if (PlatformInfo::Instance().GetPlatformType() == PlatformType::ASCEND_910B) {
+    const auto platformType = PlatformInfo::Instance().GetPlatformType();
+    if (platformType == PlatformType::ASCEND_910B || platformType == PlatformType::ASCEND_950) {
         if (static_cast<bool>(param.isInverse)) {
             tilingDataPtr->transB = 1;
         }
@@ -110,4 +111,4 @@ AsdSip::AspbStatus DftTiling(const LaunchParam &launchParam, KernelInfo &kernelI
 
     return AsdSip::ErrorType::ACL_SUCCESS;
 }
-}  // namespace AsdSip
+} // namespace AsdSip

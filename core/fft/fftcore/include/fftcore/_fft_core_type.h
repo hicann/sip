@@ -33,6 +33,15 @@ enum FFTCoreType : unsigned {
     kFftR2CArch35,
     kFftC2CArch35,
     kFftC2C2DArch35,
+    kFftC2CRegBase,
+    kFftC2CCubeVector,
+    kFftR2CRegBase,
+    kFftC2RRegBase,
+    kFftR2CStockham,
+    kFftC2RStockham,
+
+    // Preserve the original numeric value while naming the A5 backend explicitly.
+    kFftC2CSimt = kFftC2CArch35,
 
 };
 

@@ -412,7 +412,7 @@ install_googletest() {
     local orig_dir=$(pwd)
     trap "rm -rf ${tmp_dir}" EXIT
 
-    if ! curl -fsSL "https://github.com/google/googletest/archive/refs/tags/${gtest_ver}.tar.gz" -o "${tmp_dir}/googletest.tar.gz"; then
+    if ! curl -fsSL "https://gitcode.com/cann-src-third-party/googletest/releases/download/${gtest_ver}/googletest-${gtest_ver#v}.tar.gz" -o "${tmp_dir}/googletest.tar.gz"; then
         echo "Warning: Failed to download googletest, skipping. You can install it manually later."
         rm -rf "${tmp_dir}"
         trap - EXIT

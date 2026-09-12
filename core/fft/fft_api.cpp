@@ -9,6 +9,7 @@
  */
 #include <iostream>
 #include <algorithm>
+#include <cstdlib>
 #include <mki/utils/platform/platform_info.h>
 #include "aclnn/acl_meta.h"
 #include "log/log.h"
@@ -33,6 +34,13 @@
 #include "fftcore/fft_c2r_arch35_core.h"
 #include "fftcore/fft_r2c_arch35_core.h"
 #include "fftcore/fft_c2c_arch35_core.h"
+#include "fftcore/fft_c2c_regbase_core.h"
+#include "fftcore/fft_c2c_large_core.h"
+#include "fftcore/fft_real_regbase_core.h"
+#include "fftcore/fft_real_stockham_core.h"
+#include "params/fft_real_dispatch.h"
+#include "params/fft_c2c_dispatch.h"
+#include "params/fft_c2c_regbase.h"
 #include "fftcore/fft_c2c2d_arch35_core.h"
 #include "params/fft_c2c2d_arch35.h"
 
@@ -181,7 +189,7 @@ bool Fft2dSupportFusing(int64_t fftSizeX, int64_t fftSizeY, int radixX, int radi
     return false;
 }
 
-void getC2RCore(std::optional<FFTCoreType>& coreTypeOpt, int radix, unsigned nDoing, bool forward)
+void getC2RCore(std::optional<FFTCoreType>& coreTypeOpt, int radix, unsigned nDoing, unsigned batch, bool forward)
 {
     if (forward) {
         ASDSIP_LOG(DEBUG) << "C2RCore forward.";
@@ -198,7 +206,11 @@ void getC2RCore(std::optional<FFTCoreType>& coreTypeOpt, int radix, unsigned nDo
             }
         }
     } else if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
-        if (nDoing <= K_N_FFT_1024) {
+        if (fft::a5::SelectReal(nDoing, batch, true) == fft::a5::RealRoute::Regbase) {
+            coreTypeOpt = FFTCoreType::kFftC2RRegBase;
+        } else if (fft::a5::SelectReal(nDoing, batch, true) == fft::a5::RealRoute::Stockham) {
+            coreTypeOpt = FFTCoreType::kFftC2RStockham;
+        } else if (nDoing <= K_N_FFT_1024) {
             coreTypeOpt = FFTCoreType::kDftC2R;
         } else {
             if (radix == K_RADIX_MIX) { // currently supports radix=2,3,5,7
@@ -209,7 +221,7 @@ void getC2RCore(std::optional<FFTCoreType>& coreTypeOpt, int radix, unsigned nDo
     return;
 }
 
-void getR2CCore(std::optional<FFTCoreType>& coreTypeOpt, int radix, unsigned nDoing, bool forward)
+void getR2CCore(std::optional<FFTCoreType>& coreTypeOpt, int radix, unsigned nDoing, unsigned batch, bool forward)
 {
     if (forward) {
         ASDSIP_LOG(DEBUG) << "R2CCore forward.";
@@ -226,7 +238,11 @@ void getR2CCore(std::optional<FFTCoreType>& coreTypeOpt, int radix, unsigned nDo
             }
         }
     } else if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
-        if (nDoing <= K_N_FFT_1024) {
+        if (fft::a5::SelectReal(nDoing, batch, false) == fft::a5::RealRoute::Regbase) {
+            coreTypeOpt = FFTCoreType::kFftR2CRegBase;
+        } else if (fft::a5::SelectReal(nDoing, batch, false) == fft::a5::RealRoute::Stockham) {
+            coreTypeOpt = FFTCoreType::kFftR2CStockham;
+        } else if (nDoing <= K_N_FFT_1024) {
             coreTypeOpt = FFTCoreType::kDftR2C;
         } else {
             if (radix == K_RADIX_MIX) { // currently supports radix=2,3,5,7
@@ -237,7 +253,7 @@ void getR2CCore(std::optional<FFTCoreType>& coreTypeOpt, int radix, unsigned nDo
     return;
 }
 
-void getC2CCore(std::optional<FFTCoreType>& coreTypeOpt, int radix, unsigned nDoing, bool forward)
+void getC2CCore(std::optional<FFTCoreType>& coreTypeOpt, int radix, unsigned nDoing, unsigned batch, bool forward)
 {
     if (forward) {
         ASDSIP_LOG(DEBUG) << "C2CCore forward.";
@@ -246,11 +262,24 @@ void getC2CCore(std::optional<FFTCoreType>& coreTypeOpt, int radix, unsigned nDo
     }
 
     if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
+        const auto route = fft::a5::Select(nDoing, batch);
+        if (route == fft::a5::Route::Dft) {
+            coreTypeOpt = FFTCoreType::kDft;
+            return;
+        }
+        if (route == fft::a5::Route::Regbase) {
+            coreTypeOpt = FFTCoreType::kFftC2CRegBase;
+            return;
+        }
+        if (route != fft::a5::Route::Existing) {
+            coreTypeOpt = FFTCoreType::kFftC2CCubeVector;
+            return;
+        }
         bool arch35Supported = nDoing > 1 && (radix == K_RADIX_2 ||
                                               (radix == K_RADIX_MIX &&
                                                Support(deDuplicates(orderedFactorize(nDoing)), RADIX_ARCH35_C2C_MIX)));
         if (arch35Supported) {
-            coreTypeOpt = FFTCoreType::kFftC2CArch35;
+            coreTypeOpt = FFTCoreType::kFftC2CSimt;
         } else if (nDoing <= K_N_FFT_256) {
             coreTypeOpt = FFTCoreType::kDft;
         } else {
@@ -307,6 +336,14 @@ std::unique_ptr<FftOperation> InitFftOpPtr(std::optional<FFTCoreType> coreTypeOp
             case FFTCoreType::kFftMix:
                 unique.reset(new FftCoreMix(nDone, nDoing, nLeft, batch, fftType, forward));
                 break;
+            case FFTCoreType::kFftR2CRegBase:
+            case FFTCoreType::kFftC2RRegBase:
+                unique.reset(new FftRealRegBaseCore(nDone, nDoing, nLeft, batch, fftType, forward));
+                break;
+            case FFTCoreType::kFftR2CStockham:
+            case FFTCoreType::kFftC2RStockham:
+                unique.reset(new FftRealStockhamCore(nDone, nDoing, nLeft, batch, fftType, forward));
+                break;
             // radixMix for c2r
             case FFTCoreType::kDftC2R:
                 unique.reset(new DftC2RCore(nDoing, batch, fftType, forward));
@@ -336,6 +373,17 @@ std::unique_ptr<FftOperation> InitFftOpPtr(std::optional<FFTCoreType> coreTypeOp
             case FFTCoreType::kFftC2CArch35:
                 unique.reset(new FftC2CCoreArch35(nDone, nDoing, nLeft, batch, fftType, forward));
                 break;
+            case FFTCoreType::kFftC2CRegBase:
+                if (nDoing <= 8192) {
+                    unique.reset(new FftC2CRegBaseCore(nDone, nDoing, nLeft, batch, fftType, forward));
+                } else {
+                    unique.reset(
+                        new FftC2CLargeCore(coreTypeOpt.value(), nDone, nDoing, nLeft, batch, fftType, forward));
+                }
+                break;
+            case FFTCoreType::kFftC2CCubeVector:
+                unique.reset(new FftC2CLargeCore(coreTypeOpt.value(), nDone, nDoing, nLeft, batch, fftType, forward));
+                break;
 
             // radixAny for c2c c2r r2c
             case FFTCoreType::kAny:
@@ -364,6 +412,55 @@ std::unique_ptr<FftOperation> InitFftOpPtr(std::optional<FFTCoreType> coreTypeOp
             plan.markFailed();
             ASDSIP_LOG(ERROR) << "initialize fftcore failed.";
             throw std::runtime_error("initialize fftcore failed.");
+        }
+        if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
+            const char* backend = "existing";
+            switch (coreTypeOpt.value()) {
+                case FFTCoreType::kDft:
+                    backend = "DFT-C2C";
+                    break;
+                case FFTCoreType::kDftC2R:
+                    backend = "DFT-C2R";
+                    break;
+                case FFTCoreType::kFftC2RRegBase:
+                    backend = "RegBase-C2R";
+                    break;
+                case FFTCoreType::kFftR2CRegBase:
+                    backend = "RegBase-R2C";
+                    break;
+                case FFTCoreType::kFftC2RStockham:
+                    backend = "Stockham-C2R";
+                    break;
+                case FFTCoreType::kFftR2CStockham:
+                    backend = "Stockham-R2C";
+                    break;
+                case FFTCoreType::kDftR2C:
+                    backend = "DFT-R2C";
+                    break;
+                case FFTCoreType::kFftC2CRegBase:
+                    backend = "RegBase";
+                    break;
+                case FFTCoreType::kFftC2CCubeVector:
+                    backend = fft::a5::Select(nDoing, batch) == fft::a5::Route::VectorExtended ? "Vector-C2C" :
+                                                                                                 "CubeVector";
+                    break;
+                case FFTCoreType::kFftC2CSimt:
+                    backend = "SIMT-C2C";
+                    break;
+                case FFTCoreType::kFftC2RArch35:
+                    backend = "SIMT-C2R";
+                    break;
+                case FFTCoreType::kFftR2CArch35:
+                    backend = "SIMT-R2C";
+                    break;
+                default:
+                    break;
+            }
+            const char* trace = std::getenv("ASDSIP_FFT_PLAN_TRACE");
+            if (trace != nullptr && std::string(trace) == "1") {
+                std::cerr << "A5_FFT_BACKEND backend=" << backend << " N=" << nDoing << " effective_batch=" << batch
+                          << " forward=" << forward << " workspace=" << unique->EstimateWorkspaceSize() << '\n';
+            }
         }
     }
 
@@ -467,15 +564,15 @@ std::unique_ptr<FftOperation> getCore(const std::vector<int64_t>& uniques, unsig
     int radix = ChooseRadix(fftType, uniques);
     switch (fftType) {
         case asdFftType::ASCEND_FFT_C2R:
-            getC2RCore(coreTypeOpt, radix, nDoing, forward);
+            getC2RCore(coreTypeOpt, radix, nDoing, batch, forward);
 
             break;
         case asdFftType::ASCEND_FFT_R2C:
-            getR2CCore(coreTypeOpt, radix, nDoing, forward);
+            getR2CCore(coreTypeOpt, radix, nDoing, batch, forward);
 
             break;
         case asdFftType::ASCEND_FFT_C2C:
-            getC2CCore(coreTypeOpt, radix, nDoing, forward);
+            getC2CCore(coreTypeOpt, radix, nDoing, batch, forward);
 
             break;
         default:
@@ -650,15 +747,19 @@ void init2DSteps(FFTPlan& plan)
             break;
         case asdFftType::ASCEND_FFT_C2C:
             if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
-                if ((radixX == K_RADIX_2 && radixY == K_RADIX_2) ||
-                    (Support(deDuplicates(orderedFactorize(fftSizeX)), RADIX_ARCH35_C2C_MIX) &&
-                     Support(deDuplicates(orderedFactorize(fftSizeY)), RADIX_ARCH35_C2C_MIX))) {
+                // Radix-2 axes follow the same backend policy as 1D/3D passes.
+                // Retain the dedicated mixed-radix implementation unchanged.
+                if (radixX == K_RADIX_2 && radixY == K_RADIX_2) {
+                    // Continue into the ordinary transpose/1D composition below.
+                } else if (Support(deDuplicates(orderedFactorize(fftSizeX)), RADIX_ARCH35_C2C_MIX) &&
+                           Support(deDuplicates(orderedFactorize(fftSizeY)), RADIX_ARCH35_C2C_MIX)) {
                     addFFT2DStep(plan, radixX, radixY);
                     break;
+                } else {
+                    ASDSIP_LOG(ERROR) << "ASCEND_950 2D C2C arch35 unsupported factorization: fftSizeX=" << fftSizeX
+                                      << ", fftSizeY=" << fftSizeY;
+                    throw std::runtime_error("ASCEND_950 2D C2C arch35 unsupported factorization.");
                 }
-                ASDSIP_LOG(ERROR) << "ASCEND_950 2D C2C arch35 unsupported factorization: fftSizeX=" << fftSizeX
-                                  << ", fftSizeY=" << fftSizeY;
-                throw std::runtime_error("ASCEND_950 2D C2C arch35 unsupported factorization.");
             }
             if (Fft2dSupportFusing(fftSizeX, fftSizeY, radixX, radixY, plan.fftType)) {
                 addFFT2DStep(plan, radixX, radixY);
@@ -1142,7 +1243,7 @@ AspbStatus asdFftExecV2(FFTPlan& plan, const aclTensor* input, const aclTensor* 
         return ErrorType::ACL_ERROR_INVALID_PARAM;
     }
 
-    if (shouldAllocTempCaches(plan) && shouldAllocWorkspace(plan) && !plan.hasWorkspace()) {
+    if ((shouldAllocTempCaches(plan) || shouldAllocWorkspace(plan)) && !plan.hasWorkspace()) {
         ASDSIP_LOG(ERROR) << "workspace has not been allocated.";
         return AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }

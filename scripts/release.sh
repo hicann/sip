@@ -79,7 +79,7 @@ function fn_init_makeself()
     [[ ! -d "$ASDSIP_DIR/opensource" ]] && mkdir $ASDSIP_DIR/opensource
     cd $ASDSIP_DIR/opensource/
     rm -rf makeself
-    git clone -b release-2.5.0 https://github.com/megastep/makeself.git
+    git clone -b release-2.5.0 https://gitcode.com/gh_mirrors/ma/makeself.git
 }
 
 function fn_build_catlass()

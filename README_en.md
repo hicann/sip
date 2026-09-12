@@ -49,7 +49,7 @@ The dependencies required for source code compilation in this project are listed
    - pigz (Installation can speed up packaging. Recommended version >= 2.4)
    - dos2unix
    - numpy
-   - googletest (Only required when running UT. Recommended version [release-1.11.0](https://github.com/google/googletest/releases/tag/release-1.11.0))
+   - googletest (Only required when running UT. Recommended version [v1.14.0](https://gitcode.com/cann-src-third-party/googletest/releases/tag/v1.14.0))
 
 You can install the above dependencies with one click using the project script. Follow these steps:
 

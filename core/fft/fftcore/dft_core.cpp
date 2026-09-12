@@ -27,17 +27,17 @@ using namespace AsdSip;
 
 size_t DFTCore::EstimateWorkspaceSize()
 {
-    const KernelInfo &kernelInfo = kernel->GetKernelInfo();
+    const KernelInfo& kernelInfo = kernel->GetKernelInfo();
     return getAlignedSize(kernelInfo.GetTotalScratchSize());
 }
 
-void DFTCore::Run(Tensor &input, Tensor &output, void *stream, workspace::Workspace &workspace)
+void DFTCore::Run(Tensor& input, Tensor& output, void* stream, workspace::Workspace& workspace)
 {
-    const KernelInfo &kernelInfo = kernel->GetKernelInfo();
+    const KernelInfo& kernelInfo = kernel->GetKernelInfo();
 
     // set workspace
     size_t bufferSize = kernelInfo.GetTotalScratchSize();
-    runInfo.SetScratchDeviceAddr((uint8_t *)workspace.allocate(bufferSize));
+    runInfo.SetScratchDeviceAddr((uint8_t*)workspace.allocate(bufferSize));
 
     runInfo.SetStream(stream);
     launchParam.GetInTensor(0).data = input.data;
@@ -54,7 +54,7 @@ void DFTCore::Run(Tensor &input, Tensor &output, void *stream, workspace::Worksp
 void DFTCore::DestroyInDevice() const
 {
     // destroy tiling data in device
-    uint8_t *deviceLaunchBuffer = nullptr;
+    uint8_t* deviceLaunchBuffer = nullptr;
     deviceLaunchBuffer = runInfo.GetTilingDeviceAddr();
     if (deviceLaunchBuffer != nullptr) {
         MkiRtMemFreeDevice(deviceLaunchBuffer);
@@ -67,14 +67,14 @@ AspbStatus DFTCore::InitRotationMatrix()
     int64_t inSize = 2 * fftN;
     int64_t outSize = 2 * fftN;
 
-    std::function<FFTensor *()> func = [=]() -> FFTensor* {
-        FFTensor *rotationMatrixPtr = new FFTensor;
-        FFTensor &rotationMatrix_ = *rotationMatrixPtr;
+    std::function<FFTensor*()> func = [=]() -> FFTensor* {
+        FFTensor* rotationMatrixPtr = new FFTensor;
+        FFTensor& rotationMatrix_ = *rotationMatrixPtr;
 
-        float *rotationMatrixHost = nullptr;
+        float* rotationMatrixHost = nullptr;
         try {
             rotationMatrixHost = new float[outSize * inSize];
-        } catch(std::bad_alloc& e) {
+        } catch (std::bad_alloc& e) {
             delete rotationMatrixPtr;
             ASDSIP_LOG(ERROR) << "rotationMatrixHost malloc failed: ";
             throw std::runtime_error("rotationMatrixHost malloc failed:.");
@@ -89,10 +89,8 @@ AspbStatus DFTCore::InitRotationMatrix()
         for (int64_t i = 0; i < fftN; i++) {
             for (int64_t j = 0; j < fftN; j++) {
                 *(rotationMatrixHost + (2 * i) * (2 * fftN) + 2 * j) = *(cosTable + (i * j) % fftN);
-                *(rotationMatrixHost + (2 * i) * (2 * fftN) + 2 * j + 1) =
-                    -1 * (*(sinTable + (i * j) % fftN));
-                *(rotationMatrixHost + (2 * i + 1) * (2 * fftN) + 2 * j) =
-                    1 * (*(sinTable + (i * j) % fftN));
+                *(rotationMatrixHost + (2 * i) * (2 * fftN) + 2 * j + 1) = -1 * (*(sinTable + (i * j) % fftN));
+                *(rotationMatrixHost + (2 * i + 1) * (2 * fftN) + 2 * j) = 1 * (*(sinTable + (i * j) % fftN));
                 *(rotationMatrixHost + (2 * i + 1) * (2 * fftN) + 2 * j + 1) = *(cosTable + (i * j) % fftN);
             }
         }
@@ -137,28 +135,11 @@ AspbStatus DFTCore::InitTactic()
     tensorIn.dataSize = problemDesc.batch * problemDesc.nDoing * K_SIZE_OF_COMPLEX64;
     launchParam.SetParam(param);
     launchParam.AddInTensor(tensorIn);
-    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950 && param.isInverse) {
-        if (transposedRotationMatrix == nullptr) {
-            transposedRotationMatrix = std::make_unique<AsdSip::FFTensor>();
-            int64_t fftN = static_cast<int64_t>(problemDesc.nDoing);
-            int64_t size = 2 * fftN;
-            float *transposedData = new float[size * size];
-            float *originalData = static_cast<float *>(rotationMatrix->hostData);
-            for (int64_t i = 0; i < size; i++) {
-                for (int64_t j = 0; j < size; j++) {
-                    transposedData[j * size + i] = originalData[i * size + j];
-                }
-            }
-            transposedRotationMatrix->desc = rotationMatrix->desc;
-            transposedRotationMatrix->hostData = transposedData;
-            transposedRotationMatrix->dataSize = rotationMatrix->dataSize;
-        }
-        launchParam.AddInTensor(*transposedRotationMatrix);
-    } else {
-        launchParam.AddInTensor(*rotationMatrix);
-    }
+    // Both Cube backends use the cached forward matrix. Inverse direction is
+    // expressed by transB in tiling, without a second host-side transpose.
+    launchParam.AddInTensor(*rotationMatrix);
     launchParam.AddOutTensor(tensorOut);
-    Operation *op = Ops::Instance().GetOperationByName(std::string("DftOperation"));
+    Operation* op = Ops::Instance().GetOperationByName(std::string("DftOperation"));
     if (op == nullptr) {
         return AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }
@@ -167,7 +148,7 @@ AspbStatus DFTCore::InitTactic()
     ASDSIP_ECHECK(kernel != nullptr, "Get best kernel failed", AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
     // allocate and initialize tiling workspace
-    uint8_t *deviceLaunchBuffer = nullptr;
+    uint8_t* deviceLaunchBuffer = nullptr;
     kernel->SetLaunchWithTiling(false);
     uint32_t launchBufferSize = kernel->GetTilingSize(launchParam);
     if (launchBufferSize == 0) {
@@ -184,7 +165,7 @@ AspbStatus DFTCore::InitTactic()
         ASDSIP_LOG(ERROR) << "malloc device memory fail";
         return AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }
-    deviceLaunchBuffer = static_cast<uint8_t *>(tempDevicePtr);
+    deviceLaunchBuffer = static_cast<uint8_t*>(tempDevicePtr);
     st = MkiRtMemCopy(deviceLaunchBuffer, launchBufferSize, hostLaunchBuffer, launchBufferSize,
                       MKIRT_MEMCOPY_HOST_TO_DEVICE);
     if (st != MKIRT_SUCCESS) {

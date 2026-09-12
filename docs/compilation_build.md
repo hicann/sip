@@ -42,6 +42,17 @@ SiP的基本编译命令是`bash build.sh`，在默认构建模式下，该命�
 
 ### 编译目标芯片架构配置
 
+CANN 版本低于 9.1.0 时，即使配置启用了 `ascend950`，也会自动跳过全部 A5 设备内核。
+主机库和其他已启用架构的内核仍会编译；此类安装包不支持在 A5 上执行算子。
+CANN 9.1.0 及以上版本按原配置编译 A5 内核。这是 SiP 的构建兼容策略，
+并不表示 CANN 9.0 的所有 API 均不支持 A5。
+
+配置阶段会打印检测到的 CANN 版本和实际编译的目标架构。
+版本来自当前 `ASCEND_HOME_PATH` 下的 `include/version/cann_version.h`，
+若无法读取则使用 `compiler/version.info`。
+请求 A5 但无法确定版本，或过滤后没有兼容的设备目标时，配置会报错。
+构建前请加载对应的 CANN 环境；构建过程不会改写源配置或第三方安装。
+
 SiP库支持多种Ascend芯片架构，编译时通过[`configs/build_config.json`](../configs/build_config.json)配置需要编译的目标芯片。该文件内容如下：
 
 ```json

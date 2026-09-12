@@ -118,13 +118,11 @@ function fn_install_lcov()
     LCOV_BIN_PATH=${CODE_ROOT}/lcov
     if [ ! -d $LCOV_BIN_PATH ]; then
         if [ ! -d $LCOV_PACK_PATH ]; then
-            wget --no-check-certificate https://github.com/linux-test-project/lcov/archive/refs/tags/v1.16.tar.gz
-            tar -xvf v1.16.tar.gz
-            rm v1.16.tar.gz
+            git clone --branch v1.16 --depth 1 https://gitcode.com/gh_mirrors/lc/lcov.git $LCOV_PACK_PATH
         fi
         cd ${LCOV_PACK_PATH}
         make -j
-        sudo make PREFIX=${LCOV_BIN_PATH} install
+        make PREFIX=${LCOV_BIN_PATH} install
     fi
 }
 
@@ -135,9 +133,9 @@ function fn_build_googletest()
     if [ ! -d $GTEST_DIR ]; then
         [[ ! -d $THIRD_PARTY_DIR_PATH ]] && mkdir -p $THIRD_PARTY_DIR_PATH
         cd $THIRD_PARTY_DIR_PATH
-        wget --no-check-certificate https://github.com/google/googletest/archive/refs/tags/v1.14.0.tar.gz
-        tar -xf v1.14.0.tar.gz
-        rm v1.14.0.tar.gz
+        wget --no-check-certificate https://gitcode.com/cann-src-third-party/googletest/releases/download/v1.14.0/googletest-1.14.0.tar.gz
+        tar -xf googletest-1.14.0.tar.gz
+        rm googletest-1.14.0.tar.gz
     fi
     cd $CODE_ROOT
 }

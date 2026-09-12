@@ -25,8 +25,7 @@ constexpr int32_t MAX_FFT_STAGES = 32;
 /**
  * Complex multiplication: (ar + ai*j) * (br + bi*j) = (cr + ci*j)
  */
-__simt_callee__ inline void ComplexMul(
-    float ar, float ai, float br, float bi, float &cr, float &ci)
+__simt_callee__ inline void ComplexMul(float ar, float ai, float br, float bi, float& cr, float& ci)
 {
     cr = ar * br - ai * bi;
     ci = ar * bi + ai * br;
@@ -38,10 +37,14 @@ __simt_callee__ inline void ComplexMul(
  */
 __simt_callee__ inline int32_t FindRadix(int64_t n)
 {
-    if (n % 2 == 0) return 2;
-    if (n % 3 == 0) return 3;
-    if (n % 5 == 0) return 5;
-    if (n % 7 == 0) return 7;
+    if (n % 2 == 0)
+        return 2;
+    if (n % 3 == 0)
+        return 3;
+    if (n % 5 == 0)
+        return 5;
+    if (n % 7 == 0)
+        return 7;
     return 0;
 }
 
@@ -54,12 +57,9 @@ __simt_callee__ inline int32_t FindRadix(int64_t n)
  * Input:  gm_input [batch, D] complex64, D = fftN/2+1, float interleaved
  * Output: workspace [batch, fftN] complex64, float interleaved
  */
-__simt_vf__ LAUNCH_BOUND(VF_MAX_THREAD_NUM) __aicore__ void FftC2RHermitianExpand(
-    __gm__ float * __restrict__ gm_input,
-    __gm__ float * __restrict__ gm_workspace,
-    int64_t batchSize,
-    int64_t fftN,
-    int64_t wsOffset)
+__simt_vf__ LAUNCH_BOUND(VF_MAX_THREAD_NUM)
+__aicore__ void FftC2RHermitianExpand(__gm__ float* __restrict__ gm_input, __gm__ float* __restrict__ gm_workspace,
+                                      int64_t batchSize, int64_t fftN, int64_t wsOffset)
 {
     int64_t D = fftN / 2 + 1;
     int64_t totalComplex = batchSize * fftN;
@@ -78,16 +78,16 @@ __simt_vf__ LAUNCH_BOUND(VF_MAX_THREAD_NUM) __aicore__ void FftC2RHermitianExpan
 
         if (k < D) {
             int64_t inFloatIdx = (b * D + k) * 2;
-            gm_workspace[outFloatIdx]     = gm_input[inFloatIdx];
+            gm_workspace[outFloatIdx] = gm_input[inFloatIdx];
             gm_workspace[outFloatIdx + 1] = gm_input[inFloatIdx + 1];
         } else {
             int64_t i = fftN - k;
             if (i >= 1 && i < D) {
                 int64_t inFloatIdx = (b * D + i) * 2;
-                gm_workspace[outFloatIdx]     =  gm_input[inFloatIdx];
+                gm_workspace[outFloatIdx] = gm_input[inFloatIdx];
                 gm_workspace[outFloatIdx + 1] = -gm_input[inFloatIdx + 1];
             } else {
-                gm_workspace[outFloatIdx]     = 0.0f;
+                gm_workspace[outFloatIdx] = 0.0f;
                 gm_workspace[outFloatIdx + 1] = 0.0f;
             }
         }
@@ -97,23 +97,18 @@ __simt_vf__ LAUNCH_BOUND(VF_MAX_THREAD_NUM) __aicore__ void FftC2RHermitianExpan
 // ============================================================================
 // Phase 2a: Stockham Forward Pass - Single Stage VF Function
 // ============================================================================
-__simt_vf__ LAUNCH_BOUND(VF_MAX_THREAD_NUM) __aicore__ void FftC2RStockhamForwardStage(
-    __gm__ float * __restrict__ inputBuf,
-    __gm__ float * __restrict__ outputBuf,
-    __gm__ float * __restrict__ dftMat,
-    __gm__ float * __restrict__ twMat,
-    int32_t radix,
-    int64_t M,
-    int64_t currentBatch,
-    int32_t step,
-    int32_t radixListLen)
+__simt_vf__ LAUNCH_BOUND(VF_MAX_THREAD_NUM)
+__aicore__ void FftC2RStockhamForwardStage(__gm__ float* __restrict__ inputBuf, __gm__ float* __restrict__ outputBuf,
+                                           __gm__ float* __restrict__ dftMat, __gm__ float* __restrict__ twMat,
+                                           int32_t radix, int64_t M, int64_t currentBatch, int32_t step,
+                                           int32_t radixListLen)
 {
     // Multi-core: use block-local thread ID
     int64_t tid = static_cast<int64_t>(Simt::GetThreadIdx<0>());
     int64_t stride = static_cast<int64_t>(Simt::GetThreadNum<0>());
 
     int64_t totalOutputComplex = currentBatch * radix * M;
-    
+
     for (int64_t outIdx = tid; outIdx < totalOutputComplex; outIdx += stride) {
         int64_t batchIdx = outIdx / (radix * M);
         int64_t rem = outIdx - batchIdx * (radix * M);
@@ -147,7 +142,7 @@ __simt_vf__ LAUNCH_BOUND(VF_MAX_THREAD_NUM) __aicore__ void FftC2RStockhamForwar
 
         int64_t outComplexIdx = (batchIdx * radix + u) * M + n2;
         int64_t outFloatIdx = outComplexIdx * 2;
-        outputBuf[outFloatIdx]     = resultRe;
+        outputBuf[outFloatIdx] = resultRe;
         outputBuf[outFloatIdx + 1] = resultIm;
     }
 }
@@ -155,12 +150,9 @@ __simt_vf__ LAUNCH_BOUND(VF_MAX_THREAD_NUM) __aicore__ void FftC2RStockhamForwar
 // ============================================================================
 // Phase 2b: Stockham Backward Pass - Single Transpose Stage VF Function
 // ============================================================================
-__simt_vf__ LAUNCH_BOUND(VF_MAX_THREAD_NUM) __aicore__ void FftC2RTransposeStage(
-    __gm__ float * __restrict__ inputBuf,
-    __gm__ float * __restrict__ outputBuf,
-    int32_t radix,
-    int64_t M,
-    int64_t currentBatch)
+__simt_vf__ LAUNCH_BOUND(VF_MAX_THREAD_NUM)
+__aicore__ void FftC2RTransposeStage(__gm__ float* __restrict__ inputBuf, __gm__ float* __restrict__ outputBuf,
+                                     int32_t radix, int64_t M, int64_t currentBatch)
 {
     // Multi-core: use block-local thread ID
     int64_t tid = static_cast<int64_t>(Simt::GetThreadIdx<0>());
@@ -180,7 +172,7 @@ __simt_vf__ LAUNCH_BOUND(VF_MAX_THREAD_NUM) __aicore__ void FftC2RTransposeStage
         float im = inputBuf[inFloatIdx + 1];
 
         int64_t outFloatIdx = outIdx * 2;
-        outputBuf[outFloatIdx]     = re;
+        outputBuf[outFloatIdx] = re;
         outputBuf[outFloatIdx + 1] = im;
     }
 }
@@ -188,12 +180,9 @@ __simt_vf__ LAUNCH_BOUND(VF_MAX_THREAD_NUM) __aicore__ void FftC2RTransposeStage
 // ============================================================================
 // Phase 3: Take real part (hfft semantics, NO normalization)
 // ============================================================================
-__simt_vf__ LAUNCH_BOUND(VF_MAX_THREAD_NUM) __aicore__ void FftC2RRealNormalize(
-    __gm__ float * __restrict__ gm_workspace,
-    __gm__ float * __restrict__ gm_output,
-    int64_t batchSize,
-    int64_t fftN,
-    int64_t wsOffset)
+__simt_vf__ LAUNCH_BOUND(VF_MAX_THREAD_NUM)
+__aicore__ void FftC2RRealNormalize(__gm__ float* __restrict__ gm_workspace, __gm__ float* __restrict__ gm_output,
+                                    int64_t batchSize, int64_t fftN, int64_t wsOffset)
 {
     int64_t totalElements = batchSize * fftN;
 
@@ -205,7 +194,7 @@ __simt_vf__ LAUNCH_BOUND(VF_MAX_THREAD_NUM) __aicore__ void FftC2RRealNormalize(
 
     for (int64_t idx = tid; idx < totalElements; idx += stride) {
         float re = gm_workspace[wsFloatOffset + idx * 2];
-        gm_output[idx] = re;  // hfft: no normalization by N
+        gm_output[idx] = re; // hfft: no normalization by N
     }
 }
 
@@ -216,42 +205,38 @@ class FftC2RKernelMultiCore {
 public:
     __aicore__ inline FftC2RKernelMultiCore() {}
 
-    __aicore__ inline void Init(
-        __gm__ float * __restrict__ gm_input,
-        __gm__ float * __restrict__ gm_dft_matrix_array,
-        __gm__ float * __restrict__ gm_tw_matrix_array,
-        __gm__ float * __restrict__ radix_list,
-        __gm__ float * __restrict__ gm_output,
-        __gm__ float * __restrict__ gm_workspace,
-        __gm__ uint8_t * __restrict__ gm_tiling_para);
+    __aicore__ inline void Init(__gm__ float* __restrict__ gm_input, __gm__ float* __restrict__ gm_dft_matrix_array,
+                                __gm__ float* __restrict__ gm_tw_matrix_array, __gm__ float* __restrict__ radix_list,
+                                __gm__ float* __restrict__ gm_output, __gm__ float* __restrict__ gm_workspace,
+                                __gm__ uint8_t* __restrict__ gm_tiling_para);
 
     __aicore__ inline void Process();
 
 private:
     // Per-core pointers (with offset applied)
-    __gm__ float * __restrict__ gm_input_core_;
-    __gm__ float * __restrict__ gm_dft_matrix_array_;
-    __gm__ float * __restrict__ gm_tw_matrix_array_;
-    __gm__ float * __restrict__ gm_output_core_;
-    __gm__ float * __restrict__ gm_workspace_core_;
+    __gm__ float* __restrict__ gm_input_core_;
+    __gm__ float* __restrict__ gm_dft_matrix_array_;
+    __gm__ float* __restrict__ gm_tw_matrix_array_;
+    __gm__ float* __restrict__ gm_output_core_;
+    __gm__ float* __restrict__ gm_workspace_core_;
 
     // Global parameters
     int64_t batchSize_;
     int64_t fftN_;
     int32_t radixListLen_;
     int32_t isInverse_;
-    int64_t workspaceOffsets_[5];  // Original tiling offsets (not used in multi-core)
-    
+    int64_t workspaceOffsets_[5]; // Original tiling offsets (not used in multi-core)
+
     // Local workspace offsets for this core (recalculated based on localBatchSize)
     int64_t localWorkspaceOffsets_[2];
-    
+
     // Pointers to precomputed plan data in tiling
-    __gm__ int32_t * __restrict__ gm_radix_arr_;
-    __gm__ int64_t * __restrict__ gm_M_arr_;
-    __gm__ int64_t * __restrict__ gm_dft_offset_arr_;
-    __gm__ int64_t * __restrict__ gm_tw_offset_arr_;
-    __gm__ int64_t * __restrict__ gm_currentBatch_arr_;
-    
+    __gm__ int32_t* __restrict__ gm_radix_arr_;
+    __gm__ int64_t* __restrict__ gm_M_arr_;
+    __gm__ int64_t* __restrict__ gm_dft_offset_arr_;
+    __gm__ int64_t* __restrict__ gm_tw_offset_arr_;
+    __gm__ int64_t* __restrict__ gm_currentBatch_arr_;
+
     // Multi-core parameters
     int64_t blockIdx_;
     int64_t blockNum_;
@@ -259,41 +244,43 @@ private:
     int64_t localBatchSize_;
 };
 
-__aicore__ inline void FftC2RKernelMultiCore::Init(
-    __gm__ float * __restrict__ gm_input,
-    __gm__ float * __restrict__ gm_dft_matrix_array,
-    __gm__ float * __restrict__ gm_tw_matrix_array,
-    __gm__ float * __restrict__ radix_list,
-    __gm__ float * __restrict__ gm_output,
-    __gm__ float * __restrict__ gm_workspace,
-    __gm__ uint8_t * __restrict__ gm_tiling_para)
+__aicore__ inline void FftC2RKernelMultiCore::Init(__gm__ float* __restrict__ gm_input,
+                                                   __gm__ float* __restrict__ gm_dft_matrix_array,
+                                                   __gm__ float* __restrict__ gm_tw_matrix_array,
+                                                   __gm__ float* __restrict__ radix_list,
+                                                   __gm__ float* __restrict__ gm_output,
+                                                   __gm__ float* __restrict__ gm_workspace,
+                                                   __gm__ uint8_t* __restrict__ gm_tiling_para)
 {
     // Get global parameters from tiling
-    auto tiling_buf = reinterpret_cast<__gm__ uint8_t *>(gm_tiling_para);
+    auto tiling_buf = reinterpret_cast<__gm__ uint8_t*>(gm_tiling_para);
 
-    batchSize_ = (*(__gm__ int64_t *)((__gm__ uint8_t *)tiling_buf));
-    fftN_ = (*(__gm__ int64_t *)((__gm__ uint8_t *)tiling_buf + 8));
-    radixListLen_ = (*(__gm__ int32_t *)((__gm__ uint8_t *)tiling_buf + 16));
-    isInverse_ = (*(__gm__ int32_t *)((__gm__ uint8_t *)tiling_buf + 20));
+    batchSize_ = (*(__gm__ int64_t*)((__gm__ uint8_t*)tiling_buf));
+    fftN_ = (*(__gm__ int64_t*)((__gm__ uint8_t*)tiling_buf + 8));
+    radixListLen_ = (*(__gm__ int32_t*)((__gm__ uint8_t*)tiling_buf + 16));
+    isInverse_ = (*(__gm__ int32_t*)((__gm__ uint8_t*)tiling_buf + 20));
 
     for (int32_t i = 0; i < 5; i++) {
-        workspaceOffsets_[i] = (*(__gm__ int64_t *)((__gm__ uint8_t *)tiling_buf + 24 + 8 * i));
+        workspaceOffsets_[i] = (*(__gm__ int64_t*)((__gm__ uint8_t*)tiling_buf + 24 + 8 * i));
     }
-    
+
     int64_t baseOffset = 24 + 5 * 8;
-    gm_radix_arr_ = (__gm__ int32_t *)((__gm__ uint8_t *)tiling_buf + baseOffset);
-    gm_M_arr_ = (__gm__ int64_t *)((__gm__ uint8_t *)tiling_buf + baseOffset + MAX_FFT_STAGES * 4);
-    gm_dft_offset_arr_ = (__gm__ int64_t *)((__gm__ uint8_t *)tiling_buf + baseOffset + MAX_FFT_STAGES * 4 + MAX_FFT_STAGES * 8);
-    gm_tw_offset_arr_ = (__gm__ int64_t *)((__gm__ uint8_t *)tiling_buf + baseOffset + MAX_FFT_STAGES * 4 + MAX_FFT_STAGES * 8 * 2);
-    gm_currentBatch_arr_ = (__gm__ int64_t *)((__gm__ uint8_t *)tiling_buf + baseOffset + MAX_FFT_STAGES * 4 + MAX_FFT_STAGES * 8 * 3);
-    
+    gm_radix_arr_ = (__gm__ int32_t*)((__gm__ uint8_t*)tiling_buf + baseOffset);
+    gm_M_arr_ = (__gm__ int64_t*)((__gm__ uint8_t*)tiling_buf + baseOffset + MAX_FFT_STAGES * 4);
+    gm_dft_offset_arr_ = (__gm__ int64_t*)((__gm__ uint8_t*)tiling_buf + baseOffset + MAX_FFT_STAGES * 4 +
+                                           MAX_FFT_STAGES * 8);
+    gm_tw_offset_arr_ = (__gm__ int64_t*)((__gm__ uint8_t*)tiling_buf + baseOffset + MAX_FFT_STAGES * 4 +
+                                          MAX_FFT_STAGES * 8 * 2);
+    gm_currentBatch_arr_ = (__gm__ int64_t*)((__gm__ uint8_t*)tiling_buf + baseOffset + MAX_FFT_STAGES * 4 +
+                                             MAX_FFT_STAGES * 8 * 3);
+
     // Multi-core: divide batches among cores
     blockIdx_ = static_cast<int64_t>(GetBlockIdx());
     blockNum_ = static_cast<int64_t>(GetBlockNum());
-    
+
     int64_t batchesPerCore = batchSize_ / blockNum_;
     int64_t extraBatches = batchSize_ % blockNum_;
-    
+
     if (blockIdx_ < extraBatches) {
         batchStart_ = blockIdx_ * (batchesPerCore + 1);
         localBatchSize_ = batchesPerCore + 1;
@@ -301,24 +288,24 @@ __aicore__ inline void FftC2RKernelMultiCore::Init(
         batchStart_ = extraBatches * (batchesPerCore + 1) + (blockIdx_ - extraBatches) * batchesPerCore;
         localBatchSize_ = batchesPerCore;
     }
-    
+
     // Calculate byte offsets for this core's batch range
     // Global workspace layout (from tiling): [ws0_all_batches][ws1_all_batches]
     // Each core accesses only its assigned batch range within ws0 and ws1
-    int64_t perBatchComplexBytes = fftN_ * sizeof(float) * 2;  // One batch: fftN complex numbers
-    
+    int64_t perBatchComplexBytes = fftN_ * sizeof(float) * 2; // One batch: fftN complex numbers
+
     // Input/output offsets based on global batch start
     int64_t inputByteOffset = batchStart_ * (fftN_ / 2 + 1) * sizeof(float) * 2;
     int64_t outputByteOffset = batchStart_ * fftN_ * sizeof(float);
-    
+
     // Workspace: all cores share the same global workspace pointer
     // But each core uses different offsets within ws0 and ws1
-    gm_input_core_ = (__gm__ float *)((__gm__ uint8_t *)gm_input + inputByteOffset);
-    gm_output_core_ = (__gm__ float *)((__gm__ uint8_t *)gm_output + outputByteOffset);
-    gm_workspace_core_ = gm_workspace;  // Same global pointer for all cores
+    gm_input_core_ = (__gm__ float*)((__gm__ uint8_t*)gm_input + inputByteOffset);
+    gm_output_core_ = (__gm__ float*)((__gm__ uint8_t*)gm_output + outputByteOffset);
+    gm_workspace_core_ = gm_workspace; // Same global pointer for all cores
     gm_dft_matrix_array_ = gm_dft_matrix_array;
     gm_tw_matrix_array_ = gm_tw_matrix_array;
-    
+
     // Calculate local workspace offsets for this core's batch range
     // ws0: global offset + batch start offset
     // ws1: global offset + batch start offset
@@ -328,50 +315,38 @@ __aicore__ inline void FftC2RKernelMultiCore::Init(
 
 __aicore__ inline void FftC2RKernelMultiCore::Process()
 {
-    if (blockIdx_ > blockNum_ - 1) return;
+    if (blockIdx_ > blockNum_ - 1)
+        return;
 
     // Guard: if this core has no batches, return early
     if (localBatchSize_ <= 0) {
         return;
     }
-    
+
     // Phase 1: Hermitian symmetric expansion
     // Each core processes localBatchSize_ batches independently
-    Simt::VF_CALL<FftC2RHermitianExpand>(
-        Simt::Dim3{VF_MAX_THREAD_NUM, 1, 1},
-        gm_input_core_,
-        gm_workspace_core_,
-        localBatchSize_,
-        fftN_,
-        localWorkspaceOffsets_[0]);
-    
+    Simt::VF_CALL<FftC2RHermitianExpand>(Simt::Dim3{VF_MAX_THREAD_NUM, 1, 1}, gm_input_core_, gm_workspace_core_,
+                                         localBatchSize_, fftN_, localWorkspaceOffsets_[0]);
+
     // Phase 2a: Stockham Forward Pass
     int64_t tempBatch = localBatchSize_;
     for (int32_t step = 0; step < radixListLen_; step++) {
-        __gm__ float * __restrict__ inputBuf;
-        __gm__ float * __restrict__ outputBuf;
+        __gm__ float* __restrict__ inputBuf;
+        __gm__ float* __restrict__ outputBuf;
         if (step % 2 == 0) {
-            inputBuf  = (__gm__ float *)((__gm__ uint8_t *)gm_workspace_core_ + localWorkspaceOffsets_[0]);
-            outputBuf = (__gm__ float *)((__gm__ uint8_t *)gm_workspace_core_ + localWorkspaceOffsets_[1]);
+            inputBuf = (__gm__ float*)((__gm__ uint8_t*)gm_workspace_core_ + localWorkspaceOffsets_[0]);
+            outputBuf = (__gm__ float*)((__gm__ uint8_t*)gm_workspace_core_ + localWorkspaceOffsets_[1]);
         } else {
-            inputBuf  = (__gm__ float *)((__gm__ uint8_t *)gm_workspace_core_ + localWorkspaceOffsets_[1]);
-            outputBuf = (__gm__ float *)((__gm__ uint8_t *)gm_workspace_core_ + localWorkspaceOffsets_[0]);
+            inputBuf = (__gm__ float*)((__gm__ uint8_t*)gm_workspace_core_ + localWorkspaceOffsets_[1]);
+            outputBuf = (__gm__ float*)((__gm__ uint8_t*)gm_workspace_core_ + localWorkspaceOffsets_[0]);
         }
 
-        __gm__ float * __restrict__ dftMat = gm_dft_matrix_array_ + gm_dft_offset_arr_[step];
-        __gm__ float * __restrict__ twMat  = gm_tw_matrix_array_  + gm_tw_offset_arr_[step];
+        __gm__ float* __restrict__ dftMat = gm_dft_matrix_array_ + gm_dft_offset_arr_[step];
+        __gm__ float* __restrict__ twMat = gm_tw_matrix_array_ + gm_tw_offset_arr_[step];
 
-        Simt::VF_CALL<FftC2RStockhamForwardStage>(
-            Simt::Dim3{VF_MAX_THREAD_NUM, 1, 1},
-            inputBuf,
-            outputBuf,
-            dftMat,
-            twMat,
-            gm_radix_arr_[step],
-            gm_M_arr_[step],
-            tempBatch,
-            step,
-            radixListLen_);
+        Simt::VF_CALL<FftC2RStockhamForwardStage>(Simt::Dim3{VF_MAX_THREAD_NUM, 1, 1}, inputBuf, outputBuf, dftMat,
+                                                  twMat, gm_radix_arr_[step], gm_M_arr_[step], tempBatch, step,
+                                                  radixListLen_);
 
         tempBatch *= gm_radix_arr_[step];
     }
@@ -379,63 +354,48 @@ __aicore__ inline void FftC2RKernelMultiCore::Process()
     // Phase 2b: Stockham Backward Pass
     bool useWs1 = (radixListLen_ % 2 == 1);
     tempBatch = localBatchSize_;
-    
+
     for (int32_t s = 0; s < radixListLen_; s++) {
         tempBatch *= gm_radix_arr_[s];
     }
-    
+
     for (int32_t step = radixListLen_ - 1; step >= 0; step--) {
-        __gm__ float * __restrict__ inputBuf;
-        __gm__ float * __restrict__ outputBuf;
+        __gm__ float* __restrict__ inputBuf;
+        __gm__ float* __restrict__ outputBuf;
         if (useWs1) {
-            inputBuf  = (__gm__ float *)((__gm__ uint8_t *)gm_workspace_core_ + localWorkspaceOffsets_[1]);
-            outputBuf = (__gm__ float *)((__gm__ uint8_t *)gm_workspace_core_ + localWorkspaceOffsets_[0]);
+            inputBuf = (__gm__ float*)((__gm__ uint8_t*)gm_workspace_core_ + localWorkspaceOffsets_[1]);
+            outputBuf = (__gm__ float*)((__gm__ uint8_t*)gm_workspace_core_ + localWorkspaceOffsets_[0]);
         } else {
-            inputBuf  = (__gm__ float *)((__gm__ uint8_t *)gm_workspace_core_ + localWorkspaceOffsets_[0]);
-            outputBuf = (__gm__ float *)((__gm__ uint8_t *)gm_workspace_core_ + localWorkspaceOffsets_[1]);
+            inputBuf = (__gm__ float*)((__gm__ uint8_t*)gm_workspace_core_ + localWorkspaceOffsets_[0]);
+            outputBuf = (__gm__ float*)((__gm__ uint8_t*)gm_workspace_core_ + localWorkspaceOffsets_[1]);
         }
-        
-        Simt::VF_CALL<FftC2RTransposeStage>(
-            Simt::Dim3{VF_MAX_THREAD_NUM, 1, 1},
-            inputBuf,
-            outputBuf,
-            gm_radix_arr_[step],
-            gm_M_arr_[step],
-            tempBatch / gm_radix_arr_[step]);
-        
+
+        Simt::VF_CALL<FftC2RTransposeStage>(Simt::Dim3{VF_MAX_THREAD_NUM, 1, 1}, inputBuf, outputBuf,
+                                            gm_radix_arr_[step], gm_M_arr_[step], tempBatch / gm_radix_arr_[step]);
+
         tempBatch /= gm_radix_arr_[step];
         useWs1 = !useWs1;
     }
 
     // Phase 3: Take real part and normalize
-    Simt::VF_CALL<FftC2RRealNormalize>(
-        Simt::Dim3{VF_MAX_THREAD_NUM, 1, 1},
-        gm_workspace_core_,
-        gm_output_core_,
-        localBatchSize_,
-        fftN_,
-        localWorkspaceOffsets_[0]);
-    
+    Simt::VF_CALL<FftC2RRealNormalize>(Simt::Dim3{VF_MAX_THREAD_NUM, 1, 1}, gm_workspace_core_, gm_output_core_,
+                                       localBatchSize_, fftN_, localWorkspaceOffsets_[0]);
+
     return;
 }
 
 // ============================================================================
 // Kernel entry point
 // ============================================================================
-extern "C" __global__ __aicore__ void fft_c2r_multi_core(
-    __gm__ float * __restrict__ gm_input,
-    __gm__ float * __restrict__ gm_dft_matrix_array,
-    __gm__ float * __restrict__ gm_tw_matrix_array,
-    __gm__ float * __restrict__ radix_list,
-    __gm__ float * __restrict__ gm_output,
-    __gm__ float * __restrict__ gm_workspace,
-    __gm__ uint8_t * __restrict__ gm_tiling_para)
+extern "C" __global__ __aicore__ void fft_c2r_multi_core(__gm__ float* __restrict__ gm_input,
+                                                         __gm__ float* __restrict__ gm_dft_matrix_array,
+                                                         __gm__ float* __restrict__ gm_tw_matrix_array,
+                                                         __gm__ float* __restrict__ radix_list,
+                                                         __gm__ float* __restrict__ gm_output,
+                                                         __gm__ float* __restrict__ gm_workspace,
+                                                         __gm__ uint8_t* __restrict__ gm_tiling_para)
 {
-    AscendC::GlobalTensor<uint64_t> global;
-    AscendC::DataCacheCleanAndInvalid<uint64_t, AscendC::CacheLine::ENTIRE_DATA_CACHE, AscendC::DcciDst::CACHELINE_OUT>(global);
-
     FftC2RKernelMultiCore kernel;
-    kernel.Init(gm_input, gm_dft_matrix_array, gm_tw_matrix_array, radix_list,
-                gm_output, gm_workspace, gm_tiling_para);
+    kernel.Init(gm_input, gm_dft_matrix_array, gm_tw_matrix_array, radix_list, gm_output, gm_workspace, gm_tiling_para);
     kernel.Process();
 }

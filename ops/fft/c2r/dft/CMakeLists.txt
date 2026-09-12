@@ -14,12 +14,6 @@ set(dft_c2r_src
     ${CMAKE_CURRENT_LIST_DIR}/dft/tiling/dft_c2r_tiling.cpp
 )
 
-set(CATLASS_INCLUDES 
-    ${OPS_THIRD_PARTY_DIR}/catlass/include
-    $ENV{ASCEND_HOME_PATH}/include
-    ${PROJECT_SOURCE_DIR}/ops/include/template
-)
- 
 add_operation(DftC2ROperation "${dft_c2r_src}")
 
 add_kernel(dft_c2r ascend910b cube
@@ -27,6 +21,6 @@ add_kernel(dft_c2r ascend910b cube
     DftC2RC64Kernel)
 
 add_kernel(dft_c2r ascend950 cube
-    dft/kernel/arch35/dft_c2r.cpp
+    dft/kernel/arch35/dft_c2r.cce
     DftC2RC64Kernel
-    INCLUDE_DIRECTORIES ${CATLASS_INCLUDES})
+    CACHE_POLICY compiler-default)

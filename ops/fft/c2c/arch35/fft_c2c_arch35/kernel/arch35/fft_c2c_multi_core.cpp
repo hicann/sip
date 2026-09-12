@@ -35,19 +35,8 @@ struct FftC2CArch35StageTilingData {
 
 template <bool SCALE_OUT, bool TRANSPOSE>
 __simt_vf__ __launch_bounds__(THREAD_NUM) inline void StockhamRadix2SingleStage(
-    __gm__ float *src,
-    __gm__ float *twMat,
-    __gm__ float *dst,
-    int32_t n,
-    int32_t nHalf,
-    int32_t len,
-    int32_t half,
-    int32_t logNhalf,
-    int32_t logHalf,
-    int32_t twOffset,
-    int32_t outer,
-    int64_t totalButterflies,
-    int64_t start,
+    __gm__ float* src, __gm__ float* twMat, __gm__ float* dst, int32_t n, int32_t nHalf, int32_t len, int32_t half,
+    int32_t logNhalf, int32_t logHalf, int32_t twOffset, int32_t outer, int64_t totalButterflies, int64_t start,
     int64_t stride)
 {
     for (int64_t i = start + threadIdx.x; i < totalButterflies; i += stride) {
@@ -118,44 +107,32 @@ __simt_vf__ __launch_bounds__(THREAD_NUM) inline void StockhamRadix2SingleStage(
 }
 
 template <bool SCALE_OUT>
-__aicore__ inline void DispatchTranspose(
-    __gm__ float *input,
-    __gm__ float *twMat,
-    __gm__ float *output,
-    const FftC2CArch35StageTilingData &tilingData,
-    int64_t start,
-    int64_t stride)
+__aicore__ inline void DispatchTranspose(__gm__ float* input, __gm__ float* twMat, __gm__ float* output,
+                                         const FftC2CArch35StageTilingData& tilingData, int64_t start, int64_t stride)
 {
     if (tilingData.transpose) {
         asc_vf_call<StockhamRadix2SingleStage<SCALE_OUT, true>>(
-            dim3(THREAD_NUM), input, twMat, output, tilingData.n, tilingData.nHalf, tilingData.len,
-            tilingData.half, tilingData.logNhalf, tilingData.logHalf, tilingData.twOffset, tilingData.outer,
-            tilingData.totalButterflies, start, stride);
+            dim3(THREAD_NUM), input, twMat, output, tilingData.n, tilingData.nHalf, tilingData.len, tilingData.half,
+            tilingData.logNhalf, tilingData.logHalf, tilingData.twOffset, tilingData.outer, tilingData.totalButterflies,
+            start, stride);
     } else {
         asc_vf_call<StockhamRadix2SingleStage<SCALE_OUT, false>>(
-            dim3(THREAD_NUM), input, twMat, output, tilingData.n, tilingData.nHalf, tilingData.len,
-            tilingData.half, tilingData.logNhalf, tilingData.logHalf, tilingData.twOffset, tilingData.outer,
-            tilingData.totalButterflies, start, stride);
+            dim3(THREAD_NUM), input, twMat, output, tilingData.n, tilingData.nHalf, tilingData.len, tilingData.half,
+            tilingData.logNhalf, tilingData.logHalf, tilingData.twOffset, tilingData.outer, tilingData.totalButterflies,
+            start, stride);
     }
 }
 
-extern "C" __global__ __vector__ void fft_c2c_arch35_multi_core(
-    __gm__ float *input,
-    __gm__ float *gmDftMatrixArray,
-    __gm__ float *twMat,
-    __gm__ float *radixList,
-    __gm__ float *output,
-    __gm__ float *workspace,
-    __gm__ uint8_t *gmTilingPara)
+extern "C" __global__ __vector__ void fft_c2c_arch35_multi_core(__gm__ float* input, __gm__ float* gmDftMatrixArray,
+                                                                __gm__ float* twMat, __gm__ float* radixList,
+                                                                __gm__ float* output, __gm__ float* workspace,
+                                                                __gm__ uint8_t* gmTilingPara)
 {
-    AscendC::GlobalTensor<uint64_t> global;
-    AscendC::DataCacheCleanAndInvalid<uint64_t, AscendC::CacheLine::ENTIRE_DATA_CACHE, AscendC::DcciDst::CACHELINE_OUT>(global);
-
     (void)gmDftMatrixArray;
     (void)radixList;
     (void)workspace;
 
-    auto tilingPtr = reinterpret_cast<__gm__ FftC2CArch35StageTilingData *>(gmTilingPara);
+    auto tilingPtr = reinterpret_cast<__gm__ FftC2CArch35StageTilingData*>(gmTilingPara);
     FftC2CArch35StageTilingData tilingData;
     tilingData.batch = tilingPtr->batch;
     tilingData.n = tilingPtr->n;

@@ -1,0 +1,446 @@
+/**
+ * Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+// Cube entry: dft_c2c.
+// Float GEMM C = A * B. Host tiling: M = batch, N = K = 2 * fftN
+
+#include "kernel_operator.h"
+#include "../../../../../../include/common/common.h"
+#include "../../../../../../include/common/mem.h"
+#include "../../../../../../include/common/utils.h"
+
+#ifdef __CCE_KT_TEST__
+#undef __aicore__
+#define __aicore__
+#endif
+
+using T_INPUT = float;
+using T_OUTPUT = float;
+
+constexpr int32_t L0AB_PINGPONG_BUFFER_LEN = 32 * 1024 / sizeof(T_INPUT);  // 32 KB
+constexpr int32_t L0C_PINGPONG_BUFFER_LEN = 64 * 1024 / sizeof(T_OUTPUT);  // 64 KB
+constexpr int32_t BLOCK_SIZE = 16;
+constexpr int32_t C0_SIZE = 32 / sizeof(T_INPUT);
+constexpr int32_t CUBE_MATRIX_SIZE = BLOCK_SIZE * C0_SIZE;                // 16 * 8
+constexpr int32_t L1_PINGPONG_BUFFER_LEN = 256 * 1024 / sizeof(T_INPUT);  // 256 KB
+
+template <typename DTYPE = float>
+__aicore__ __attribute__((always_inline)) inline void load_matrix_zZ(
+    AscendC::LocalTensor<DTYPE> dst,
+    AscendC::GlobalTensor<DTYPE> src,
+    int32_t R, int32_t C,
+    int32_t valid_row, int32_t valid_col,
+    int32_t stride
+) {
+    constexpr int32_t R0 = 16;
+    constexpr int32_t C0 = 32 / sizeof(DTYPE);
+    constexpr int STRIDE_LIMIT = 65536;
+
+    int64_t srcNdStride = R0 * stride;
+    int64_t srcNStride = stride;
+
+    if (srcNdStride < STRIDE_LIMIT) {
+        int32_t ndNum = valid_row / R0;
+        int32_t remains = valid_row % R0;
+
+        if (ndNum > 0) {
+            AscendC::DataCopy(
+                dst, src,
+                AscendC::Nd2NzParams(
+                    ndNum,          // ndNum
+                    R0,             // nValue
+                    valid_col,      // dValue
+                    R0 * stride,    // srcNdMatrixStride
+                    srcNStride,     // srcDValue
+                    R0,             // dstNzC0Stride
+                    1,              // dstNzNStride
+                    R0 * C)         // dstNzMatrixStride
+            );
+        }
+        if (remains > 0) {
+            AscendC::DataCopy(
+                dst[ndNum * R0 * C], src[ndNum * R0 * stride],
+                AscendC::Nd2NzParams(
+                    1,              // ndNum
+                    remains,        // nValue
+                    valid_col,      // dValue
+                    0,              // srcNdMatrixStride
+                    srcNStride,     // srcDValue
+                    R0,             // dstNzC0Stride
+                    1,              // dstNzNStride
+                    0)              // dstNzMatrixStride
+            );
+        }
+    } else if (srcNStride < STRIDE_LIMIT) {
+        int32_t ndNum = valid_row / R0;
+        int32_t remains = valid_row % R0;
+        for (int32_t i = 0; i < ndNum; i++) {
+            AscendC::DataCopy(
+                dst[i * R0 * C], src[i * R0 * stride],
+                AscendC::Nd2NzParams(
+                    1,              // ndNum
+                    R0,             // nValue
+                    valid_col,      // dValue
+                    0,              // srcNdMatrixStride
+                    srcNStride,     // srcDValue
+                    R0,             // dstNzC0Stride
+                    1,              // dstNzNStride
+                    0)              // dstNzMatrixStride
+            );
+        }
+        if (remains > 0) {
+            AscendC::DataCopy(
+                dst[ndNum * R0 * C], src[ndNum * R0 * stride],
+                AscendC::Nd2NzParams(
+                    1,              // ndNum
+                    remains,        // nValue
+                    valid_col,      // dValue
+                    0,              // srcNdMatrixStride
+                    srcNStride,     // srcDValue
+                    R0,             // dstNzC0Stride
+                    1,              // dstNzNStride
+                    0)              // dstNzMatrixStride
+            );
+        }
+    } else {
+        for (int32_t i = 0; i < valid_row; i++) {
+            int32_t idxR0 = i / R0;
+            int32_t idxInR0 = i % R0;
+
+            AscendC::DataCopy(
+                dst[idxR0 * R0 * C + idxInR0 * C0], src[i * stride],
+                AscendC::Nd2NzParams(
+                    1,              // ndNum
+                    1,              // nValue
+                    valid_col,      // dValue
+                    0,              // srcNdMatrixStride
+                    0,              // srcDValue
+                    R0,             // dstNzC0Stride
+                    0,              // dstNzNStride
+                    0)              // dstNzMatrixStride
+            );
+        }
+    }
+}
+
+extern "C" __global__ __cube__ void dft_c2c(__gm__ T_INPUT *__restrict__ gm_a, __gm__ T_INPUT *__restrict__ gm_b,
+                                        __gm__ T_OUTPUT *__restrict__ gm_c, __gm__ uint8_t *__restrict__ workspace,
+                                        __gm__ uint8_t *__restrict__ tiling_para_gm)
+{
+    SetPadding(0);
+    AscendC::SetAtomicNone();
+
+    AscendC::GlobalTensor<T_INPUT> gm_a_tensor;
+    AscendC::GlobalTensor<T_INPUT> gm_b_tensor;
+    AscendC::GlobalTensor<T_INPUT> gm_c_tensor;
+    AscendC::GlobalTensor<T_OUTPUT> workspace_tensor;
+
+    gm_a_tensor.SetGlobalBuffer(reinterpret_cast<__gm__ T_INPUT *>(gm_a));
+    gm_b_tensor.SetGlobalBuffer(reinterpret_cast<__gm__ T_INPUT *>(gm_b));
+    gm_c_tensor.SetGlobalBuffer(reinterpret_cast<__gm__ T_OUTPUT *>(gm_c));
+    workspace_tensor.SetGlobalBuffer(reinterpret_cast<__gm__ T_OUTPUT *>(workspace));
+
+    // 3510 L1/L0 pool.
+    AsdopsBuffer<ArchType::ASCEND_V310> buf;
+    AscendC::LocalTensor<T_INPUT> l1_base_a = buf.GetBuffer<BufferType::ASCEND_CB, T_INPUT>(0);
+    AscendC::LocalTensor<T_INPUT> l1_base_b= buf.GetBuffer<BufferType::ASCEND_CB, T_INPUT>(128 * 1024);
+
+    AscendC::LocalTensor<T_INPUT> l0a_base = buf.GetBuffer<BufferType::ASCEND_L0A, T_INPUT>(0);
+    AscendC::LocalTensor<T_INPUT> l0b_base = buf.GetBuffer<BufferType::ASCEND_L0B, T_INPUT>(0);
+    AscendC::LocalTensor<float> l0c_base = buf.GetBuffer<BufferType::ASCEND_L0C, float>(0);
+
+    int32_t batchSize, M, N, K, trans_a, trans_b, M0, N0, K0;
+
+    auto tiling_para = reinterpret_cast<__gm__ int32_t *>(tiling_para_gm);
+    batchSize = tiling_para[0];
+    M = tiling_para[1];
+    N = tiling_para[2];
+    K = tiling_para[3];
+
+    trans_a = tiling_para[4];
+    trans_b = tiling_para[5];
+    M0 = tiling_para[6];
+    if (M0 == 0) {
+        M0 = 128;
+    }
+    N0 = tiling_para[7];
+    if (N0 == 0) {
+        N0 = 128;
+    }
+    K0 = tiling_para[8];
+    if (K0 == 0) {
+        K0 = 128;
+    }
+
+    int32_t m_loop = (M + M0 - 1) / M0;
+    if (m_loop == 0) {
+        m_loop = 1;
+    }
+    int32_t n_loop = (N + N0 - 1) / N0;
+    if (n_loop == 0) {
+        n_loop = 1;
+    }
+    int32_t k_loop = (K + K0 - 1) / K0;
+    int32_t loop = batchSize * m_loop * n_loop;
+
+    int32_t ping_flag = 1;
+
+    SET_FLAG(MTE1, MTE2, EVENT_ID0);
+    SET_FLAG(MTE1, MTE2, EVENT_ID1);
+    SET_FLAG(MTE1, MTE2, EVENT_ID2);
+    SET_FLAG(MTE1, MTE2, EVENT_ID3);
+
+    SET_FLAG(FIX, M, EVENT_ID0);
+    SET_FLAG(FIX, M, EVENT_ID1);
+
+    int32_t ping_flag_fix = 1;
+
+    for (int32_t loop_idx = 0; loop_idx < loop; loop_idx++) {
+        if (loop_idx % AscendC::GetBlockNum() != AscendC::GetBlockIdx()) {
+            continue;
+        }
+
+        auto l0c_buf = ping_flag_fix ? l0c_base : l0c_base[L0C_PINGPONG_BUFFER_LEN];
+        auto event_id_fix = ping_flag_fix ? EVENT_ID0 : EVENT_ID1;
+
+        int32_t batch_idx = loop_idx / (m_loop * n_loop);
+        int32_t in_batch_idx = loop_idx % (m_loop * n_loop);
+
+        constexpr int32_t N_COL = 16;
+        int32_t tile_block_loop = (n_loop + N_COL - 1) / N_COL;
+        int32_t tile_block_idx = in_batch_idx / (N_COL * m_loop);
+        int32_t in_tile_block_idx = in_batch_idx % (N_COL * m_loop);
+        int32_t n_col = N_COL;
+        if (tile_block_idx == tile_block_loop - 1) {
+            n_col = n_loop - N_COL * tile_block_idx;
+            if (n_col == 0) {
+                n_col = 1;
+            }
+        }
+        int32_t m_idx = in_tile_block_idx / n_col;
+        int32_t n_idx = tile_block_idx * N_COL + in_tile_block_idx % n_col;
+
+        int64_t offset_a, offset_b;
+        // C is [M, N] row-major, but C2C host tiling has N == K = 2*fftN, so
+        // the GM row pitch is K. M-tile jump is M0 * K; N-tile jump is N0.
+        int64_t offset_c = static_cast<int64_t>(batch_idx) * M * N +
+                           static_cast<int64_t>(m_idx) * M0 * K + static_cast<int64_t>(n_idx) * N0;
+        int32_t m_actual = (m_idx == (m_loop - 1)) ? (M - m_idx * M0) : M0;
+        int32_t n_actual = (n_idx == (n_loop - 1)) ? (N - n_idx * N0) : N0;
+        int32_t m_round = (m_actual + 15) / 16 * 16;
+        int32_t n_round = (n_actual + 15) / 16 * 16;
+
+        int32_t mn_max = m_round > n_round ? m_round : n_round;
+        int32_t k_part_len = L0AB_PINGPONG_BUFFER_LEN / mn_max / 16 * 16;
+
+        SET_FLAG(M, MTE1, EVENT_ID0);
+        SET_FLAG(M, MTE1, EVENT_ID1);
+
+        int32_t mte1_mad_ping_flag = 1;
+
+        for (int32_t k_idx = 0; k_idx < k_loop; k_idx++) {
+            offset_a = static_cast<int64_t>(batch_idx) * M * K + static_cast<int64_t>(m_idx) * M0 * K + static_cast<int64_t>(k_idx) * K0;
+
+            if (trans_b) {
+                offset_b = static_cast<int64_t>(batch_idx) * K * N + static_cast<int64_t>(n_idx) * N0 * K + static_cast<int64_t>(k_idx) * K0;
+            } else {
+                offset_b = static_cast<int64_t>(batch_idx) * K * N + static_cast<int64_t>(k_idx) * K0 * N + static_cast<int64_t>(n_idx) * N0;
+            }
+
+            int32_t k_actual = (k_idx == (k_loop - 1)) ? (K - k_idx * K0) : K0;
+            int32_t k_round = (k_actual + 15) / 16 * 16;
+            int32_t k_part_loop = (k_actual + k_part_len - 1) / k_part_len;
+
+            auto l1_buf_a = ping_flag ? l1_base_a : l1_base_a[L1_PINGPONG_BUFFER_LEN];
+            auto l1_buf_b = ping_flag ? l1_base_b : l1_base_b[L1_PINGPONG_BUFFER_LEN];
+            auto event_id = ping_flag ? EVENT_ID0 : EVENT_ID1;
+
+            WAIT_FLAG(MTE1, MTE2, event_id);
+                if (m_actual == 1) {
+                    AscendC::DataCopy(
+                        l1_buf_a, gm_a_tensor[offset_a],
+                        AscendC::DataCopyParams(
+                            1,                                      // nBurst
+                            (k_actual + C0_SIZE - 1) / C0_SIZE,     // lenBurst
+                            0,                                      // srcGap
+                            0                                       // dstGap
+                        )
+                    );
+                } else {
+                    load_matrix_zZ<T_INPUT>(l1_buf_a, gm_a_tensor[offset_a], M0, K0, m_actual, k_actual, K);
+                }
+            SET_FLAG(MTE2, MTE1, event_id);
+
+            WAIT_FLAG(MTE1, MTE2, event_id + 2);
+            if (trans_b) {
+                load_matrix_zZ<T_INPUT>(l1_buf_b, gm_b_tensor[offset_b], M0, K0, n_actual, k_actual, K);
+            } else {
+                load_matrix_zZ<T_INPUT>(l1_buf_b, gm_b_tensor[offset_b], K0, N0, k_actual, n_actual, N);
+            }
+
+            SET_FLAG(MTE2, MTE1, event_id + 2);
+
+            for (int32_t k_part_idx = 0; k_part_idx < k_part_loop; k_part_idx++) {
+                int32_t k0_round = (k_part_idx < k_part_loop - 1) ? k_part_len : k_round - k_part_idx * k_part_len;
+                int32_t k0_actual = (k_part_idx < k_part_loop - 1) ? k_part_len : k_actual - k_part_idx * k_part_len;
+
+                auto mte1_mad_event_id = mte1_mad_ping_flag ? EVENT_ID0 : EVENT_ID1;
+                auto l0a_buf = l0a_base[mte1_mad_ping_flag * L0AB_PINGPONG_BUFFER_LEN];
+                auto l0b_buf = l0b_base[mte1_mad_ping_flag * L0AB_PINGPONG_BUFFER_LEN];
+
+                if (k_part_idx == 0) {
+                    WAIT_FLAG(MTE2, MTE1, event_id);
+                }
+                WAIT_FLAG(M, MTE1, mte1_mad_event_id);
+                if (M == 1 || m_actual == 1) {
+                    AscendC::LoadData(
+                        l0a_buf,
+                        l1_buf_a[k_part_idx * k_part_len],
+                        AscendC::LoadData2dParams(
+                            0,                                                      // baseIdx
+                            (k0_round + CUBE_MATRIX_SIZE - 1) / CUBE_MATRIX_SIZE,   // repeat
+                            1,                                                      // srcStride
+                            0,                                                      // sid
+                            0,                                                      // dstStride
+                            false,                                                  // transpose
+                            0                                                       // addr_cal_mode_t
+                        )
+                    );
+
+                } else {
+                    auto l1_src_a = l1_buf_a[k_part_idx * k_part_len * BLOCK_SIZE];
+                    int32_t m_block_count = m_round / BLOCK_SIZE;
+                    for (int32_t i = 0; i < m_block_count; i++) {
+                        // 3510 L0A is NZ: fractal order is (K-block, M-fractal),
+                        // so the M fractals of one K-block sit next to each other.
+                        // One LoadData repeat walks K along src; dstGap then skips
+                        // the remaining (m_block_count - 1) M fractals to land on
+                        // the next K-block.
+                        AscendC::LoadData(
+                            l0a_buf[i * CUBE_MATRIX_SIZE],
+                            l1_src_a[i * BLOCK_SIZE * K0],
+                            AscendC::LoadData2dParams(
+                                0,                                              // baseIdx
+                                k0_round / C0_SIZE,                             // repeat
+                                1,                                              // srcStride
+                                0,                                              // sid
+                                static_cast<uint16_t>(m_block_count - 1),       // dstGap
+                                false,                                          // transpose
+                                inc                                             // addr_cal_mode_t
+                            )
+                        );
+                    }
+                }
+                if (k_part_idx == k_part_loop - 1) {
+                    SET_FLAG(MTE1, MTE2, event_id);
+                }
+
+                if (k_part_idx == 0) {
+                    WAIT_FLAG(MTE2, MTE1, event_id + 2);
+                }
+                if (trans_b) {
+                    auto l1_src_b = l1_buf_b[k_part_idx * k_part_len * BLOCK_SIZE];
+                    for (int32_t i = 0; i < k0_round / C0_SIZE; i++) {
+                        AscendC::LoadData(
+                            l0b_buf[i * n_round * C0_SIZE],
+                            l1_src_b[i * CUBE_MATRIX_SIZE],
+                            AscendC::LoadData2dParams(
+                                0,                   // baseIdx
+                                n_round / BLOCK_SIZE,  // repeat
+                                K0 / C0_SIZE,                   // srcStride
+                                0,                   // sid
+                                0,                   // dstGap
+                                false,               // transpose
+                                inc                  // addr_cal_mode_t
+                            )
+                        );
+                    }
+                } else {
+                    auto l1_src_b = l1_buf_b[k_part_idx * k_part_len * N0];
+                    for (int32_t i = 0; i < n_round / BLOCK_SIZE; i++) {
+                        AscendC::LoadDataWithTranspose(
+                            l0b_buf[i * CUBE_MATRIX_SIZE],
+                            l1_src_b[i * 2 * CUBE_MATRIX_SIZE],
+                            AscendC::LoadData2dTransposeParams(
+                                0,                             // indexID
+                                k0_round / BLOCK_SIZE,         // repeat
+                                N0 / BLOCK_SIZE,               // srcStride
+                                2 * n_round / BLOCK_SIZE - 1,  // dstGap
+                                n_round / BLOCK_SIZE - 1,      // dstFracStride
+                                inc                           // addrmode
+                            )
+                        );
+                    }
+                }
+                if (k_part_idx == k_part_loop - 1) {
+                    SET_FLAG(MTE1, MTE2, event_id + 2);
+                }
+
+                SET_FLAG(MTE1, M, mte1_mad_event_id);
+                WAIT_FLAG(MTE1, M, mte1_mad_event_id);
+
+                bool init_c = (k_idx == 0 && k_part_idx == 0);
+                if (init_c) {
+                    WAIT_FLAG(FIX, M, event_id_fix);
+                }
+
+
+                AscendC::MmadParams mmParam = AscendC::MmadParams(
+                    m_actual, n_actual, k0_actual,
+                    0,
+                    false,
+                    init_c
+                );
+
+                AscendC::Mmad(
+                    l0c_buf, l0a_buf, l0b_buf, mmParam
+                );
+
+                PIPE_BARRIER(M);
+                SET_FLAG(M, MTE1, mte1_mad_event_id);
+                mte1_mad_ping_flag = 1 - mte1_mad_ping_flag;
+            }
+
+            ping_flag = 1 - ping_flag;
+        }
+
+        WAIT_FLAG(M, MTE1, EVENT_ID0);
+        WAIT_FLAG(M, MTE1, EVENT_ID1);
+
+        SET_FLAG(M, FIX, EVENT_ID0);
+        WAIT_FLAG(M, FIX, EVENT_ID0);
+
+
+        // Nz2NdParams(ndNum=1, 0, 0): one ND tile, src/dst ND strides unused.
+        AscendC::FixpipeParamsArch3510<AscendC::CO2Layout::ROW_MAJOR> intriParams(
+            static_cast<uint16_t>(n_actual),  // nSize
+            static_cast<uint16_t>(m_actual),  // mSize
+            static_cast<uint16_t>(m_round),   // srcStride
+            static_cast<uint32_t>(K));        // dstStride
+        intriParams.quantPre = QuantMode_t::NoQuant;
+        intriParams.params = AscendC::Nz2NdParams(1, 0, 0);
+
+        AscendC::Fixpipe<T_OUTPUT, float, AscendC::CFG_ROW_MAJOR>(
+            gm_c_tensor[offset_c], l0c_buf, intriParams);
+
+        SET_FLAG(FIX, M, event_id_fix);
+        ping_flag_fix = 1 - ping_flag_fix;
+    }
+
+    WAIT_FLAG(MTE1, MTE2, EVENT_ID0);
+    WAIT_FLAG(MTE1, MTE2, EVENT_ID1);
+    WAIT_FLAG(MTE1, MTE2, EVENT_ID2);
+    WAIT_FLAG(MTE1, MTE2, EVENT_ID3);
+
+    WAIT_FLAG(FIX, M, EVENT_ID0);
+    WAIT_FLAG(FIX, M, EVENT_ID1);
+
+    PIPE_BARRIER(ALL);
+}

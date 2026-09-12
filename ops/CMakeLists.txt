@@ -43,6 +43,7 @@ if(NOT RESULT EQUAL 0)
 endif()
 
 include(${MKI_PACKAGE_DIR}/cmake/op_build.cmake)
+sip_configure_kernel_targets()
 
 add_subdirectory(base)
 

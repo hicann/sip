@@ -39,19 +39,12 @@ struct FftAllMixTilingData {
 };
 
 template <bool SCALE_OUT, bool TRANSPOSE>
-__simt_vf__ __launch_bounds__(THREAD_NUM_RAD2) inline void stockhamForwardRadix2(
-    __gm__ float* in,
-    __gm__ float* twMat,
-    __gm__ float* out,
-    int batch,
-    int M,
-    int N,
-    int batchOffset,
-    int len,
-    int radix, // unused, should be 2
-    int prev,
-    int part
-) {
+__simt_vf__ __launch_bounds__(THREAD_NUM_RAD2) inline void stockhamForwardRadix2(__gm__ float* in, __gm__ float* twMat,
+                                                                                 __gm__ float* out, int batch, int M,
+                                                                                 int N, int batchOffset, int len,
+                                                                                 int radix, // unused, should be 2
+                                                                                 int prev, int part)
+{
     int blocks = N / len;
 
     int perBatch = blocks * prev;
@@ -125,28 +118,21 @@ __simt_vf__ __launch_bounds__(THREAD_NUM_RAD2) inline void stockhamForwardRadix2
             y1Im *= scale;
         }
 
-        out[outOff0]     = y0Re;
+        out[outOff0] = y0Re;
         out[outOff0 + 1] = y0Im;
-        out[outOff1]     = y1Re;
+        out[outOff1] = y1Re;
         out[outOff1 + 1] = y1Im;
     }
 }
 
 template <bool SCALE_OUT, bool TRANSPOSE>
-__simt_vf__ __launch_bounds__(THREAD_NUM_RAD3) inline void stockhamForwardRadix3(
-    __gm__ float* in,
-    __gm__ float* twMat,
-    __gm__ float* dftMat,
-    __gm__ float* out,
-    int batch,
-    int M,
-    int N,
-    int batchOffset,
-    int len,
-    int radix, // unused, should be 3
-    int prev,
-    int part
-) {
+__simt_vf__ __launch_bounds__(THREAD_NUM_RAD3) inline void stockhamForwardRadix3(__gm__ float* in, __gm__ float* twMat,
+                                                                                 __gm__ float* dftMat,
+                                                                                 __gm__ float* out, int batch, int M,
+                                                                                 int N, int batchOffset, int len,
+                                                                                 int radix, // unused, should be 3
+                                                                                 int prev, int part)
+{
     __ubuf__ float dft[2][3][3];
 
     for (int i = threadIdx.x; i < 3 * 3 * 2; i += blockDim.x) {
@@ -323,20 +309,13 @@ __simt_vf__ __launch_bounds__(THREAD_NUM_RAD3) inline void stockhamForwardRadix3
 }
 
 template <bool SCALE_OUT, bool TRANSPOSE>
-__simt_vf__ __launch_bounds__(THREAD_NUM) inline void stockhamForwardRadix5(
-    __gm__ float* in,
-    __gm__ float* twMat,
-    __gm__ float* dftMat,
-    __gm__ float* out,
-    int batch,
-    int M,
-    int N,
-    int batchOffset,
-    int len,
-    int radix, // unused, should be 5
-    int prev,
-    int part
-) {
+__simt_vf__ __launch_bounds__(THREAD_NUM) inline void stockhamForwardRadix5(__gm__ float* in, __gm__ float* twMat,
+                                                                            __gm__ float* dftMat, __gm__ float* out,
+                                                                            int batch, int M, int N, int batchOffset,
+                                                                            int len,
+                                                                            int radix, // unused, should be 5
+                                                                            int prev, int part)
+{
     __ubuf__ float dft[2][5][5];
 
     for (int i = threadIdx.x; i < 5 * 5 * 2; i += blockDim.x) {
@@ -467,19 +446,23 @@ __simt_vf__ __launch_bounds__(THREAD_NUM) inline void stockhamForwardRadix5(
 
             float dRe, dIm;
 
-            dRe = dft[0][1][1]; dIm = dft[1][1][1];
+            dRe = dft[0][1][1];
+            dIm = dft[1][1][1];
             yRe += b1Re * dRe - b1Im * dIm;
             yIm += b1Re * dIm + b1Im * dRe;
 
-            dRe = dft[0][1][2]; dIm = dft[1][1][2];
+            dRe = dft[0][1][2];
+            dIm = dft[1][1][2];
             yRe += b2Re * dRe - b2Im * dIm;
             yIm += b2Re * dIm + b2Im * dRe;
 
-            dRe = dft[0][1][3]; dIm = dft[1][1][3];
+            dRe = dft[0][1][3];
+            dIm = dft[1][1][3];
             yRe += b3Re * dRe - b3Im * dIm;
             yIm += b3Re * dIm + b3Im * dRe;
 
-            dRe = dft[0][1][4]; dIm = dft[1][1][4];
+            dRe = dft[0][1][4];
+            dIm = dft[1][1][4];
             yRe += b4Re * dRe - b4Im * dIm;
             yIm += b4Re * dIm + b4Im * dRe;
 
@@ -508,19 +491,23 @@ __simt_vf__ __launch_bounds__(THREAD_NUM) inline void stockhamForwardRadix5(
 
             float dRe, dIm;
 
-            dRe = dft[0][2][1]; dIm = dft[1][2][1];
+            dRe = dft[0][2][1];
+            dIm = dft[1][2][1];
             yRe += b1Re * dRe - b1Im * dIm;
             yIm += b1Re * dIm + b1Im * dRe;
 
-            dRe = dft[0][2][2]; dIm = dft[1][2][2];
+            dRe = dft[0][2][2];
+            dIm = dft[1][2][2];
             yRe += b2Re * dRe - b2Im * dIm;
             yIm += b2Re * dIm + b2Im * dRe;
 
-            dRe = dft[0][2][3]; dIm = dft[1][2][3];
+            dRe = dft[0][2][3];
+            dIm = dft[1][2][3];
             yRe += b3Re * dRe - b3Im * dIm;
             yIm += b3Re * dIm + b3Im * dRe;
 
-            dRe = dft[0][2][4]; dIm = dft[1][2][4];
+            dRe = dft[0][2][4];
+            dIm = dft[1][2][4];
             yRe += b4Re * dRe - b4Im * dIm;
             yIm += b4Re * dIm + b4Im * dRe;
 
@@ -549,19 +536,23 @@ __simt_vf__ __launch_bounds__(THREAD_NUM) inline void stockhamForwardRadix5(
 
             float dRe, dIm;
 
-            dRe = dft[0][3][1]; dIm = dft[1][3][1];
+            dRe = dft[0][3][1];
+            dIm = dft[1][3][1];
             yRe += b1Re * dRe - b1Im * dIm;
             yIm += b1Re * dIm + b1Im * dRe;
 
-            dRe = dft[0][3][2]; dIm = dft[1][3][2];
+            dRe = dft[0][3][2];
+            dIm = dft[1][3][2];
             yRe += b2Re * dRe - b2Im * dIm;
             yIm += b2Re * dIm + b2Im * dRe;
 
-            dRe = dft[0][3][3]; dIm = dft[1][3][3];
+            dRe = dft[0][3][3];
+            dIm = dft[1][3][3];
             yRe += b3Re * dRe - b3Im * dIm;
             yIm += b3Re * dIm + b3Im * dRe;
 
-            dRe = dft[0][3][4]; dIm = dft[1][3][4];
+            dRe = dft[0][3][4];
+            dIm = dft[1][3][4];
             yRe += b4Re * dRe - b4Im * dIm;
             yIm += b4Re * dIm + b4Im * dRe;
 
@@ -590,19 +581,23 @@ __simt_vf__ __launch_bounds__(THREAD_NUM) inline void stockhamForwardRadix5(
 
             float dRe, dIm;
 
-            dRe = dft[0][4][1]; dIm = dft[1][4][1];
+            dRe = dft[0][4][1];
+            dIm = dft[1][4][1];
             yRe += b1Re * dRe - b1Im * dIm;
             yIm += b1Re * dIm + b1Im * dRe;
 
-            dRe = dft[0][4][2]; dIm = dft[1][4][2];
+            dRe = dft[0][4][2];
+            dIm = dft[1][4][2];
             yRe += b2Re * dRe - b2Im * dIm;
             yIm += b2Re * dIm + b2Im * dRe;
 
-            dRe = dft[0][4][3]; dIm = dft[1][4][3];
+            dRe = dft[0][4][3];
+            dIm = dft[1][4][3];
             yRe += b3Re * dRe - b3Im * dIm;
             yIm += b3Re * dIm + b3Im * dRe;
 
-            dRe = dft[0][4][4]; dIm = dft[1][4][4];
+            dRe = dft[0][4][4];
+            dIm = dft[1][4][4];
             yRe += b4Re * dRe - b4Im * dIm;
             yIm += b4Re * dIm + b4Im * dRe;
 
@@ -629,20 +624,13 @@ __simt_vf__ __launch_bounds__(THREAD_NUM) inline void stockhamForwardRadix5(
 }
 
 template <bool SCALE_OUT, bool TRANSPOSE>
-__simt_vf__ __launch_bounds__(THREAD_NUM) inline void stockhamForwardRadix7(
-    __gm__ float* in,
-    __gm__ float* twMat,
-    __gm__ float* dftMat,
-    __gm__ float* out,
-    int batch,
-    int M,
-    int N,
-    int batchOffset,
-    int len,
-    int radix, // unused, should be 7
-    int prev,
-    int part
-) {
+__simt_vf__ __launch_bounds__(THREAD_NUM) inline void stockhamForwardRadix7(__gm__ float* in, __gm__ float* twMat,
+                                                                            __gm__ float* dftMat, __gm__ float* out,
+                                                                            int batch, int M, int N, int batchOffset,
+                                                                            int len,
+                                                                            int radix, // unused, should be 7
+                                                                            int prev, int part)
+{
     __ubuf__ float dft[2][7][7];
 
     // Keep full 7x7 load. Simple and tiny enough.
@@ -776,27 +764,33 @@ __simt_vf__ __launch_bounds__(THREAD_NUM) inline void stockhamForwardRadix7(
             float yIm = b0Im;
             float dRe, dIm;
 
-            dRe = dft[0][1][1]; dIm = dft[1][1][1];
+            dRe = dft[0][1][1];
+            dIm = dft[1][1][1];
             yRe += b1Re * dRe - b1Im * dIm;
             yIm += b1Re * dIm + b1Im * dRe;
 
-            dRe = dft[0][1][2]; dIm = dft[1][1][2];
+            dRe = dft[0][1][2];
+            dIm = dft[1][1][2];
             yRe += b2Re * dRe - b2Im * dIm;
             yIm += b2Re * dIm + b2Im * dRe;
 
-            dRe = dft[0][1][3]; dIm = dft[1][1][3];
+            dRe = dft[0][1][3];
+            dIm = dft[1][1][3];
             yRe += b3Re * dRe - b3Im * dIm;
             yIm += b3Re * dIm + b3Im * dRe;
 
-            dRe = dft[0][1][4]; dIm = dft[1][1][4];
+            dRe = dft[0][1][4];
+            dIm = dft[1][1][4];
             yRe += b4Re * dRe - b4Im * dIm;
             yIm += b4Re * dIm + b4Im * dRe;
 
-            dRe = dft[0][1][5]; dIm = dft[1][1][5];
+            dRe = dft[0][1][5];
+            dIm = dft[1][1][5];
             yRe += b5Re * dRe - b5Im * dIm;
             yIm += b5Re * dIm + b5Im * dRe;
 
-            dRe = dft[0][1][6]; dIm = dft[1][1][6];
+            dRe = dft[0][1][6];
+            dIm = dft[1][1][6];
             yRe += b6Re * dRe - b6Im * dIm;
             yIm += b6Re * dIm + b6Im * dRe;
 
@@ -824,27 +818,33 @@ __simt_vf__ __launch_bounds__(THREAD_NUM) inline void stockhamForwardRadix7(
             float yIm = b0Im;
             float dRe, dIm;
 
-            dRe = dft[0][2][1]; dIm = dft[1][2][1];
+            dRe = dft[0][2][1];
+            dIm = dft[1][2][1];
             yRe += b1Re * dRe - b1Im * dIm;
             yIm += b1Re * dIm + b1Im * dRe;
 
-            dRe = dft[0][2][2]; dIm = dft[1][2][2];
+            dRe = dft[0][2][2];
+            dIm = dft[1][2][2];
             yRe += b2Re * dRe - b2Im * dIm;
             yIm += b2Re * dIm + b2Im * dRe;
 
-            dRe = dft[0][2][3]; dIm = dft[1][2][3];
+            dRe = dft[0][2][3];
+            dIm = dft[1][2][3];
             yRe += b3Re * dRe - b3Im * dIm;
             yIm += b3Re * dIm + b3Im * dRe;
 
-            dRe = dft[0][2][4]; dIm = dft[1][2][4];
+            dRe = dft[0][2][4];
+            dIm = dft[1][2][4];
             yRe += b4Re * dRe - b4Im * dIm;
             yIm += b4Re * dIm + b4Im * dRe;
 
-            dRe = dft[0][2][5]; dIm = dft[1][2][5];
+            dRe = dft[0][2][5];
+            dIm = dft[1][2][5];
             yRe += b5Re * dRe - b5Im * dIm;
             yIm += b5Re * dIm + b5Im * dRe;
 
-            dRe = dft[0][2][6]; dIm = dft[1][2][6];
+            dRe = dft[0][2][6];
+            dIm = dft[1][2][6];
             yRe += b6Re * dRe - b6Im * dIm;
             yIm += b6Re * dIm + b6Im * dRe;
 
@@ -872,27 +872,33 @@ __simt_vf__ __launch_bounds__(THREAD_NUM) inline void stockhamForwardRadix7(
             float yIm = b0Im;
             float dRe, dIm;
 
-            dRe = dft[0][3][1]; dIm = dft[1][3][1];
+            dRe = dft[0][3][1];
+            dIm = dft[1][3][1];
             yRe += b1Re * dRe - b1Im * dIm;
             yIm += b1Re * dIm + b1Im * dRe;
 
-            dRe = dft[0][3][2]; dIm = dft[1][3][2];
+            dRe = dft[0][3][2];
+            dIm = dft[1][3][2];
             yRe += b2Re * dRe - b2Im * dIm;
             yIm += b2Re * dIm + b2Im * dRe;
 
-            dRe = dft[0][3][3]; dIm = dft[1][3][3];
+            dRe = dft[0][3][3];
+            dIm = dft[1][3][3];
             yRe += b3Re * dRe - b3Im * dIm;
             yIm += b3Re * dIm + b3Im * dRe;
 
-            dRe = dft[0][3][4]; dIm = dft[1][3][4];
+            dRe = dft[0][3][4];
+            dIm = dft[1][3][4];
             yRe += b4Re * dRe - b4Im * dIm;
             yIm += b4Re * dIm + b4Im * dRe;
 
-            dRe = dft[0][3][5]; dIm = dft[1][3][5];
+            dRe = dft[0][3][5];
+            dIm = dft[1][3][5];
             yRe += b5Re * dRe - b5Im * dIm;
             yIm += b5Re * dIm + b5Im * dRe;
 
-            dRe = dft[0][3][6]; dIm = dft[1][3][6];
+            dRe = dft[0][3][6];
+            dIm = dft[1][3][6];
             yRe += b6Re * dRe - b6Im * dIm;
             yIm += b6Re * dIm + b6Im * dRe;
 
@@ -920,27 +926,33 @@ __simt_vf__ __launch_bounds__(THREAD_NUM) inline void stockhamForwardRadix7(
             float yIm = b0Im;
             float dRe, dIm;
 
-            dRe = dft[0][4][1]; dIm = dft[1][4][1];
+            dRe = dft[0][4][1];
+            dIm = dft[1][4][1];
             yRe += b1Re * dRe - b1Im * dIm;
             yIm += b1Re * dIm + b1Im * dRe;
 
-            dRe = dft[0][4][2]; dIm = dft[1][4][2];
+            dRe = dft[0][4][2];
+            dIm = dft[1][4][2];
             yRe += b2Re * dRe - b2Im * dIm;
             yIm += b2Re * dIm + b2Im * dRe;
 
-            dRe = dft[0][4][3]; dIm = dft[1][4][3];
+            dRe = dft[0][4][3];
+            dIm = dft[1][4][3];
             yRe += b3Re * dRe - b3Im * dIm;
             yIm += b3Re * dIm + b3Im * dRe;
 
-            dRe = dft[0][4][4]; dIm = dft[1][4][4];
+            dRe = dft[0][4][4];
+            dIm = dft[1][4][4];
             yRe += b4Re * dRe - b4Im * dIm;
             yIm += b4Re * dIm + b4Im * dRe;
 
-            dRe = dft[0][4][5]; dIm = dft[1][4][5];
+            dRe = dft[0][4][5];
+            dIm = dft[1][4][5];
             yRe += b5Re * dRe - b5Im * dIm;
             yIm += b5Re * dIm + b5Im * dRe;
 
-            dRe = dft[0][4][6]; dIm = dft[1][4][6];
+            dRe = dft[0][4][6];
+            dIm = dft[1][4][6];
             yRe += b6Re * dRe - b6Im * dIm;
             yIm += b6Re * dIm + b6Im * dRe;
 
@@ -968,27 +980,33 @@ __simt_vf__ __launch_bounds__(THREAD_NUM) inline void stockhamForwardRadix7(
             float yIm = b0Im;
             float dRe, dIm;
 
-            dRe = dft[0][5][1]; dIm = dft[1][5][1];
+            dRe = dft[0][5][1];
+            dIm = dft[1][5][1];
             yRe += b1Re * dRe - b1Im * dIm;
             yIm += b1Re * dIm + b1Im * dRe;
 
-            dRe = dft[0][5][2]; dIm = dft[1][5][2];
+            dRe = dft[0][5][2];
+            dIm = dft[1][5][2];
             yRe += b2Re * dRe - b2Im * dIm;
             yIm += b2Re * dIm + b2Im * dRe;
 
-            dRe = dft[0][5][3]; dIm = dft[1][5][3];
+            dRe = dft[0][5][3];
+            dIm = dft[1][5][3];
             yRe += b3Re * dRe - b3Im * dIm;
             yIm += b3Re * dIm + b3Im * dRe;
 
-            dRe = dft[0][5][4]; dIm = dft[1][5][4];
+            dRe = dft[0][5][4];
+            dIm = dft[1][5][4];
             yRe += b4Re * dRe - b4Im * dIm;
             yIm += b4Re * dIm + b4Im * dRe;
 
-            dRe = dft[0][5][5]; dIm = dft[1][5][5];
+            dRe = dft[0][5][5];
+            dIm = dft[1][5][5];
             yRe += b5Re * dRe - b5Im * dIm;
             yIm += b5Re * dIm + b5Im * dRe;
 
-            dRe = dft[0][5][6]; dIm = dft[1][5][6];
+            dRe = dft[0][5][6];
+            dIm = dft[1][5][6];
             yRe += b6Re * dRe - b6Im * dIm;
             yIm += b6Re * dIm + b6Im * dRe;
 
@@ -1016,27 +1034,33 @@ __simt_vf__ __launch_bounds__(THREAD_NUM) inline void stockhamForwardRadix7(
             float yIm = b0Im;
             float dRe, dIm;
 
-            dRe = dft[0][6][1]; dIm = dft[1][6][1];
+            dRe = dft[0][6][1];
+            dIm = dft[1][6][1];
             yRe += b1Re * dRe - b1Im * dIm;
             yIm += b1Re * dIm + b1Im * dRe;
 
-            dRe = dft[0][6][2]; dIm = dft[1][6][2];
+            dRe = dft[0][6][2];
+            dIm = dft[1][6][2];
             yRe += b2Re * dRe - b2Im * dIm;
             yIm += b2Re * dIm + b2Im * dRe;
 
-            dRe = dft[0][6][3]; dIm = dft[1][6][3];
+            dRe = dft[0][6][3];
+            dIm = dft[1][6][3];
             yRe += b3Re * dRe - b3Im * dIm;
             yIm += b3Re * dIm + b3Im * dRe;
 
-            dRe = dft[0][6][4]; dIm = dft[1][6][4];
+            dRe = dft[0][6][4];
+            dIm = dft[1][6][4];
             yRe += b4Re * dRe - b4Im * dIm;
             yIm += b4Re * dIm + b4Im * dRe;
 
-            dRe = dft[0][6][5]; dIm = dft[1][6][5];
+            dRe = dft[0][6][5];
+            dIm = dft[1][6][5];
             yRe += b5Re * dRe - b5Im * dIm;
             yIm += b5Re * dIm + b5Im * dRe;
 
-            dRe = dft[0][6][6]; dIm = dft[1][6][6];
+            dRe = dft[0][6][6];
+            dIm = dft[1][6][6];
             yRe += b6Re * dRe - b6Im * dIm;
             yIm += b6Re * dIm + b6Im * dRe;
 
@@ -1065,20 +1089,11 @@ __simt_vf__ __launch_bounds__(THREAD_NUM) inline void stockhamForwardRadix7(
 const int jTILE = 64;
 
 template <bool SCALE_OUT, bool TRANSPOSE>
-__simt_vf__ __launch_bounds__(THREAD_NUM) inline void stockhamForwardGeneral(
-    __gm__ float* in,
-    __gm__ float* twMat,
-    __gm__ float* dftMat,
-    __gm__ float* out,
-    int batch,
-    int M,
-    int N,
-    int batchOffset,
-    int len,
-    int radix,
-    int prev,
-    int part
-) {
+__simt_vf__ __launch_bounds__(THREAD_NUM) inline void stockhamForwardGeneral(__gm__ float* in, __gm__ float* twMat,
+                                                                             __gm__ float* dftMat, __gm__ float* out,
+                                                                             int batch, int M, int N, int batchOffset,
+                                                                             int len, int radix, int prev, int part)
+{
     __ubuf__ float dft[2][20][20];
     __ubuf__ float tw[2][20][jTILE];
 
@@ -1142,7 +1157,7 @@ __simt_vf__ __launch_bounds__(THREAD_NUM) inline void stockhamForwardGeneral(
             if constexpr (TRANSPOSE) {
                 int realBatch = bid + batchOffset;
                 int realBid = realBatch / M;
-                int x = realBatch - realBid * M;  // realBatch % M
+                int x = realBatch - realBid * M; // realBatch % M
                 // out[realBid][y][x]
                 out_idx = (realBid * N + y) * M + x;
             } else {
@@ -1191,7 +1206,7 @@ __simt_vf__ __launch_bounds__(THREAD_NUM) inline void stockhamForwardGeneral(
 
             int outOff = out_idx << 1;
 
-            out[outOff]     = resRe;
+            out[outOff] = resRe;
             out[outOff + 1] = resIm;
         }
 
@@ -1199,18 +1214,12 @@ __simt_vf__ __launch_bounds__(THREAD_NUM) inline void stockhamForwardGeneral(
     }
 }
 
-extern "C" __global__ __vector__ void fft_c2c_arch35_mix_multi_core(
-    __gm__ float *input,
-    __gm__ float *dftMatrix,
-    __gm__ float *twMat,
-    __gm__ int32_t *radixList,
-    __gm__ float *output,
-    __gm__ float *workspace,
-    __gm__ uint8_t *tiling)
+extern "C" __global__ __vector__ void fft_c2c_arch35_mix_multi_core(__gm__ float* input, __gm__ float* dftMatrix,
+                                                                    __gm__ float* twMat, __gm__ int32_t* radixList,
+                                                                    __gm__ float* output, __gm__ float* workspace,
+                                                                    __gm__ uint8_t* tiling)
 {
-    AscendC::GlobalTensor<uint64_t> global;
-    AscendC::DataCacheCleanAndInvalid<uint64_t, AscendC::CacheLine::ENTIRE_DATA_CACHE, AscendC::DcciDst::CACHELINE_OUT>(global);
-    auto tilingData = reinterpret_cast<__gm__ FftAllMixTilingData *>(tiling);
+    auto tilingData = reinterpret_cast<__gm__ FftAllMixTilingData*>(tiling);
 
     int32_t batchSize = static_cast<int32_t>(tilingData->batchSize);
     int32_t fftN = static_cast<int32_t>(tilingData->fftN);
@@ -1229,17 +1238,15 @@ extern "C" __global__ __vector__ void fft_c2c_arch35_mix_multi_core(
         return;
     }
 
-    localBatch = (localBatch < batchSize - batchStart)
-        ? localBatch
-        : (batchSize - batchStart);
+    localBatch = (localBatch < batchSize - batchStart) ? localBatch : (batchSize - batchStart);
 
     int64_t localOffset = static_cast<int64_t>(batchStart) * fftN * 2;
     int64_t fullBufferFloats = static_cast<int64_t>(batchSize) * fftN * 2;
 
-    __gm__ float *inputLocal = input + localOffset;
-    __gm__ float *workspaceLocal0 = workspace + localOffset;
-    __gm__ float *workspaceLocal1 = workspace + fullBufferFloats + localOffset;
-    __gm__ float *outputLocal = output + localOffset;
+    __gm__ float* inputLocal = input + localOffset;
+    __gm__ float* workspaceLocal0 = workspace + localOffset;
+    __gm__ float* workspaceLocal1 = workspace + fullBufferFloats + localOffset;
+    __gm__ float* outputLocal = output + localOffset;
 
     int32_t len = 1;
     int32_t twOffset = 0;
@@ -1254,12 +1261,12 @@ extern "C" __global__ __vector__ void fft_c2c_arch35_mix_multi_core(
         int32_t part = fftN / radix;
         bool isLast = (stage == radixListLen - 1);
 
-        __gm__ float *stageInput = inputLocal;
+        __gm__ float* stageInput = inputLocal;
         if (stage > 0) {
             stageInput = ((stage - 1) & 1) ? workspaceLocal1 : workspaceLocal0;
         }
 
-        __gm__ float *stageOutput = outputLocal;
+        __gm__ float* stageOutput = outputLocal;
 
         if (isLast) {
             if (transpose) {
@@ -1271,8 +1278,8 @@ extern "C" __global__ __vector__ void fft_c2c_arch35_mix_multi_core(
             stageOutput = (stage & 1) ? workspaceLocal1 : workspaceLocal0;
         }
 
-        __gm__ float *twStage = twMat + static_cast<int64_t>(twOffset) * 2;
-        __gm__ float *dftStage = dftMatrix + static_cast<int64_t>(dftOffset) * 2;
+        __gm__ float* twStage = twMat + static_cast<int64_t>(twOffset) * 2;
+        __gm__ float* dftStage = dftMatrix + static_cast<int64_t>(dftOffset) * 2;
 
         AscendC::PipeBarrier<PIPE_V>();
 
@@ -1280,387 +1287,117 @@ extern "C" __global__ __vector__ void fft_c2c_arch35_mix_multi_core(
             if (scaleOut) {
                 if (transpose) {
                     if (radix == 2) {
-                        asc_vf_call<stockhamForwardRadix2<true, true>>(
-                            dim3(THREAD_NUM_RAD2),
-                            stageInput,
-                            twStage,
-                            stageOutput,
-                            localBatch,
-                            outer,
-                            fftN,
-                            batchStart,
-                            len,
-                            radix,
-                            prev,
-                            part);
+                        asc_vf_call<stockhamForwardRadix2<true, true>>(dim3(THREAD_NUM_RAD2), stageInput, twStage,
+                                                                       stageOutput, localBatch, outer, fftN, batchStart,
+                                                                       len, radix, prev, part);
                     } else if (radix == 3) {
-                        asc_vf_call<stockhamForwardRadix3<true, true>>(
-                            dim3(THREAD_NUM_RAD3),
-                            stageInput,
-                            twStage,
-                            dftStage,
-                            stageOutput,
-                            localBatch,
-                            outer,
-                            fftN,
-                            batchStart,
-                            len,
-                            radix,
-                            prev,
-                            part);
+                        asc_vf_call<stockhamForwardRadix3<true, true>>(dim3(THREAD_NUM_RAD3), stageInput, twStage,
+                                                                       dftStage, stageOutput, localBatch, outer, fftN,
+                                                                       batchStart, len, radix, prev, part);
                     } else if (radix == 5) {
-                        asc_vf_call<stockhamForwardRadix5<true, true>>(
-                            dim3(THREAD_NUM),
-                            stageInput,
-                            twStage,
-                            dftStage,
-                            stageOutput,
-                            localBatch,
-                            outer,
-                            fftN,
-                            batchStart,
-                            len,
-                            radix,
-                            prev,
-                            part);
+                        asc_vf_call<stockhamForwardRadix5<true, true>>(dim3(THREAD_NUM), stageInput, twStage, dftStage,
+                                                                       stageOutput, localBatch, outer, fftN, batchStart,
+                                                                       len, radix, prev, part);
                     } else if (radix == 7) {
-                        asc_vf_call<stockhamForwardRadix7<true, true>>(
-                            dim3(THREAD_NUM),
-                            stageInput,
-                            twStage,
-                            dftStage,
-                            stageOutput,
-                            localBatch,
-                            outer,
-                            fftN,
-                            batchStart,
-                            len,
-                            radix,
-                            prev,
-                            part);
+                        asc_vf_call<stockhamForwardRadix7<true, true>>(dim3(THREAD_NUM), stageInput, twStage, dftStage,
+                                                                       stageOutput, localBatch, outer, fftN, batchStart,
+                                                                       len, radix, prev, part);
                     } else {
-                        asc_vf_call<stockhamForwardGeneral<true, true>>(
-                            dim3(THREAD_NUM),
-                            stageInput,
-                            twStage,
-                            dftStage,
-                            stageOutput,
-                            localBatch,
-                            outer,
-                            fftN,
-                            batchStart,
-                            len,
-                            radix,
-                            prev,
-                            part);
+                        asc_vf_call<stockhamForwardGeneral<true, true>>(dim3(THREAD_NUM), stageInput, twStage, dftStage,
+                                                                        stageOutput, localBatch, outer, fftN,
+                                                                        batchStart, len, radix, prev, part);
                     }
                 } else {
                     if (radix == 2) {
-                        asc_vf_call<stockhamForwardRadix2<true, false>>(
-                            dim3(THREAD_NUM_RAD2),
-                            stageInput,
-                            twStage,
-                            stageOutput,
-                            localBatch,
-                            outer,
-                            fftN,
-                            batchStart,
-                            len,
-                            radix,
-                            prev,
-                            part);
+                        asc_vf_call<stockhamForwardRadix2<true, false>>(dim3(THREAD_NUM_RAD2), stageInput, twStage,
+                                                                        stageOutput, localBatch, outer, fftN,
+                                                                        batchStart, len, radix, prev, part);
                     } else if (radix == 3) {
-                        asc_vf_call<stockhamForwardRadix3<true, false>>(
-                            dim3(THREAD_NUM_RAD3),
-                            stageInput,
-                            twStage,
-                            dftStage,
-                            stageOutput,
-                            localBatch,
-                            outer,
-                            fftN,
-                            batchStart,
-                            len,
-                            radix,
-                            prev,
-                            part);
+                        asc_vf_call<stockhamForwardRadix3<true, false>>(dim3(THREAD_NUM_RAD3), stageInput, twStage,
+                                                                        dftStage, stageOutput, localBatch, outer, fftN,
+                                                                        batchStart, len, radix, prev, part);
                     } else if (radix == 5) {
-                        asc_vf_call<stockhamForwardRadix5<true, false>>(
-                            dim3(THREAD_NUM),
-                            stageInput,
-                            twStage,
-                            dftStage,
-                            stageOutput,
-                            localBatch,
-                            outer,
-                            fftN,
-                            batchStart,
-                            len,
-                            radix,
-                            prev,
-                            part);
+                        asc_vf_call<stockhamForwardRadix5<true, false>>(dim3(THREAD_NUM), stageInput, twStage, dftStage,
+                                                                        stageOutput, localBatch, outer, fftN,
+                                                                        batchStart, len, radix, prev, part);
                     } else if (radix == 7) {
-                        asc_vf_call<stockhamForwardRadix7<true, false>>(
-                            dim3(THREAD_NUM),
-                            stageInput,
-                            twStage,
-                            dftStage,
-                            stageOutput,
-                            localBatch,
-                            outer,
-                            fftN,
-                            batchStart,
-                            len,
-                            radix,
-                            prev,
-                            part);
+                        asc_vf_call<stockhamForwardRadix7<true, false>>(dim3(THREAD_NUM), stageInput, twStage, dftStage,
+                                                                        stageOutput, localBatch, outer, fftN,
+                                                                        batchStart, len, radix, prev, part);
                     } else {
-                        asc_vf_call<stockhamForwardGeneral<true, false>>(
-                            dim3(THREAD_NUM),
-                            stageInput,
-                            twStage,
-                            dftStage,
-                            stageOutput,
-                            localBatch,
-                            outer,
-                            fftN,
-                            batchStart,
-                            len,
-                            radix,
-                            prev,
-                            part);
+                        asc_vf_call<stockhamForwardGeneral<true, false>>(dim3(THREAD_NUM), stageInput, twStage,
+                                                                         dftStage, stageOutput, localBatch, outer, fftN,
+                                                                         batchStart, len, radix, prev, part);
                     }
                 }
             } else {
                 if (transpose) {
                     if (radix == 2) {
-                        asc_vf_call<stockhamForwardRadix2<false, true>>(
-                            dim3(THREAD_NUM_RAD2),
-                            stageInput,
-                            twStage,
-                            stageOutput,
-                            localBatch,
-                            outer,
-                            fftN,
-                            batchStart,
-                            len,
-                            radix,
-                            prev,
-                            part);
+                        asc_vf_call<stockhamForwardRadix2<false, true>>(dim3(THREAD_NUM_RAD2), stageInput, twStage,
+                                                                        stageOutput, localBatch, outer, fftN,
+                                                                        batchStart, len, radix, prev, part);
                     } else if (radix == 3) {
-                        asc_vf_call<stockhamForwardRadix3<false, true>>(
-                            dim3(THREAD_NUM_RAD3),
-                            stageInput,
-                            twStage,
-                            dftStage,
-                            stageOutput,
-                            localBatch,
-                            outer,
-                            fftN,
-                            batchStart,
-                            len,
-                            radix,
-                            prev,
-                            part);
+                        asc_vf_call<stockhamForwardRadix3<false, true>>(dim3(THREAD_NUM_RAD3), stageInput, twStage,
+                                                                        dftStage, stageOutput, localBatch, outer, fftN,
+                                                                        batchStart, len, radix, prev, part);
                     } else if (radix == 5) {
-                        asc_vf_call<stockhamForwardRadix5<false, true>>(
-                            dim3(THREAD_NUM),
-                            stageInput,
-                            twStage,
-                            dftStage,
-                            stageOutput,
-                            localBatch,
-                            outer,
-                            fftN,
-                            batchStart,
-                            len,
-                            radix,
-                            prev,
-                            part);
+                        asc_vf_call<stockhamForwardRadix5<false, true>>(dim3(THREAD_NUM), stageInput, twStage, dftStage,
+                                                                        stageOutput, localBatch, outer, fftN,
+                                                                        batchStart, len, radix, prev, part);
                     } else if (radix == 7) {
-                        asc_vf_call<stockhamForwardRadix7<false, true>>(
-                            dim3(THREAD_NUM),
-                            stageInput,
-                            twStage,
-                            dftStage,
-                            stageOutput,
-                            localBatch,
-                            outer,
-                            fftN,
-                            batchStart,
-                            len,
-                            radix,
-                            prev,
-                            part);
+                        asc_vf_call<stockhamForwardRadix7<false, true>>(dim3(THREAD_NUM), stageInput, twStage, dftStage,
+                                                                        stageOutput, localBatch, outer, fftN,
+                                                                        batchStart, len, radix, prev, part);
                     } else {
-                        asc_vf_call<stockhamForwardGeneral<false, true>>(
-                            dim3(THREAD_NUM),
-                            stageInput,
-                            twStage,
-                            dftStage,
-                            stageOutput,
-                            localBatch,
-                            outer,
-                            fftN,
-                            batchStart,
-                            len,
-                            radix,
-                            prev,
-                            part);
+                        asc_vf_call<stockhamForwardGeneral<false, true>>(dim3(THREAD_NUM), stageInput, twStage,
+                                                                         dftStage, stageOutput, localBatch, outer, fftN,
+                                                                         batchStart, len, radix, prev, part);
                     }
                 } else {
                     if (radix == 2) {
-                        asc_vf_call<stockhamForwardRadix2<false, false>>(
-                            dim3(THREAD_NUM_RAD2),
-                            stageInput,
-                            twStage,
-                            stageOutput,
-                            localBatch,
-                            outer,
-                            fftN,
-                            batchStart,
-                            len,
-                            radix,
-                            prev,
-                            part);
+                        asc_vf_call<stockhamForwardRadix2<false, false>>(dim3(THREAD_NUM_RAD2), stageInput, twStage,
+                                                                         stageOutput, localBatch, outer, fftN,
+                                                                         batchStart, len, radix, prev, part);
                     } else if (radix == 3) {
-                        asc_vf_call<stockhamForwardRadix3<false, false>>(
-                            dim3(THREAD_NUM_RAD3),
-                            stageInput,
-                            twStage,
-                            dftStage,
-                            stageOutput,
-                            localBatch,
-                            outer,
-                            fftN,
-                            batchStart,
-                            len,
-                            radix,
-                            prev,
-                            part);
+                        asc_vf_call<stockhamForwardRadix3<false, false>>(dim3(THREAD_NUM_RAD3), stageInput, twStage,
+                                                                         dftStage, stageOutput, localBatch, outer, fftN,
+                                                                         batchStart, len, radix, prev, part);
                     } else if (radix == 5) {
-                        asc_vf_call<stockhamForwardRadix5<false, false>>(
-                            dim3(THREAD_NUM),
-                            stageInput,
-                            twStage,
-                            dftStage,
-                            stageOutput,
-                            localBatch,
-                            outer,
-                            fftN,
-                            batchStart,
-                            len,
-                            radix,
-                            prev,
-                            part);
+                        asc_vf_call<stockhamForwardRadix5<false, false>>(dim3(THREAD_NUM), stageInput, twStage,
+                                                                         dftStage, stageOutput, localBatch, outer, fftN,
+                                                                         batchStart, len, radix, prev, part);
                     } else if (radix == 7) {
-                        asc_vf_call<stockhamForwardRadix7<false, false>>(
-                            dim3(THREAD_NUM),
-                            stageInput,
-                            twStage,
-                            dftStage,
-                            stageOutput,
-                            localBatch,
-                            outer,
-                            fftN,
-                            batchStart,
-                            len,
-                            radix,
-                            prev,
-                            part);
+                        asc_vf_call<stockhamForwardRadix7<false, false>>(dim3(THREAD_NUM), stageInput, twStage,
+                                                                         dftStage, stageOutput, localBatch, outer, fftN,
+                                                                         batchStart, len, radix, prev, part);
                     } else {
-                        asc_vf_call<stockhamForwardGeneral<false, false>>(
-                            dim3(THREAD_NUM),
-                            stageInput,
-                            twStage,
-                            dftStage,
-                            stageOutput,
-                            localBatch,
-                            outer,
-                            fftN,
-                            batchStart,
-                            len,
-                            radix,
-                            prev,
-                            part);
+                        asc_vf_call<stockhamForwardGeneral<false, false>>(dim3(THREAD_NUM), stageInput, twStage,
+                                                                          dftStage, stageOutput, localBatch, outer,
+                                                                          fftN, batchStart, len, radix, prev, part);
                     }
                 }
             }
         } else {
             if (radix == 2) {
-                asc_vf_call<stockhamForwardRadix2<false, false>>(
-                    dim3(THREAD_NUM_RAD2),
-                    stageInput,
-                    twStage,
-                    stageOutput,
-                    localBatch,
-                    outer,
-                    fftN,
-                    batchStart,
-                    len,
-                    radix,
-                    prev,
-                    part);
+                asc_vf_call<stockhamForwardRadix2<false, false>>(dim3(THREAD_NUM_RAD2), stageInput, twStage,
+                                                                 stageOutput, localBatch, outer, fftN, batchStart, len,
+                                                                 radix, prev, part);
             } else if (radix == 3) {
-                asc_vf_call<stockhamForwardRadix3<false, false>>(
-                    dim3(THREAD_NUM_RAD3),
-                    stageInput,
-                    twStage,
-                    dftStage,
-                    stageOutput,
-                    localBatch,
-                    outer,
-                    fftN,
-                    batchStart,
-                    len,
-                    radix,
-                    prev,
-                    part);
+                asc_vf_call<stockhamForwardRadix3<false, false>>(dim3(THREAD_NUM_RAD3), stageInput, twStage, dftStage,
+                                                                 stageOutput, localBatch, outer, fftN, batchStart, len,
+                                                                 radix, prev, part);
             } else if (radix == 5) {
-                asc_vf_call<stockhamForwardRadix5<false, false>>(
-                    dim3(THREAD_NUM),
-                    stageInput,
-                    twStage,
-                    dftStage,
-                    stageOutput,
-                    localBatch,
-                    outer,
-                    fftN,
-                    batchStart,
-                    len,
-                    radix,
-                    prev,
-                    part);
+                asc_vf_call<stockhamForwardRadix5<false, false>>(dim3(THREAD_NUM), stageInput, twStage, dftStage,
+                                                                 stageOutput, localBatch, outer, fftN, batchStart, len,
+                                                                 radix, prev, part);
             } else if (radix == 7) {
-                asc_vf_call<stockhamForwardRadix7<false, false>>(
-                    dim3(THREAD_NUM),
-                    stageInput,
-                    twStage,
-                    dftStage,
-                    stageOutput,
-                    localBatch,
-                    outer,
-                    fftN,
-                    batchStart,
-                    len,
-                    radix,
-                    prev,
-                    part);
+                asc_vf_call<stockhamForwardRadix7<false, false>>(dim3(THREAD_NUM), stageInput, twStage, dftStage,
+                                                                 stageOutput, localBatch, outer, fftN, batchStart, len,
+                                                                 radix, prev, part);
             } else {
-                asc_vf_call<stockhamForwardGeneral<false, false>>(
-                    dim3(THREAD_NUM),
-                    stageInput,
-                    twStage,
-                    dftStage,
-                    stageOutput,
-                    localBatch,
-                    outer,
-                    fftN,
-                    batchStart,
-                    len,
-                    radix,
-                    prev,
-                    part);
+                asc_vf_call<stockhamForwardGeneral<false, false>>(dim3(THREAD_NUM), stageInput, twStage, dftStage,
+                                                                  stageOutput, localBatch, outer, fftN, batchStart, len,
+                                                                  radix, prev, part);
             }
         }
 

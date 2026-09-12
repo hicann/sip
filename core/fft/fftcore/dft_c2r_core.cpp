@@ -33,11 +33,11 @@ size_t DftC2RCore::EstimateWorkspaceSize()
         ASDSIP_LOG(INFO) << "ASCEND_950 aclnnMatmul workspace size.";
         return MATMUL_WORKSIZE;
     }
-    const KernelInfo &kernelInfo = kernel->GetKernelInfo();
+    const KernelInfo& kernelInfo = kernel->GetKernelInfo();
     return getAlignedSize(kernelInfo.GetTotalScratchSize());
 }
 
-void DftC2RCore::Run(void *input, void *output, void *stream, workspace::Workspace &workspace)
+void DftC2RCore::Run(void* input, void* output, void* stream, workspace::Workspace& workspace)
 {
     if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910B) {
         FftOperation::Run(input, output, stream, workspace);
@@ -51,7 +51,7 @@ void DftC2RCore::Run(void *input, void *output, void *stream, workspace::Workspa
 void DftC2RCore::DestroyInDevice() const
 {
     // destroy tiling data in device
-    uint8_t *deviceLaunchBuffer = nullptr;
+    uint8_t* deviceLaunchBuffer = nullptr;
     deviceLaunchBuffer = runInfo.GetTilingDeviceAddr();
     if (deviceLaunchBuffer != nullptr) {
         MkiRtMemFreeDevice(deviceLaunchBuffer);
@@ -64,14 +64,14 @@ AspbStatus DftC2RCore::InitRotationMatrix()
     size_t outSize = fftN;
     size_t inSize = 2 * (fftN / 2 + 1);
 
-    std::function<AsdSip::FFTensor *()> func = [=]() -> AsdSip::FFTensor* {
-        AsdSip::FFTensor *rotation_matrix_ptr = new AsdSip::FFTensor;
-        AsdSip::FFTensor &rotation_matrix = *rotation_matrix_ptr;
+    std::function<AsdSip::FFTensor*()> func = [=]() -> AsdSip::FFTensor* {
+        AsdSip::FFTensor* rotation_matrix_ptr = new AsdSip::FFTensor;
+        AsdSip::FFTensor& rotation_matrix = *rotation_matrix_ptr;
 
-        int32_t *rotation_matrix_host = nullptr;
+        float* rotation_matrix_host = nullptr;
         try {
-            rotation_matrix_host = new int32_t[outSize * inSize];
-        } catch(std::bad_alloc& e) {
+            rotation_matrix_host = new float[outSize * inSize]();
+        } catch (std::bad_alloc& e) {
             delete rotation_matrix_ptr;
             ASDSIP_LOG(ERROR) << "rotation_matrix_host malloc failed: ";
             throw std::runtime_error("rotation_matrix_host malloc failed:.");
@@ -86,20 +86,22 @@ AspbStatus DftC2RCore::InitRotationMatrix()
         for (size_t i = 0; i < fftN; i++) {
             for (size_t j = 0; j < fftN; j++) {
                 if (i < (fftN / 2 + 1)) {
-                    *(reinterpret_cast<float *>(rotation_matrix_host) + (2 * i) * outSize + j) = *(cosTable + (i * j) % fftN);
-                    *(reinterpret_cast<float *>(rotation_matrix_host) + (2 * i + 1) * outSize + j) =
-                        (problemDesc.forward ? (1.0) : (-1.0)) * (*(sinTable + (i * j) % fftN));
+                    *(rotation_matrix_host + (2 * i) * outSize + j) = *(cosTable + (i * j) % fftN);
+                    *(rotation_matrix_host + (2 * i + 1) * outSize + j) = (problemDesc.forward ? (1.0) : (-1.0)) *
+                                                                          (*(sinTable + (i * j) % fftN));
                 } else {
-                    *(reinterpret_cast<float *>(rotation_matrix_host) + (2 * (fftN - i)) * outSize + j) += *(cosTable + (i * j) % fftN);
-                    *(reinterpret_cast<float *>(rotation_matrix_host) + (2 * (fftN - i) + 1) * outSize + j) +=
-                        (problemDesc.forward ? (-1.0) : (1.0)) * (*(sinTable + (i * j) % fftN));
+                    *(rotation_matrix_host + (2 * (fftN - i)) * outSize + j) += *(cosTable + (i * j) % fftN);
+                    *(rotation_matrix_host + (2 * (fftN - i) + 1) * outSize +
+                      j) += (problemDesc.forward ? (-1.0) : (1.0)) * (*(sinTable + (i * j) % fftN));
                 }
             }
         }
 
-        rotation_matrix.desc = {
-            Mki::TensorDType::TENSOR_DTYPE_FLOAT, Mki::TensorFormat::TENSOR_FORMAT_ND, {static_cast<int64_t>(inSize),
-            static_cast<int64_t>(outSize)}, {}, 0};
+        rotation_matrix.desc = {Mki::TensorDType::TENSOR_DTYPE_FLOAT,
+                                Mki::TensorFormat::TENSOR_FORMAT_ND,
+                                {static_cast<int64_t>(inSize), static_cast<int64_t>(outSize)},
+                                {},
+                                0};
         rotation_matrix.hostData = rotation_matrix_host;
         rotation_matrix.dataSize = sizeof(float) * inSize * outSize;
 
@@ -145,15 +147,15 @@ AspbStatus DftC2RCore::InitTactic()
                         GetTensorElementSize(Mki::TensorDType::TENSOR_DTYPE_COMPLEX64);
 
     tensorOut.desc = {TENSOR_DTYPE_FLOAT, TENSOR_FORMAT_ND, {problemDesc.batch, problemDesc.nDoing}, {}, 0};
-    tensorOut.dataSize =
-        problemDesc.batch * problemDesc.nDoing * GetTensorElementSize(Mki::TensorDType::TENSOR_DTYPE_FLOAT);
+    tensorOut.dataSize = problemDesc.batch * problemDesc.nDoing *
+                         GetTensorElementSize(Mki::TensorDType::TENSOR_DTYPE_FLOAT);
 
     launchParam.SetParam(param);
     launchParam.AddInTensor(tensorIn);
     launchParam.AddInTensor(*rotationMatrix);
     launchParam.AddOutTensor(tensorOut);
 
-    Operation *op = Ops::Instance().GetOperationByName(std::string("DftC2ROperation"));
+    Operation* op = Ops::Instance().GetOperationByName(std::string("DftC2ROperation"));
     if (op == nullptr) {
         return AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }
@@ -162,7 +164,7 @@ AspbStatus DftC2RCore::InitTactic()
     ASDSIP_ECHECK(kernel != nullptr, "Get best kernel failed", AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
     // allocate and initialize tiling workspace
-    uint8_t *deviceLaunchBuffer = nullptr;
+    uint8_t* deviceLaunchBuffer = nullptr;
     kernel->SetLaunchWithTiling(false);
     uint32_t launchBufferSize = kernel->GetTilingSize(launchParam);
     ASDSIP_ECHECK(launchBufferSize != 0, "empty tiling size", AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR);
@@ -175,7 +177,7 @@ AspbStatus DftC2RCore::InitTactic()
     int st = MkiRtMemMallocDevice(&tempDevicePtr, launchBufferSize, MKIRT_MEM_DEFAULT);
     ASDSIP_ECHECK(st == MKIRT_SUCCESS, "malloc device memory fail", AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
-    deviceLaunchBuffer = static_cast<uint8_t *>(tempDevicePtr);
+    deviceLaunchBuffer = static_cast<uint8_t*>(tempDevicePtr);
     st = MkiRtMemCopy(deviceLaunchBuffer, launchBufferSize, hostLaunchBuffer, launchBufferSize,
                       MKIRT_MEMCOPY_HOST_TO_DEVICE);
     if (st != MKIRT_SUCCESS) {

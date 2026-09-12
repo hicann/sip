@@ -42,6 +42,19 @@ The basic compilation command for SiP is `bash build.sh`. In the default build m
 
 ### Compilation Target Chip Architecture Configuration
 
+CANN versions older than 9.1.0 automatically omit all `ascend950` (A5) device
+kernels, even when requested in the target configuration. The host library and
+enabled kernels for other architectures are still built. Such a package cannot
+execute A5 operators. With CANN 9.1.0 or newer, the configured A5 targets are built.
+This is a SiP build compatibility policy, not a statement about all CANN 9.0 APIs.
+
+Configuration prints the detected CANN version and effective device targets.
+Version detection uses the active `ASCEND_HOME_PATH` installation's
+`include/version/cann_version.h`, falling back to `compiler/version.info`.
+An unknown version with A5 requested, or no compatible device targets remaining,
+stops configuration with an error. Source the appropriate CANN environment
+before building. No source configuration or third-party installation is rewritten.
+
 The SiP library supports multiple Ascend chip architectures. During compilation, configure the target chips to compile through [`configs/build_config.json`](../configs/build_config.json). The file content is as follows:
 
 ```json

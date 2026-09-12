@@ -17,16 +17,11 @@
 
 class DFTCore : public FFTCoreBase {
 public:
-    DFTCore(unsigned nDone, unsigned nDoing, unsigned nLeft, unsigned batch, AsdSip::asdFftType fftType,
-            bool forward)
+    DFTCore(unsigned nDone, unsigned nDoing, unsigned nLeft, unsigned batch, AsdSip::asdFftType fftType, bool forward)
         : FFTCoreBase(FFTCoreType::kDft, nDone, nDoing, nLeft, batch, fftType, forward)
-    {
-    }
-    ~DFTCore() override
-    {
-        DestroyInDevice();
-    }
-    void Run(Tensor &input, Tensor &output, void *stream, workspace::Workspace &workspace) override;
+    {}
+    ~DFTCore() override { DestroyInDevice(); }
+    void Run(Tensor& input, Tensor& output, void* stream, workspace::Workspace& workspace) override;
     size_t EstimateWorkspaceSize() override;
 
 private:
@@ -38,7 +33,6 @@ private:
 
     std::string opName{"DftOperation"};
     std::shared_ptr<AsdSip::FFTensor> rotationMatrix;
-    std::unique_ptr<AsdSip::FFTensor> transposedRotationMatrix;
 };
 
 #endif

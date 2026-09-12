@@ -30,9 +30,16 @@ def parse_args():
     parser.add_argument("--no_warning", action="store_true")
     parser.add_argument("--include_directories", type=str, required=False, nargs="+")
     parser.add_argument("--use_ascendc_dump", action="store_true")
+    parser.add_argument(
+        "--cache-policy",
+        choices=("compiler-default",),
+        default="compiler-default",
+        help="A5 production policy: compiler-default terminal cache maintenance (D0)",
+    )
     return parser.parse_args()
 
 
+# if soc == "ascend310p" or soc == "ascend910":
 def gen_compile_cmd(args, dst: str, sub_arch: str, compile_options):
     compile_cmd = [
         os.path.join(
@@ -159,12 +166,18 @@ def gen_compile_cmd_v300(args, dst: str, sub_arch: str, compile_options):
 
 
 def gen_compile_cmd_c310(args, dst: str, sub_arch: str, compile_options):
+    if args.srcs.endswith(".asc"):
+        return gen_compile_cmd_asc(args, dst, compile_options)
     compile_cmd = [
         os.path.join(
             args.code_root, "3rdparty", "compiler", "ccec_compiler", "bin", "bisheng"
         ),
         "-c",
     ]
+    if args.use_msdebug == "ON":
+        compile_cmd += ["-O0", "-g", "--cce-ignore-always-inline=true"]
+    else:
+        compile_cmd += ["-O3"]
     compile_cmd += compile_options
     compile_cmd += [
         args.srcs,
@@ -182,20 +195,58 @@ def gen_compile_cmd_c310(args, dst: str, sub_arch: str, compile_options):
         "-cce-aicore-addr-transform",
         "-mllvm",
         "-cce-aicore-jump-expand=true",
-        "-mllvm",
-        "-cce-aicore-dcci-insert-for-scalar=false",
-        "-mllvm",
-        "-cce-aicore-dcci-before-kernel-end=false",
     ]
+    # A5 production uses compiler-default terminal cache maintenance (D0).
+    # Private DCCI suppression is unsafe; documented DCI needs path-specific
+    # qualification and has not demonstrated a material gain.
     compile_cmd += ["-std=c++17"]
     return compile_cmd
 
 
+def get_asc_tool(name):
+    ascend_home_path = os.getenv("ASCEND_HOME_PATH")
+    if not ascend_home_path:
+        raise ValueError(
+            "ASC sources require ASCEND_HOME_PATH from the CANN environment"
+        )
+    return os.path.join(ascend_home_path, "tools", "bisheng_compiler", "bin", name)
+
+
+def gen_compile_cmd_asc(args, dst: str, compile_options):
+    if args.soc != "ascend950" or args.channel not in ("vector", "mix"):
+        raise ValueError(
+            "ASC device-only integration supports A5 vector and mixed kernels"
+        )
+    if args.cache_policy != "compiler-default":
+        raise ValueError(
+            "ASC device-only kernels require the compiler-default cache policy"
+        )
+    compile_cmd = [get_asc_tool("bisheng"), "-c"]
+    if args.use_msdebug == "ON":
+        compile_cmd += ["-O0", "-g", "--cce-ignore-always-inline=true"]
+    else:
+        compile_cmd += ["-O3"]
+    compile_cmd += compile_options
+    compile_cmd += [
+        args.srcs,
+        "--npu-arch=dav-3510",
+        "--cce-aicore-only",
+        "--cce-res-usage",
+        "-std=c++17",
+        "-o",
+        dst,
+    ]
+    return compile_cmd
+
+
 def gen_fatbin_cmd(args, obj_file: list, dst_file: str):
+    linker = os.path.join(
+        args.code_root, "3rdparty", "compiler", "ccec_compiler", "bin", "ld.lld"
+    )
+    if args.srcs.endswith(".asc"):
+        linker = get_asc_tool("ld.lld")
     compile_cmd = [
-        os.path.join(
-            args.code_root, "3rdparty", "compiler", "ccec_compiler", "bin", "ld.lld"
-        ),
+        linker,
         "-m",
         "aicorelinux",
         "-Ttext=0",
@@ -240,6 +291,10 @@ def gen_json(args, kernels):
         json_template["coreType"] = "MIX"
         json_template["core_type"] = "MIX"
         json_template["magic"] = "RT_DEV_BINARY_MAGIC_ELF"
+        if args.srcs.endswith(".asc"):
+            # The retained ASC mixed entries declare __mix__(1,2). MKI must
+            # launch the same pairing, independent of the tiling-key bits.
+            json_template["taskRation"] = "1:2"
 
     with os.fdopen(
         os.open(
@@ -253,6 +308,31 @@ def gen_json(args, kernels):
 
 
 def get_common_options(args):
+    if args.srcs.endswith(".asc"):
+        # The ASC source and toolchain must use the same CANN installation;
+        # legacy tikcpp paths may still point at another toolkit release.
+        get_asc_tool("bisheng")
+        ascend_home_path = os.environ["ASCEND_HOME_PATH"]
+        options = ["-x", "asc", "-I."]
+        for suffix in (
+            "include",
+            "asc",
+            "asc/include",
+            "asc/include/basic_api",
+            "asc/include/adv_api",
+            "asc/impl/basic_api",
+            "asc/impl/utils",
+        ):
+            options.append("-I" + os.path.join(ascend_home_path, suffix))
+        for directory in args.include_directories or []:
+            options.append("-I" + directory)
+        if args.no_warning:
+            options += ["-Wno-deprecated-declarations", "-Wno-array-bounds"]
+        # ASC supplies a default key; replace it with the MKI specialization.
+        options.append("-UTILING_KEY_VAR")
+        if args.channel == "mix":
+            options.append("-DENABLE_CV_COMM_VIA_SSBUF=true")
+        return options
     tikcpp_path = os.path.join(args.code_root, "3rdparty", "compiler", "tikcpp")
     options = ["-x", "cce"]
     options.append("-I.")
@@ -297,6 +377,8 @@ def get_arch(soc, channel):
 
 
 def exe_cmd(cmd):
+    # Keep the effective device compiler/linker flags in the build log.
+    print(cmd, flush=True)
     if os.system(cmd) != 0:
         logging.error("execute command failed")
         logging.debug("command: %s", cmd)
@@ -405,7 +487,9 @@ def compile_ascendc_operation(args):
                 return -1
             dsts.append(dst)
         elif args.soc == "ascend950":
-            if args.channel != "mix":
+            if args.channel != "mix" or args.srcs.endswith(".asc"):
+                # ASC emits both _mix_aic and _mix_aiv symbols for a mixed
+                # entry in one object. Do not compile and suffix it twice.
                 dst = os.path.splitext(args.dst)[0] + f"_{key}.o"
                 opt = options + [
                     f"-D{args.kernel}={args.kernel}_{key}",

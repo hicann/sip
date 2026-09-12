@@ -1,0 +1,27 @@
+/*
+ * Copyright (c) 2026 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+#pragma once
+#include "fftcore/fft_core_base.h"
+
+// A complete large FFT is two or three ordinary MKI stage launches.
+class FftC2CLargeCore : public FFTCoreBase {
+public:
+    FftC2CLargeCore(FFTCoreType type, unsigned nDone, unsigned nDoing, unsigned nLeft, unsigned batch,
+                    AsdSip::asdFftType fftType, bool forward);
+    ~FftC2CLargeCore() override;
+    size_t EstimateWorkspaceSize() override;
+    void Run(Tensor& input, Tensor& output, void* stream, workspace::Workspace& workspace) override;
+    void Run(void* input, void* output, void* stream, workspace::Workspace& workspace) override;
+
+private:
+    bool PreAllocateInDevice() override;
+    struct Impl;
+    std::unique_ptr<Impl> impl_;
+};

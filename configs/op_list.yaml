@@ -207,6 +207,26 @@ DddSepOperation:
     DddSepC64Kernel:
         ascend910b: true
 
+FftC2CRegBaseOperation:
+    FftC2CRegBaseC64Kernel:
+        ascend950: true
+    FftC2CRegBaseLargeAKernel:
+        ascend950: true
+    FftC2CRegBaseLargeBKernel:
+        ascend950: true
+
+FftC2CCubeVectorOperation:
+    FftC2COuterKernel:
+        ascend950: true
+    FftC2CCubeVectorAKernel:
+        ascend950: true
+    FftC2CCubeVectorBKernel:
+        ascend950: true
+    FftC2CPackedKernel:
+        ascend950: true
+    FftC2CGaussKernel:
+        ascend950: true
+
 FftC2CArch35Operation:
     FftC2CArch35C64Kernel:
         ascend950: true
@@ -228,3 +248,17 @@ ConvolveOperation:
 InterpByCoeffOperation:
     InterpByCoeffKernel:
         ascend910b: true
+
+FftRealRegBaseOperation:
+    FftRealRegBaseFusedKernel:
+        ascend950: true
+    FftRealRegBaseBoundaryKernel:
+        ascend950: true
+    FftRealRegBaseSmallKernel:
+        ascend950: true
+
+FftRealStockhamOperation:
+    FftRealStockhamC2RKernel:
+        ascend950: true
+    FftRealStockhamR2CKernel:
+        ascend950: true

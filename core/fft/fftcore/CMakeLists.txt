@@ -10,7 +10,7 @@
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/fftoperation)
 
-add_library(fft_core STATIC 
+add_library(fft_core STATIC
     fft_core_common_func.cpp
     fft_core_common_func_utils.cpp
     fft_core_mix_base.cpp
@@ -33,6 +33,10 @@ add_library(fft_core STATIC
     fft_r2c_core.cpp
     fft_r2c_arch35.cpp
     fft_c2c_arch35.cpp
+    fft_c2c_regbase.cpp
+    fft_c2c_large.cpp
+    fft_real_regbase.cpp
+    fft_real_stockham.cpp
     fft_c2c2d_arch35.cpp
 
     fft_core_any.cpp
@@ -42,11 +46,14 @@ add_library(fft_core STATIC
     ddd_core_sep.cpp
 
     select_core.cpp
-    
+
     fft_core_istft_any.cpp
 )
 
 target_include_directories(fft_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_include_directories(fft_core PRIVATE ${PROJECT_SOURCE_DIR}/ops/fft/c2c/fft_regbase/fft_regbase/large)
 
 target_link_libraries(fft_core PUBLIC fft_utils)
 target_link_libraries(fft_core PUBLIC fft_operation)
+
+target_include_directories(fft_core PRIVATE ${PROJECT_SOURCE_DIR}/ops/fft/real/fft_regbase/include)
