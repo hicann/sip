@@ -190,7 +190,7 @@ AspbStatus asdBlasCgemmBatched(
     <tr>
       <td>beta（std::complex&lt;float&gt; &）</td>
       <td>输入</td>
-      <td>对应公式中的beta，复数标量，用于乘以矩阵C。取值必须为 0+0j。。</td>
+      <td>对应公式中的beta，复数标量，用于乘以矩阵C。取值必须为 0+0j。</td>
     </tr>
     <tr>
       <td>batchCount（int64_t）</td>

@@ -195,9 +195,9 @@ AspbStatus asdFftExecIstft(
 - 输入的元素不支持inf、-inf和nan，如果输入中包含这些值, 那么结果为未定义。
 
 - asdFftIstftMakePlan
-    - nFft需保证不超过1500且分解质因数后不包含超过199的质因子。
+    - nFft需保证小于1500且分解质因数后不包含超过199的质因子。
     - 当前功能实现所限，nFft大于等于32768且为2的幂的时候，会修改输入数据，需提前做好备份。
-    - hopLengthOpt <= 1500。
+    - hopLengthOpt < 1500。
     - 输入的元素不支持inf、-inf和nan，如果输入中包含这些值，那么结果为未定义。
 - asdFftExecIstft
   windowOpt tensor数值不能有接近零的值，否则结果未定义。

@@ -54,7 +54,7 @@ constexpr int64_t TENSOR_THREE_DIMENSION = 3;
 using namespace AsdSip;
 namespace {
 template <typename E, typename T>
-void CopyVector(const std::vector<E> &in, std::vector<T> &out)
+void CopyVector(const std::vector<E>& in, std::vector<T>& out)
 {
     for (E e : in) {
         out.push_back(static_cast<T>(e));
@@ -86,7 +86,7 @@ std::vector<int64_t> Factorize(int64_t size)
     return factors;
 }
 
-std::vector<int64_t> MakeSureFirstAlpha(std::vector<int64_t> &factors)
+std::vector<int64_t> MakeSureFirstAlpha(std::vector<int64_t>& factors)
 {
     if ((factors.size() == 1) || (factors[0] >= FIRST_FACTOR_MIN)) {
         return factors;
@@ -102,7 +102,7 @@ std::vector<int64_t> MakeSureFirstAlpha(std::vector<int64_t> &factors)
     return factors;
 }
 
-std::vector<int64_t> Merge(const std::vector<int64_t> &factors_)
+std::vector<int64_t> Merge(const std::vector<int64_t>& factors_)
 {
     std::vector<int64_t> factors(factors_.size());
     std::copy(factors_.rbegin(), factors_.rend(), factors.begin());
@@ -142,7 +142,7 @@ std::vector<int64_t> Merge(const std::vector<int64_t> &factors_)
     return MakeSureFirstAlpha(mergedFactors);
 }
 
-int64_t CalNumel(const SVector<int64_t> &value, uint32_t start, uint32_t end)
+int64_t CalNumel(const SVector<int64_t>& value, uint32_t start, uint32_t end)
 {
     int64_t elementCount = 1;
     int64_t maxVal = std::numeric_limits<int64_t>::max();
@@ -162,8 +162,8 @@ int64_t CalNumel(const SVector<int64_t> &value, uint32_t start, uint32_t end)
     return elementCount;
 }
 
-void Permute(Mki::Tensor &input, Mki::Tensor &output, std::vector<int64_t> dimPermute, SVector<int64_t> stride,
-             void *stream, uint8_t *deviceBuffer = nullptr)
+void Permute(Mki::Tensor& input, Mki::Tensor& output, std::vector<int64_t> dimPermute, SVector<int64_t> stride,
+             void* stream, uint8_t* deviceBuffer = nullptr)
 {
     SVector<int64_t> stride_;
     for (int64_t i = 0; i < static_cast<int64_t>(input.desc.dims.size()); i++) {
@@ -176,7 +176,7 @@ void Permute(Mki::Tensor &input, Mki::Tensor &output, std::vector<int64_t> dimPe
     AsStrided(input, output, tempPermute, stride_, stream, 0, deviceBuffer);
 }
 
-SVector<int64_t> GetStride(Mki::Tensor &input)
+SVector<int64_t> GetStride(Mki::Tensor& input)
 {
     SVector<int64_t> stride_;
 
@@ -195,7 +195,7 @@ SVector<int64_t> GetStride(Mki::Tensor &input)
     return stride_;
 }
 
-AspbStatus CopyDeviceToDeviceAsync(Tensor &inTensor, Tensor &outTensor, size_t size, void *stream)
+AspbStatus CopyDeviceToDeviceAsync(Tensor& inTensor, Tensor& outTensor, size_t size, void* stream)
 {
     int st = MkiRtMemCopyAsync(outTensor.data, size, inTensor.data, size, MKIRT_MEMCOPY_DEVICE_TO_DEVICE, stream);
     if (st != MKIRT_SUCCESS) {
@@ -205,7 +205,7 @@ AspbStatus CopyDeviceToDeviceAsync(Tensor &inTensor, Tensor &outTensor, size_t s
     ASDSIP_LOG(INFO) << "Copy device to device async success.";
     return AsdSip::ErrorType::ACL_SUCCESS;
 }
-}
+} // namespace
 
 void FFTCoreAny::InitRadix()
 {
@@ -237,12 +237,12 @@ bool FFTCoreAny::PreAllocateInDevice()
 
     prevN = 1;
     for (int64_t index = 0; index < static_cast<int64_t>(factors.size()); index++) {
-        std::function<FFTensor *()> func = [=]() -> FFTensor* {
+        std::function<FFTensor*()> func = [=]() -> FFTensor* {
             wten::TheTensor<float> tensor = rotate::OneRotateMatrix(factors, index, fftMode, problemDesc.forward);
 
-            float *hostData = tensor.move_data();
-            FFTensor *coeffMatrixPtr = new FFTensor;
-            FFTensor &coeffMatrix = *coeffMatrixPtr;
+            float* hostData = tensor.move_data();
+            FFTensor* coeffMatrixPtr = new FFTensor;
+            FFTensor& coeffMatrix = *coeffMatrixPtr;
 
             SVector<int64_t> dims;
             for (auto dim : tensor.shape()) {
@@ -257,8 +257,7 @@ bool FFTCoreAny::PreAllocateInDevice()
         };
 
         auto [outN, outComplex, inN, inComplex] = rotate::computeOutShape(factors, index, fftMode);
-        CoeffKey key = {
-            coreType, 0, {prevN, outN * outComplex, inComplex * inN}, problemDesc.forward};
+        CoeffKey key = {coreType, 0, {prevN, outN * outComplex, inComplex * inN}, problemDesc.forward};
         coeffMatrices.push_back(FFTensorCache::getCoeff(key, func));
 
         prevN *= factors[index];
@@ -279,18 +278,18 @@ size_t FFTCoreAny::EstimateWorkspaceSize()
     }
 }
 
-void FFTCoreAny::Run(Mki::Tensor &inTensor, Mki::Tensor &outTensor, void *stream, workspace::Workspace &workspace)
+void FFTCoreAny::Run(Mki::Tensor& inTensor, Mki::Tensor& outTensor, void* stream, workspace::Workspace& workspace)
 {
     size_t bufferSize = 0;
     if (problemDesc.fftType == asdFftType::ASCEND_FFT_C2R) {
-        bufferSize =
-            problemDesc.nDoing * problemDesc.batch * K_SIZE_OF_COMPLEX_64 * DOUBLE_SIZE_OF_COMPLEX_64 * BUFFER_NUM;
+        bufferSize = problemDesc.nDoing * problemDesc.batch * K_SIZE_OF_COMPLEX_64 * DOUBLE_SIZE_OF_COMPLEX_64 *
+                     BUFFER_NUM;
     } else {
         bufferSize = problemDesc.nDoing * problemDesc.batch * K_SIZE_OF_COMPLEX_64 * BUFFER_NUM;
     }
 
-    buffer = (uint8_t *)workspace.allocate(bufferSize);
-    deviceBuffer = (uint8_t *)workspace.allocate(ASYNC_WORKSPACE_SIZE);
+    buffer = (uint8_t*)workspace.allocate(bufferSize);
+    deviceBuffer = (uint8_t*)workspace.allocate(ASYNC_WORKSPACE_SIZE);
 
     auto mode = problemDesc.fftType;
 
@@ -347,13 +346,11 @@ void FFTCoreAny::Run(Mki::Tensor &inTensor, Mki::Tensor &outTensor, void *stream
             conjImag.data = static_cast<void*>(static_cast<uint8_t*>(tmpC2r.data) + selfConj.dataSize / 2);
             conjImag.dataSize = selfConj.dataSize / 2;
 
-            Slice(selfConj, conjImag, selfConj.desc.dims.size() - 1,
-                  1, TENSOR_TWO_DIMENSION, 1, stream, deviceBuffer);
-            
+            Slice(selfConj, conjImag, selfConj.desc.dims.size() - 1, 1, TENSOR_TWO_DIMENSION, 1, stream, deviceBuffer);
+
             Muls(conjImag, float(-1.0), conjReal, stream, deviceBuffer);
 
-            Slice(selfConj, conjImag, selfConj.desc.dims.size() - 1,
-                  0, 1, 1, stream, deviceBuffer);
+            Slice(selfConj, conjImag, selfConj.desc.dims.size() - 1, 0, 1, 1, stream, deviceBuffer);
             Concat(conjImag, conjReal, tmpPing, selfConj.desc.dims.size() - 1, stream, deviceBuffer);
         }
         auto stridePing = GetStride(tmpPing);
@@ -370,14 +367,14 @@ void FFTCoreAny::Run(Mki::Tensor &inTensor, Mki::Tensor &outTensor, void *stream
             AsStrided(tmpC2r, tmpPing, asStridedShape, strideC2r, stream, 0, deviceBuffer);
 
             if (Reverse(tmpPing, tmpC2r, {static_cast<int64_t>(tmpPing.desc.dims.size() - TENSOR_TWO_DIMENSION)},
-                stream, deviceBuffer) != AsdSip::ErrorType::ACL_SUCCESS) {
-                    throw std::runtime_error("Failed to execute the op reverse!");
-                }
+                        stream, deviceBuffer) != AsdSip::ErrorType::ACL_SUCCESS) {
+                throw std::runtime_error("Failed to execute the op reverse!");
+            }
         } else {
-            if (Reverse(tmpC2r, tmpPing, {static_cast<int64_t>(tmpC2r.desc.dims.size() - TENSOR_TWO_DIMENSION)},
-                stream, deviceBuffer) != AsdSip::ErrorType::ACL_SUCCESS) {
-                    throw std::runtime_error("Failed to execute the op reverse!");
-                }
+            if (Reverse(tmpC2r, tmpPing, {static_cast<int64_t>(tmpC2r.desc.dims.size() - TENSOR_TWO_DIMENSION)}, stream,
+                        deviceBuffer) != AsdSip::ErrorType::ACL_SUCCESS) {
+                throw std::runtime_error("Failed to execute the op reverse!");
+            }
         }
     }
     // transpose 调整参与fft计算的维度，[2,3,4] -> [4,2,3] 原地更新不可用
@@ -439,7 +436,7 @@ void FFTCoreAny::Run(Mki::Tensor &inTensor, Mki::Tensor &outTensor, void *stream
 
     // fft iteration
     for (int64_t index = 0; index < factorsNum; index++) {
-        auto &coefficientMatrix = *(coeffMatrices[index]);
+        auto& coefficientMatrix = *(coeffMatrices[index]);
         if (coefficientMatrix.desc.dims[TENSOR_TWO_DIMENSION] == 0 || coefficientMatrix.desc.dims[0] == 0) {
             ASDSIP_LOG(ERROR) << "coefficientMatrix.desc.dims[2] == 0 || coefficientMatrix.desc.dims[0] == 0.";
             return;
@@ -447,16 +444,17 @@ void FFTCoreAny::Run(Mki::Tensor &inTensor, Mki::Tensor &outTensor, void *stream
 
         collapsedSizes[0] = coefficientMatrix.desc.dims[0];
         collapsedSizes[1] = coefficientMatrix.desc.dims[TENSOR_TWO_DIMENSION];
-        collapsedSizes[TENSOR_TWO_DIMENSION] =
-            tmpPingpong.at(ping).Numel() /
-            (coefficientMatrix.desc.dims[TENSOR_TWO_DIMENSION] * coefficientMatrix.desc.dims[0]);
+        collapsedSizes[TENSOR_TWO_DIMENSION] = tmpPingpong.at(ping).Numel() /
+                                               (coefficientMatrix.desc.dims[TENSOR_TWO_DIMENSION] *
+                                                coefficientMatrix.desc.dims[0]);
 
         tmpPingpong.at(ping).View(collapsedSizes);
         if (MatMul(coefficientMatrix, tmpPingpong.at(ping), tmpPingpong.at(pong), coefficientMatrix.desc.dims[1],
-               coefficientMatrix.desc.dims[TENSOR_TWO_DIMENSION],
-               tmpPingpong.at(ping).desc.dims[TENSOR_TWO_DIMENSION], stream, deviceBuffer) != AsdSip::ErrorType::ACL_SUCCESS) {
-                ASDSIP_LOG(ERROR) << "Fail to excute op MatMul!";
-                throw std::runtime_error("Fail to excute op MatMul!");
+                   coefficientMatrix.desc.dims[TENSOR_TWO_DIMENSION],
+                   tmpPingpong.at(ping).desc.dims[TENSOR_TWO_DIMENSION], stream,
+                   deviceBuffer) != AsdSip::ErrorType::ACL_SUCCESS) {
+            ASDSIP_LOG(ERROR) << "Fail to execute op MatMul!";
+            throw std::runtime_error("Fail to execute op MatMul!");
         }
 
         ping = 1 - ping;
@@ -514,8 +512,8 @@ void FFTCoreAny::Run(Mki::Tensor &inTensor, Mki::Tensor &outTensor, void *stream
 
     auto finalSizes = inTensor.desc.dims;
     if (mode == asdFftType::ASCEND_FFT_R2C) {
-        finalSizes[batchDims] =
-            tmpPingpong.at(pong).Numel() / (CalNumel(inTensor.desc.dims, 0, batchDims) * TENSOR_TWO_DIMENSION);
+        finalSizes[batchDims] = tmpPingpong.at(pong).Numel() /
+                                (CalNumel(inTensor.desc.dims, 0, batchDims) * TENSOR_TWO_DIMENSION);
         finalSizes.insert(finalSizes.end(), TENSOR_TWO_DIMENSION);
     } else if (mode == asdFftType::ASCEND_FFT_C2R) {
         finalSizes[ndim - 1] = tmpPingpong.at(pong).Numel() / CalNumel(inTensor.desc.dims, 0, batchDims);
@@ -538,8 +536,8 @@ void FFTCoreAny::Run(Mki::Tensor &inTensor, Mki::Tensor &outTensor, void *stream
             return;
         }
 
-        SVector<int64_t> strideNew {CalNumel(tmpPingpong.at(pong).desc.dims, 0, tmpPingpong.at(pong).desc.dims.size()) /
-                             tmpPingpong.at(pong).desc.dims[0]};
+        SVector<int64_t> strideNew{CalNumel(tmpPingpong.at(pong).desc.dims, 0, tmpPingpong.at(pong).desc.dims.size()) /
+                                   tmpPingpong.at(pong).desc.dims[0]};
         for (int64_t i = 1; i < static_cast<int64_t>(tmpPingpong.at(pong).desc.dims.size()); i++) {
             if (tmpPingpong.at(pong).desc.dims[i] != 0) {
                 auto tmp_stride = strideNew[i - 1] / tmpPingpong.at(pong).desc.dims[i];
@@ -563,12 +561,12 @@ void FFTCoreAny::Run(Mki::Tensor &inTensor, Mki::Tensor &outTensor, void *stream
     ASDSIP_LOG(INFO) << "FFTCoreAny run success.";
 }
 
-void FFTCoreAny::Run(void *input, void *output, void *stream, workspace::Workspace &workspace)
+void FFTCoreAny::Run(void* input, void* output, void* stream, workspace::Workspace& workspace)
 {
     Tensor inTensor;
     Tensor outTensor;
     TensorDType dtype = TENSOR_DTYPE_COMPLEX64;
-    SVector<int64_t> inShape {problemDesc.batch};
+    SVector<int64_t> inShape{problemDesc.batch};
     if (problemDesc.fftType == asdFftType::ASCEND_FFT_C2R) {
         inShape.push_back(problemDesc.nDoing / 2 + 1);
     } else {
