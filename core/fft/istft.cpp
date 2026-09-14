@@ -208,7 +208,9 @@ AspbStatus asdFftExecIstftV2(FFTPlan& plan, const aclTensor* input, const aclTen
         return ErrorType::ACL_ERROR_INVALID_PARAM;
     }
 
-    if (IstftShouldAllocTempCaches(plan) && IstftShouldAllocWorkspace(plan) && !plan.hasWorkspace()) {
+    // 与 asdFftExecV2 的口径一致：多步临时缓存与单步 scratch 任一需要即要求已设置
+    // workspace，否则需 workspace 的 plan 会以空基址进入 Run（issue #162）
+    if ((IstftShouldAllocTempCaches(plan) || IstftShouldAllocWorkspace(plan)) && !plan.hasWorkspace()) {
         ASDSIP_LOG(ERROR) << "workspace has not been allocated.";
         return AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }

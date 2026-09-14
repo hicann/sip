@@ -128,7 +128,7 @@ AspbStatus asdFftExecC2CSeparated(
     <tr>
       <td>dimType（asdFft1dDimType）</td>
       <td>输入</td>
-      <td>指定FFT_1D变换的维度“方向”（是按行做FFT还是按列做FFT）<ul><li>ASCEND_FFT_HORIZONTAL：横向FFT。</li><li>ASCEND_FFT_VERTICAL：纵向FFT。</li></ul></td>
+      <td>指定FFT_1D变换的维度“方向”（是按行做FFT还是按列做FFT）<ul><li>ASCEND_FFT_HORIZONTAL：横向FFT。</li><li>ASCEND_FFT_VERTICAL：纵向FFT。Ascend 950PR/Ascend 950DT 上仅支持 batchSize 为 1 的纵向FFT；batchSize 大于 1 时，接口返回 ACL_ERROR_API_NOT_SUPPORT。</li></ul></td>
     </tr>
     </tbody>
     </table>

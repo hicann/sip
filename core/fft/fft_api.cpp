@@ -969,6 +969,12 @@ AspbStatus asdFftMakePlan1D(asdFftHandle handle, int64_t fftSize, asdFftType fft
     plan.fftSizes = {fftSize};
 
     if (dimType == asdFft1dDimType::ASCEND_FFT_VERTICAL) {
+        // 950 平台无 stride 核心：纵向 1D FFT 依赖的 stride 会被核心静默丢弃、按连续内存
+        // 计算导致结果错误，对 stride>1（即 batchSize>1）显式返回不支持而非静默算错（issue #159）
+        if (batchSize > 1 && Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
+            ASDSIP_LOG(ERROR) << "vertical 1D FFT with batchSize > 1 is not supported on ASCEND_950.";
+            return ErrorType::ACL_ERROR_API_NOT_SUPPORT;
+        }
         plan.batchSize = 1;
         plan.fftStrides = {batchSize};
     } else {
@@ -1263,19 +1269,33 @@ AspbStatus asdFftExecV2(FFTPlan& plan, const aclTensor* input, const aclTensor* 
     }
 
     if (plan.steps.size() == 1) {
-        plan.steps[0].operation->Run(inputData, outputData, plan.stream, wkspace);
+        // 核心在 Run 内做对齐/重叠校验并可能抛出异常，在 API 边界统一翻译为错误码，
+        // 避免异常穿透 C 接口（issue #160）
+        try {
+            plan.steps[0].operation->Run(inputData, outputData, plan.stream, wkspace);
+        } catch (const std::exception& e) {
+            ASDSIP_LOG(ERROR) << "asdFftExecV2 failed: " << e.what();
+            return AsdSip::ErrorType::ACL_ERROR_INVALID_PARAM;
+        }
         return AsdSip::ErrorType::ACL_SUCCESS;
     }
 
     std::vector<void*> tmpCache = allocInterCachesV2(plan, wkspace);
     int ping = 0;
-    for (int64_t i = 0; i < static_cast<int64_t>(plan.steps.size()); i++) {
-        void* tmpIn = i == 0 ? inputData : tmpCache[1 - ping];
-        void* tmpOut = i == static_cast<int64_t>(plan.steps.size()) - 1 ? outputData : tmpCache[ping];
+    // 核心异常穿透防护：异常时回收已分配的多步临时缓存并翻译为错误码（issue #160）
+    try {
+        for (int64_t i = 0; i < static_cast<int64_t>(plan.steps.size()); i++) {
+            void* tmpIn = i == 0 ? inputData : tmpCache[1 - ping];
+            void* tmpOut = i == static_cast<int64_t>(plan.steps.size()) - 1 ? outputData : tmpCache[ping];
 
-        plan.steps[i].operation->Run(tmpIn, tmpOut, plan.stream, wkspace);
+            plan.steps[i].operation->Run(tmpIn, tmpOut, plan.stream, wkspace);
 
-        ping = 1 - ping;
+            ping = 1 - ping;
+        }
+    } catch (const std::exception& e) {
+        recycleInterCaches(plan, wkspace);
+        ASDSIP_LOG(ERROR) << "asdFftExecV2 failed: " << e.what();
+        return AsdSip::ErrorType::ACL_ERROR_INVALID_PARAM;
     }
     recycleInterCaches(plan, wkspace);
 
@@ -1496,7 +1516,9 @@ AspbStatus asdFftExecV2Separated(FFTPlan& plan, const aclTensor* inputReal, cons
         return ErrorType::ACL_ERROR_INVALID_PARAM;
     }
 
-    if (shouldAllocTempCaches(plan) && shouldAllocWorkspace(plan) && !plan.hasWorkspace()) {
+    // 与 asdFftExecV2 的口径一致：多步临时缓存与单步 scratch 任一需要即要求已设置
+    // workspace，否则单步需 workspace 的 plan 会以空基址进入 Run（issue #162）
+    if ((shouldAllocTempCaches(plan) || shouldAllocWorkspace(plan)) && !plan.hasWorkspace()) {
         ASDSIP_LOG(ERROR) << "workspace has not been allocated.";
         return AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }
@@ -1526,8 +1548,20 @@ AspbStatus asdFftExecV2Separated(FFTPlan& plan, const aclTensor* inputReal, cons
     }
 
     if (plan.steps.size() == 1) {
-        plan.steps[0].operation->Run(inputRealData, inputImagData, outputRealData, outputImagData, plan.stream,
-                                     wkspace);
+        // 4 指针分离实虚部 Run 的默认实现为空：非分离核心会静默无操作却返回成功，
+        // 先探测核心能力再执行（issue #161）
+        if (!plan.steps[0].operation->SupportsSeparatedExec()) {
+            ASDSIP_LOG(ERROR) << "the core of current plan does not implement separated execution.";
+            return AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR;
+        }
+        // 核心异常穿透防护：在 API 边界统一翻译为错误码（issue #160）
+        try {
+            plan.steps[0].operation->Run(inputRealData, inputImagData, outputRealData, outputImagData, plan.stream,
+                                         wkspace);
+        } catch (const std::exception& e) {
+            ASDSIP_LOG(ERROR) << "asdFftExecV2Separated failed: " << e.what();
+            return AsdSip::ErrorType::ACL_ERROR_INVALID_PARAM;
+        }
         return AsdSip::ErrorType::ACL_SUCCESS;
     }
     // 步骤数不为 1 时分离实虚部执行无多步 ping-pong 支持，显式报错而非静默返回成功（issue #124）

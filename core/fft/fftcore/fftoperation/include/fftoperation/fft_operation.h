@@ -22,14 +22,16 @@ class FftOperation {
 public:
     virtual ~FftOperation() = default;
     virtual bool init() = 0;
-    virtual void Run(Tensor &input, Tensor &output, void *stream, workspace::Workspace &workspace) = 0;
-    virtual void Run(Tensor &inputReal, Tensor &inputImag, Tensor &outputReal, Tensor &outputImag, void *stream, workspace::Workspace &workspace) {}
-    virtual void Run(Tensor &input, Tensor &window, Tensor &output, void *stream, workspace::Workspace &workspace) {}
-    virtual void Run(void *input, void *output, void *stream, workspace::Workspace &workspace)
+    virtual void Run(Tensor& input, Tensor& output, void* stream, workspace::Workspace& workspace) = 0;
+    virtual void Run(Tensor& inputReal, Tensor& inputImag, Tensor& outputReal, Tensor& outputImag, void* stream,
+                     workspace::Workspace& workspace)
+    {}
+    virtual void Run(Tensor& input, Tensor& window, Tensor& output, void* stream, workspace::Workspace& workspace) {}
+    virtual void Run(void* input, void* output, void* stream, workspace::Workspace& workspace)
     {
-        const Mki::KernelInfo &kernelInfo = kernel->GetKernelInfo();
+        const Mki::KernelInfo& kernelInfo = kernel->GetKernelInfo();
         size_t bufferSize = kernelInfo.GetTotalScratchSize();
-        runInfo.SetScratchDeviceAddr((uint8_t *)workspace.allocate(bufferSize));
+        runInfo.SetScratchDeviceAddr((uint8_t*)workspace.allocate(bufferSize));
         runInfo.SetStream(stream);
         launchParam.GetInTensor(0).data = input;
         launchParam.GetOutTensor(0).data = output;
@@ -37,13 +39,16 @@ public:
         workspace.recycleLast();
     }
 
-    virtual void Run(void *inputReal, void *inputImag, void *outputReal, void *outputImag, void *stream, workspace::Workspace &workspace) {}
-    virtual void Run(void *input, void *window, void *output, void *stream, workspace::Workspace &workspace) {}
+    // 4 指针分离实虚部 Run 的默认实现为空，仅分离执行核心（*_sep）覆写；
+    // 调用方应先通过 SupportsSeparatedExec 探测能力，避免对未实现的核心
+    // 静默无操作却返回成功（issue #161）
+    virtual void Run(void* inputReal, void* inputImag, void* outputReal, void* outputImag, void* stream,
+                     workspace::Workspace& workspace)
+    {}
+    virtual bool SupportsSeparatedExec() const { return false; }
+    virtual void Run(void* input, void* window, void* output, void* stream, workspace::Workspace& workspace) {}
 
-    virtual size_t EstimateWorkspaceSize()
-    {
-        return 0;
-    }
+    virtual size_t EstimateWorkspaceSize() { return 0; }
     virtual void allocateWorkspace() {}
     virtual void recycleWorkspace() {}
 

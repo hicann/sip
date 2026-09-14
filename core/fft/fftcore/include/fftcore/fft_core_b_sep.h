@@ -15,21 +15,18 @@
 #include "fftcore/fft_core_base.h"
 #include "utils/aspb_status.h"
 
-
 class FFTCoreBSep : public FFTCoreBase {
 public:
     FFTCoreBSep(unsigned nDone, unsigned nDoing, unsigned nLeft, unsigned batch, AsdSip::asdFftType fftType,
-             bool forward)
+                bool forward)
         : FFTCoreBase(FFTCoreType::kFftBSep, nDone, nDoing, nLeft, batch, fftType, forward)
-    {
-    }
-    ~FFTCoreBSep() override
-    {
-        DestroyInDevice();
-    }
+    {}
+    ~FFTCoreBSep() override { DestroyInDevice(); }
     size_t EstimateWorkspaceSize() override;
     // void Run(Tensor &input, Tensor &output, void *stream, workspace::Workspace &workspace) override;
-    void Run(void *inputReal, void *inputImag, void *outputReal, void *outputImag, void *stream, workspace::Workspace &workspace) override;
+    void Run(void* inputReal, void* inputImag, void* outputReal, void* outputImag, void* stream,
+             workspace::Workspace& workspace) override;
+    bool SupportsSeparatedExec() const override { return true; } // 分离执行核心（issue #161）
 
 private:
     void InitRadix() override;
@@ -37,10 +34,10 @@ private:
     void DestroyInDevice() const;
 
     Mki::Any InitParam();
-    AsdSip::AspbStatus InitWMatrix(FFTCoreType coreType, std::vector<int64_t> &radixVec, int64_t n, bool forward);
-    AsdSip::AspbStatus InitTMatrix(FFTCoreType coreType, std::vector<int64_t> &radixVec, int64_t n, bool forward);
+    AsdSip::AspbStatus InitWMatrix(FFTCoreType coreType, std::vector<int64_t>& radixVec, int64_t n, bool forward);
+    AsdSip::AspbStatus InitTMatrix(FFTCoreType coreType, std::vector<int64_t>& radixVec, int64_t n, bool forward);
     AsdSip::AspbStatus InitTactic();
-    
+
     std::shared_ptr<AsdSip::FFTensor> wMatrix;
     std::shared_ptr<AsdSip::FFTensor> tMatrix;
 };

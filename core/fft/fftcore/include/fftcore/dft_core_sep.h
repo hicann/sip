@@ -18,15 +18,13 @@
 class DFTCoreSep : public FFTCoreBase {
 public:
     DFTCoreSep(unsigned nDone, unsigned nDoing, unsigned nLeft, unsigned batch, AsdSip::asdFftType fftType,
-            bool forward)
+               bool forward)
         : FFTCoreBase(FFTCoreType::kDft, nDone, nDoing, nLeft, batch, fftType, forward)
-    {
-    }
-    ~DFTCoreSep() override
-    {
-        DestroyInDevice();
-    }
-    void Run(void *inputReal, void *inputImag, void *outputReal, void *outputImag, void *stream, workspace::Workspace &workspace) override;
+    {}
+    ~DFTCoreSep() override { DestroyInDevice(); }
+    void Run(void* inputReal, void* inputImag, void* outputReal, void* outputImag, void* stream,
+             workspace::Workspace& workspace) override;
+    bool SupportsSeparatedExec() const override { return true; } // 分离执行核心（issue #161）
     size_t EstimateWorkspaceSize() override;
 
 private:

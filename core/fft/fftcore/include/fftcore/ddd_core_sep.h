@@ -8,7 +8,6 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
-
 #ifndef __DDD_SEP_CORE__
 #define __DDD_SEP_CORE__
 
@@ -18,19 +17,22 @@
 
 class DddCoreSep : public FftCore3DBase {
 public:
-    DddCoreSep(unsigned fftX, unsigned fftY, unsigned fftZ,
-        unsigned batch, AsdSip::asdFftType fftType, bool forward)
-        : FftCore3DBase(FFTCoreType::kDd, fftX, fftY, fftZ, batch, fftType, forward) {}
+    DddCoreSep(unsigned fftX, unsigned fftY, unsigned fftZ, unsigned batch, AsdSip::asdFftType fftType, bool forward)
+        : FftCore3DBase(FFTCoreType::kDd, fftX, fftY, fftZ, batch, fftType, forward)
+    {}
     ~DddCoreSep() override {}
     size_t EstimateWorkspaceSize() override;
-    void Run(void *inputReal, void *inputImag, void *outputReal, void *outputImag, void *stream, workspace::Workspace &workspace) override;
+    void Run(void* inputReal, void* inputImag, void* outputReal, void* outputImag, void* stream,
+             workspace::Workspace& workspace) override;
+    bool SupportsSeparatedExec() const override { return true; } // 分离执行核心（issue #161）
 private:
     bool PreAllocateInDevice() override;
     void DestroyInDevice() const;
     std::string opName{"DddSepOperation"};
 
     AsdSip::AspbStatus InitTactic();
-    AsdSip::AspbStatus InitRotationMatrix(FFTCoreType coreType, int64_t fftN, std::shared_ptr<AsdSip::FFTensor> &rotMatPtr);
+    AsdSip::AspbStatus InitRotationMatrix(FFTCoreType coreType, int64_t fftN,
+                                          std::shared_ptr<AsdSip::FFTensor>& rotMatPtr);
     std::shared_ptr<AsdSip::FFTensor> rotationMatrixX;
     std::shared_ptr<AsdSip::FFTensor> rotationMatrixY;
     std::shared_ptr<AsdSip::FFTensor> rotationMatrixZ;
