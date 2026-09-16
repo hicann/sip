@@ -2,14 +2,29 @@
 
 ## 产品支持情况
 
-|产品             |  是否支持  |
-|:-------------------------|:----------:|
-|  <term>Atlas 200I/500 A2 推理产品</term>    |     ×    |
-|  <term>Atlas 推理系列产品</term>    |     ×    |
-|  <term>Atlas 训练系列产品</term>    |     ×    |
-|  <term>Atlas A3 训练系列产品/Atlas A3 推理系列产品</term>   |     √    |
-|  <term>Atlas A2 训练系列产品/Atlas A2 推理系列产品</term>     |     √    |
-|  <term>Ascend 950PR/Ascend 950DT</term>   |     ×    |
+<!-- npu="950" id1 -->
+- <term>Ascend 950PR/Ascend 950DT</term>：不支持
+<!-- end id1 -->
+
+<!-- npu="A3" id2 -->
+- <term>Atlas A3 训练系列产品/Atlas A3 推理系列产品</term>：支持
+<!-- end id2 -->
+
+<!-- npu="910b" id3 -->
+- <term>Atlas A2 训练系列产品/Atlas A2 推理系列产品</term>：支持
+<!-- end id3 -->
+
+<!-- npu="310b" id4 -->
+- <term>Atlas 200I/500 A2 推理产品</term>：不支持
+<!-- end id4 -->
+
+<!-- npu="310p" id5 -->
+- <term>Atlas 推理系列产品</term>：不支持
+<!-- end id5 -->
+
+<!-- npu="910" id6 -->
+- <term>Atlas 训练系列产品</term>：不支持
+<!-- end id6 -->
 
 ## 功能说明
 
@@ -33,6 +48,7 @@ asdBlasCswap：交换两个复数向量。
         [3.0, 4.0]
         输出“y”为：
         [1.0, 2.0]
+
   - asdBlasCswap的公式
 
   $$
@@ -49,12 +65,12 @@ asdBlasCswap：交换两个复数向量。
 
 ## 函数原型
 
-```Cpp
+```cpp
 AspbStatus asdBlasMakeSwapPlan(
   asdBlasHandle handle)
 ```
 
-```Cpp
+```cpp
 AspbStatus asdBlasSswap(
   asdBlasHandle        handle,
   const int64_t        n,
@@ -64,7 +80,7 @@ AspbStatus asdBlasSswap(
   const int64_t        incy)
 ```
 
-```Cpp
+```cpp
 AspbStatus asdBlasCswap(
   asdBlasHandle handle,
   const int64_t n,
@@ -131,7 +147,7 @@ AspbStatus asdBlasCswap(
     <tr>
       <td>x（aclTensor *）</td>
       <td>输入/输出</td>
-      <td><ul><li>对应公式中的'x'。</li><li>asdBlasSswap支持的数据类型支持FLOAT32。</li><li> asdBlasCswap支持的数据类型支持COMPLEX64。</li><li>数据格式支持ND。</li><li>shape为[n]。</li></ul></td>
+      <td><ul><li>对应公式中的'x'。</li><li>asdBlasSswap的数据类型支持FLOAT32。</li><li> asdBlasCswap的数据类型支持COMPLEX64。</li><li>数据格式支持ND。</li><li>shape为[n]。</li></ul></td>
     </tr>
     <tr>
       <td>incx（int64_t）</td>
@@ -141,7 +157,7 @@ AspbStatus asdBlasCswap(
     <tr>
       <td>y（aclTensor *）</td>
       <td>输入/输出</td>
-      <td><ul><li>对应公式中的'y'。</li><li>asdBlasSswap支持的数据类型为FLOAT32。</li><li> asdBlasCswap支持的数据类型为COMPLEX64。</li><li>数据格式支持ND。</li><li>shape为[n]。</li></ul></td>
+      <td><ul><li>对应公式中的'y'。</li><li>asdBlasSswap的数据类型为FLOAT32。</li><li> asdBlasCswap的数据类型为COMPLEX64。</li><li>数据格式支持ND。</li><li>shape为[n]。</li></ul></td>
     </tr>
     <tr>
       <td>incy（int64_t）</td>
@@ -167,7 +183,7 @@ AspbStatus asdBlasCswap(
 
 - **asdBlasSswap**
 
-```Cpp
+```cpp
 #include <iostream>
 #include <vector>
 #include "asdsip.h"
@@ -361,7 +377,7 @@ int main(int argc, char **argv)
 
 - **asdBlasCswap**
 
-```Cpp
+```cpp
 #include <iostream>
 #include <vector>
 #include "asdsip.h"

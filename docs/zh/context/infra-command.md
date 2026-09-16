@@ -2,7 +2,7 @@
 
 ## 🚀CANN社区用户交互流程
 
-CANN社区中所有项目均由Bot维护，这意味着开发人员可以在每个Pull Request或者Issue下面可以通过评论触发Bot命令， 主要交互流程图如下：
+CANN社区中所有项目均由Bot维护，这意味着开发人员可以在每个Pull Request或者Issue下面通过评论触发Bot命令， 主要交互流程图如下：
 
 ![流程](../API_Reference/figures/docs_images_robot.png)
 
@@ -58,7 +58,7 @@ CANN社区中所有项目均由Bot维护，这意味着开发人员可以在每�
                仓库管理员
             </td>
             <td>
-                所有仓库  
+                所有仓库
             </td>
         </tr>
         <tr>
@@ -93,7 +93,7 @@ CANN社区中所有项目均由Bot维护，这意味着开发人员可以在每�
                 <strong>Pull Request</strong>
             </td>
             <td>
-                添加用于代表代码已经评审过的标签 <strong>lgtm</strong>。      
+                添加用于代表代码已经评审过的标签 <strong>lgtm</strong>。
             </td>
             <td>
               仓库所属sig组的reviewers
@@ -335,7 +335,7 @@ CANN社区中所有项目均由Bot维护，这意味着开发人员可以在每�
                 /assign [[@]...]
             </td>
             <td style="white-space:nowrap;">
-                /assign 
+                /assign
                 <br>/assign @cann-robot
             </td>
             <td>
@@ -356,7 +356,7 @@ CANN社区中所有项目均由Bot维护，这意味着开发人员可以在每�
                 /unassign [[@]...]
             </td>
             <td style="white-space:nowrap;">
-                /unassign 
+                /unassign
                 <br>/unassign @cann-robot
             </td>
             <td>

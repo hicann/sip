@@ -13,4 +13,4 @@
 source ${HOME}/Ascend/nnal/asdsip/set_env.sh
 ```
 
-上述环境变量配置只在当前窗口生效，用户可以按需将以上命令写入环境变量配置文件（如.bashrc文件），环境变量列表请参考环境变量参考。
+上述环境变量配置只在当前窗口生效，用户可以按需将以上命令写入环境变量配置文件（如.bashrc文件），环境变量列表请参见[环境变量参考](../Installation_Operation_Guide/environment_variable.md)。

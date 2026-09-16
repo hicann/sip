@@ -2,14 +2,29 @@
 
 ## 产品支持情况
 
-|产品             |  是否支持  |
-|:-------------------------|:----------:|
-|  <term>Atlas 200I/500 A2 推理产品</term>    |     ×    |
-|  <term>Atlas 推理系列产品</term>    |     ×    |
-|  <term>Atlas 训练系列产品</term>    |     ×    |
-|  <term>Atlas A3 训练系列产品/Atlas A3 推理系列产品</term>   |     √    |
-|  <term>Atlas A2 训练系列产品/Atlas A2 推理系列产品</term>     |     √    |
-|  <term>Ascend 950PR/Ascend 950DT</term>   |     √  |
+<!-- npu="950" id1 -->
+- <term>Ascend 950PR/Ascend 950DT</term>：支持
+<!-- end id1 -->
+
+<!-- npu="A3" id2 -->
+- <term>Atlas A3 训练系列产品/Atlas A3 推理系列产品</term>：支持
+<!-- end id2 -->
+
+<!-- npu="910b" id3 -->
+- <term>Atlas A2 训练系列产品/Atlas A2 推理系列产品</term>：支持
+<!-- end id3 -->
+
+<!-- npu="310b" id4 -->
+- <term>Atlas 200I/500 A2 推理产品</term>：不支持
+<!-- end id4 -->
+
+<!-- npu="310p" id5 -->
+- <term>Atlas 推理系列产品</term>：不支持
+<!-- end id5 -->
+
+<!-- npu="910" id6 -->
+- <term>Atlas 训练系列产品</term>：不支持
+<!-- end id6 -->
 
 ## 功能说明
 
@@ -143,7 +158,7 @@ AspbStatus asdFftExecC2CSeparated(
       <td>算子的句柄，需要手动申请创建asdFftHandle对象。</td>
     </tr>
     <tr>
-      <td>input（ aclTensor *）</td>
+      <td>input（aclTensor *）</td>
       <td>输入</td>
       <td><ul><li>对应公式中的'x'。</li><li>数据类型支持COMPLEX64。</li><li>数据格式支持ND。</li>
       <li>对横向FFT，输入的shape为（ batchSize，fftSize）。</li><li>对纵向FFT，输入的shape为（ fftSize，batchSize）。</li></ul></td>
@@ -182,7 +197,7 @@ AspbStatus asdFftExecC2CSeparated(
       <td>算子的句柄，需要手动申请创建asdFftHandle对象。</td>
     </tr>
     <tr>
-      <td>input（ aclTensor *）</td>
+      <td>input（aclTensor *）</td>
       <td>输入</td>
       <td><ul><li>对应公式中的'x'。</li><li>数据类型支持COMPLEX64。</li><li>数据格式支持ND。</li>
       <li>对横向FFT，输入的shape为（batchSize ，fftSize / 2 + 1）。</li><li>对纵向FFT，输入的shape为（fftSize / 2 + 1，batchSize）。</li></ul></td>

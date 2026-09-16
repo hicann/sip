@@ -2,14 +2,29 @@
 
 ## 产品支持情况
 
-|产品             |  是否支持  |
-|:-------------------------|:----------:|
-|  <term>Atlas 200I/500 A2 推理产品</term>    |     ×    |
-|  <term>Atlas 推理系列产品</term>    |     ×    |
-|  <term>Atlas 训练系列产品</term>    |     ×    |
-|  <term>Atlas A3 训练系列产品/Atlas A3 推理系列产品</term>   |     √    |
-|  <term>Atlas A2 训练系列产品/Atlas A2 推理系列产品</term>     |     √    |
-|  <term>Ascend 950PR/Ascend 950DT</term>   |     ×    |
+<!-- npu="950" id1 -->
+- <term>Ascend 950PR/Ascend 950DT</term>：不支持
+<!-- end id1 -->
+
+<!-- npu="A3" id2 -->
+- <term>Atlas A3 训练系列产品/Atlas A3 推理系列产品</term>：支持
+<!-- end id2 -->
+
+<!-- npu="910b" id3 -->
+- <term>Atlas A2 训练系列产品/Atlas A2 推理系列产品</term>：支持
+<!-- end id3 -->
+
+<!-- npu="310b" id4 -->
+- <term>Atlas 200I/500 A2 推理产品</term>：不支持
+<!-- end id4 -->
+
+<!-- npu="310p" id5 -->
+- <term>Atlas 推理系列产品</term>：不支持
+<!-- end id5 -->
+
+<!-- npu="910" id6 -->
+- <term>Atlas 训练系列产品</term>：不支持
+<!-- end id6 -->
 
 ## 功能说明
 
@@ -32,6 +47,7 @@ asdBlasCdotc：计算一个复数向量取共轭后和另一个复数向量的�
         [1.0, 2.0]
         调用asdBlasSdot算子后，输出“result”为：
         5.0
+
   - asdBlasCdotu的公式
 
   $$
@@ -45,12 +61,13 @@ asdBlasCdotc：计算一个复数向量取共轭后和另一个复数向量的�
         [-0.1404+1.3380j, -0.4876+0.1842j]
         调用asdBlasCdotu算子后，输出“result”为：
         -0.9839 + 0.1425j
+
 - asdBlasCdotc的公式
 
   $$
   result=\sum _{i=1}^n(conj(x[i]) * y[i])
   $$
-        其中，x[i]和y[i]是复数,conj共轭操作。
+        其中，x[i]和y[i]是复数,conj为共轭操作。
         示例：
         输入“x”为：
         [ 0.1554+0.8840j, -0.3564-0.2552j]
@@ -61,12 +78,12 @@ asdBlasCdotc：计算一个复数向量取共轭后和另一个复数向量的�
 
 ## 函数原型
 
-```Cpp
+```cpp
 AspbStatus asdBlasMakeDotPlan(
   asdBlasHandle handle)
 ```
 
-```Cpp
+```cpp
 AspbStatus asdBlasSdot(
   asdBlasHandle      handle,
   const int64_t      n,
@@ -77,7 +94,7 @@ AspbStatus asdBlasSdot(
   aclTensor *        result)
 ```
 
-```Cpp
+```cpp
 AspbStatus asdBlasCdotu(
   asdBlasHandle      handle,
   const int64_t      n,
@@ -88,7 +105,7 @@ AspbStatus asdBlasCdotu(
   aclTensor *        result)
 ```
 
-```Cpp
+```cpp
 AspbStatus asdBlasCdotc(
   asdBlasHandle         handle,
   const int64_t         n,
@@ -156,7 +173,7 @@ AspbStatus asdBlasCdotc(
     <tr>
       <td>x（aclTensor *）</td>
       <td>输入</td>
-      <td><ul><li>对应公式中的'x'。</li><li>asdBlasSdot支持的数据类型支持FLOAT32。</li><li>asdBlasCdotu & asdBlasCdotc支持的数据类型支持COMPLEX64。</li><li>数据格式支持ND。</li><li>shape为[n]。</li></ul></td>
+      <td><ul><li>对应公式中的'x'。</li><li>asdBlasSdot的数据类型支持FLOAT32。</li><li>asdBlasCdotu & asdBlasCdotc的数据类型支持COMPLEX64。</li><li>数据格式支持ND。</li><li>shape为[n]。</li></ul></td>
     </tr>
     <tr>
       <td>incx（int64_t）</td>
@@ -166,7 +183,7 @@ AspbStatus asdBlasCdotc(
     <tr>
       <td>y（aclTensor *）</td>
       <td>输入</td>
-      <td><ul><li>对应公式中的'y'。</li><li>asdBlasSdot支持的数据类型支持FLOAT32。</li><li>asdBlasCdotu & asdBlasCdotc支持的数据类型支持COMPLEX64。</li><li>数据格式支持ND。</li><li>shape为[n]。</li></ul></td>
+      <td><ul><li>对应公式中的'y'。</li><li>asdBlasSdot的数据类型支持FLOAT32。</li><li>asdBlasCdotu & asdBlasCdotc的数据类型支持COMPLEX64。</li><li>数据格式支持ND。</li><li>shape为[n]。</li></ul></td>
     </tr>
     <tr>
       <td>incy（int64_t）</td>
@@ -197,7 +214,7 @@ AspbStatus asdBlasCdotc(
 
 - **asdBlasSdot**
 
-```Cpp
+```cpp
 #include <iostream>
 #include <vector>
 #include "asdsip.h"
@@ -397,7 +414,7 @@ int main(int argc, char **argv)
 
 - **asdBlasCdotu**
 
-```Cpp
+```cpp
 
 #include <iostream>
 #include <vector>
@@ -588,7 +605,7 @@ int main(int argc, char** argv)
 
 - **asdBlasCdotc**
 
-```Cpp
+```cpp
 
 #include <iostream>
 #include <vector>

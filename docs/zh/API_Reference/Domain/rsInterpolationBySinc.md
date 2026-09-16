@@ -2,14 +2,29 @@
 
 ## 产品支持情况
 
-|产品             |  是否支持  |
-|:-------------------------|:----------:|
-|  <term>Atlas 200I/500 A2 推理产品</term>    |     ×    |
-|  <term>Atlas 推理系列产品</term>    |     ×    |
-|  <term>Atlas 训练系列产品</term>    |     ×    |
-|  <term>Atlas A3 训练系列产品/Atlas A3 推理系列产品</term>   |     √    |
-|  <term>Atlas A2 训练系列产品/Atlas A2 推理系列产品</term>     |     √    |
-|  <term>Ascend 950PR/Ascend 950DT</term>   |     ×  |
+<!-- npu="950" id1 -->
+- <term>Ascend 950PR/Ascend 950DT</term>：不支持
+<!-- end id1 -->
+
+<!-- npu="A3" id2 -->
+- <term>Atlas A3 训练系列产品/Atlas A3 推理系列产品</term>：支持
+<!-- end id2 -->
+
+<!-- npu="910b" id3 -->
+- <term>Atlas A2 训练系列产品/Atlas A2 推理系列产品</term>：支持
+<!-- end id3 -->
+
+<!-- npu="310b" id4 -->
+- <term>Atlas 200I/500 A2 推理产品</term>：不支持
+<!-- end id4 -->
+
+<!-- npu="310p" id5 -->
+- <term>Atlas 推理系列产品</term>：不支持
+<!-- end id5 -->
+
+<!-- npu="910" id6 -->
+- <term>Atlas 训练系列产品</term>：不支持
+<!-- end id6 -->
 
 ## 功能说明
 
@@ -42,12 +57,12 @@ rsInterpolationBySinc：实现带batch的一维复数向量插值计算，返回
 
 若需使用“rsInterpolationBySinc”算子，需先调用“rsInterpolationBySincGetWorkspaceSize”接口获取计算所需workspace大小以及包含了算子计算流程的执行器，再调用“rsInterpolationBySinc”接口执行计算。
 
-```Cpp
+```cpp
 AspbStatus rsInterpolationBySincGetWorkspaceSize(
   size_t &                   workspaceSize)
 ```
 
-```Cpp
+```cpp
 AspbStatus rsInterpolationBySinc(
   const aclTensor *          inputTensor,
   const aclTensor *          sincTab,
@@ -141,7 +156,7 @@ AspbStatus rsInterpolationBySinc(
       <td>量化点数。</td>
     </tr>
     <tr>
-      <td>length（int）</td>
+      <td>interpLength（int）</td>
       <td>输入</td>
       <td>插值长度。</td>
     </tr>
@@ -189,7 +204,7 @@ rsInterpolationBySinc：
 
 - rsInterpolationBySinc算子调用示例：
 
-```Cpp
+```cpp
 #include <iostream>
 #include <vector>
 #include <securec.h>
