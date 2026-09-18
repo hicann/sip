@@ -32,7 +32,16 @@ def compare_data(dtype):
     else:
         raise ValueError(f"Unknown dtype: {dtype}")
 
-    output_files = sorted(glob.glob(os.path.join(curr_dir, "*output*.bin")))
+    # 按 dtype 过滤 output 文件：同目录多用例（c32/c64）共享，"*.bin" 全量 glob 会把
+    # 其它用例残留的 output 也配进来（sorted-zip 错配，报 size mismatch），必须限定前缀
+    if dtype == "c64":
+        output_files = sorted(
+            glob.glob(os.path.join(curr_dir, "complex64*output*.bin"))
+        )
+    else:
+        output_files = sorted(
+            glob.glob(os.path.join(curr_dir, "complex32*output*.bin"))
+        )
 
     if not golden_files or not output_files:
         print(f"No golden or output files found for dtype={dtype}")
@@ -48,7 +57,7 @@ def compare_data(dtype):
                 dtype_int = np.frombuffer(f.read(4), dtype=np.int32)[0]
                 if dtype_int == 16:  # 有 header
                     dim_count = np.frombuffer(f.read(4), dtype=np.int32)[0]
-                    dims = np.frombuffer(f.read(8 * dim_count), dtype=np.int64)
+                    f.read(8 * dim_count)  # 跳过 dims 字段（比对只关心数据本身）
                     tmp_out = np.frombuffer(f.read(), dtype=np.complex64)
                 else:
                     # 没有 header，重新读取
@@ -66,7 +75,7 @@ def compare_data(dtype):
                 dtype_int = np.frombuffer(f.read(4), dtype=np.int32)[0]
                 if dtype_int == 33:  # 有 header
                     dim_count = np.frombuffer(f.read(4), dtype=np.int32)[0]
-                    dims = np.frombuffer(f.read(8 * dim_count), dtype=np.int64)
+                    f.read(8 * dim_count)  # 跳过 dims 字段（比对只关心数据本身）
                     tmp_out_raw = np.frombuffer(f.read(), dtype=np.float16)
                 else:
                     tmp_out_raw = np.fromfile(out, np.float16)
@@ -85,8 +94,8 @@ def compare_data(dtype):
             data_same = False
             continue
 
-        diff_res = np.isclose(tmp_out, tmp_gold, precision, precision, True)
-        diff_idx = np.where(diff_res != True)[0]
+        diff_res = np.isclose(tmp_out, tmp_gold, precision, precision)
+        diff_idx = np.where(~diff_res)[0]
 
         if len(diff_idx) == 0:
             print(f"PASSED! {out}")

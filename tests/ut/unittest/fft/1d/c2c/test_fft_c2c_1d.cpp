@@ -27,9 +27,6 @@ using namespace AsdSip;
 using namespace Mki;
 
 namespace {
-constexpr float ATOL = 0.001;
-constexpr float RTOL = 0.001;
-
 std::string GetC2COutputDirectory()
 {
     const char* current_dir_env = std::getenv("CURRENT_DIR");
@@ -42,16 +39,14 @@ std::string GetC2COutputDirectory()
 
 void RunFftC2CTest(int64_t batch, int64_t nfft, asdFftDirection direction)
 {
-    std::string originPath = GetC2COutputDirectory() + "/tests/ut/unittest/fft/1d/c2c/c2c_data";
-    std::string destPath = GetC2COutputDirectory() + "/build/tests/ut/unittest/fft/1d/c2c";
-    std::string mkdir_cmd = "mkdir -p " + destPath;
-    std::string copy_cmd = "cp -rf " + originPath + " " + destPath;
-    std::string chmod_cmd = "chmod -R 755 " + destPath + "/c2c_data/";
-    system(mkdir_cmd.c_str());
-    system(copy_cmd.c_str());
-    system(chmod_cmd.c_str());
+    // suite 级一次性目录准备（替代原每用例 3 次 system(mkdir/cp/chmod)，UT 提效）
+    static std::string destPath = PrepareDataDirOnce(GetC2COutputDirectory(), "fft/1d/c2c", "c2c_data");
+    std::string dataDir = destPath + "/c2c_data";
 
     std::string dirStr = (direction == asdFftDirection::ASCEND_FFT_FORWARD) ? "forward" : "inverse";
+    // golden 按 direction 区分文件名，消除正/逆用例共用文件的时序耦合
+    std::string goldenFile = dataDir + "/complex64_golden_c2c" +
+                             (direction == asdFftDirection::ASCEND_FFT_FORWARD ? "" : "_inv") + ".bin";
 
     int deviceId = 0;
     int64_t inSignal = nfft;
@@ -75,9 +70,13 @@ void RunFftC2CTest(int64_t batch, int64_t nfft, asdFftDirection direction)
         SaveTensorToBin(context.inTensors[i], destPath + "/c2c_data/" + filename);
     }
 
-    std::string gen_data_cmd = "cd " + destPath + "/c2c_data/" + " && python3 gen_data.py --batch " +
+    // golden 生成：input bin 由本用例随机生成，golden 必须按本用例参数重算，
+    // 目录拷贝已一次化，python 调用保留（np.fft 精度基准）
+    std::string gen_data_cmd = "cd " + ShellQuote(dataDir) + " && python3 gen_data.py --batch " +
                                std::to_string(batch) + " --nfft " + std::to_string(nfft) + " --direction " + dirStr;
-    system(gen_data_cmd.c_str());
+    // golden 生成失败必须失败用例，否则残留旧参数的 golden 会造成"假通过"
+    int genRes = system(gen_data_cmd.c_str());
+    ASSERT_EQ(genRes, 0);
 
     aclTensor* aclInput = nullptr;
     aclTensor* aclOutput = nullptr;
@@ -145,13 +144,18 @@ void RunFftC2CTest(int64_t batch, int64_t nfft, asdFftDirection direction)
         aclrtFree(workspaceAddr);
     }
 
-    OpTestEnd(deviceId, context, stream);
-
-    std::string cmp_data_cmd = "cd " + destPath + "/c2c_data/" + " && python3 compare_data.py --batch " +
-                               std::to_string(batch) + " --nfft " + std::to_string(nfft);
-    int res = system(cmp_data_cmd.c_str());
-    std::cout << "compare result = " << res << std::endl;
+    // 比对 C++ 化：直接用 host 内存与 golden bin 对比（isclose 语义复刻），
+    // 消除每用例一次 python3 进程启动开销（UT 提效）。
+    // 注意：必须在 OpTestEnd 之前完成——OpTestEnd 释放 tensor host 内存
+    double maxAbsErr = 0.0, maxRelErr = 0.0;
+    int64_t numel = batch * nfft;
+    int res = CompareGoldenWithOutput(goldenFile, outputTensor.hostData, static_cast<size_t>(numel), true, 1e-3, 1e-5,
+                                      &maxAbsErr, &maxRelErr);
+    std::cout << "compare result = " << (res == 0 ? 0 : 1) << " (mismatch=" << res << ", max_abs=" << maxAbsErr
+              << ", max_rel=" << maxRelErr << ")" << std::endl;
     ASSERT_EQ(res, 0);
+
+    OpTestEnd(deviceId, context, stream);
 }
 
 } // namespace
