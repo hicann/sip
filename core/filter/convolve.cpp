@@ -33,7 +33,7 @@ AsdSip::AspbStatus asdConvolve(const aclTensor* signal, const aclTensor* kernel,
     CHECK_STATUS_WITH_ACL_RETURN(
         aclGetStorageShape(static_cast<const aclTensor*>(signal), &storageDims, &storageDimsNum),
         "asdConvolve: aclGetStorageShape");
-    if (*storageDims <= 0 || storageDimsNum > DIMS_TWO) {
+    if (*storageDims <= 0 || storageDimsNum != DIMS_TWO) {
         delete[] storageDims;
         storageDims = nullptr;
         ASDSIP_ELOG(ErrorType::ACL_ERROR_OP_INPUT_NOT_MATCH) << "asdConvolve get wrong inputs.";
@@ -101,10 +101,21 @@ AspbStatus asdConvolveGetWorkspaceSize(int64_t signalLen, int64_t kernelLen, siz
     ASDSIP_ECHECK(signalLen > 0 && kernelLen > 0, "asdConvolveGetWorkspaceSize get invalid params",
                   AsdSip::ErrorType::ACL_ERROR_INVALID_PARAM);
 
-    size_t workspaceColNum = BASE_COL_BLOCK + static_cast<size_t>(kernelLen * DIMS_TWO - DIMS_TWO);
-    size_t workspaceRowNum = workspaceColNum + static_cast<size_t>(kernelLen * DIMS_TWO - DIMS_TWO);
-    size = workspaceColNum * workspaceRowNum;
-    size = size * sizeof(float);
+    if (kernelLen > (static_cast<int64_t>(SIZE_MAX) / DIMS_TWO / DIMS_TWO)) {
+        ASDSIP_ELOG(ErrorType::ACL_ERROR_INVALID_PARAM)
+            << "asdConvolveGetWorkspaceSize get too large kernelLen: " << kernelLen;
+        return ErrorType::ACL_ERROR_INVALID_PARAM;
+    }
+    size_t kernelSize = static_cast<size_t>(kernelLen);
+    size_t workspaceColNum = BASE_COL_BLOCK + kernelSize * DIMS_TWO - DIMS_TWO;
+    size_t workspaceRowNum = workspaceColNum + kernelSize * DIMS_TWO - DIMS_TWO;
+    if (workspaceRowNum > SIZE_MAX / workspaceColNum ||
+        workspaceColNum * workspaceRowNum > SIZE_MAX / sizeof(float)) {
+        ASDSIP_ELOG(ErrorType::ACL_ERROR_INVALID_PARAM)
+            << "asdConvolveGetWorkspaceSize overflow, kernelLen: " << kernelLen;
+        return ErrorType::ACL_ERROR_INVALID_PARAM;
+    }
+    size = workspaceColNum * workspaceRowNum * sizeof(float);
 
     return ErrorType::ACL_SUCCESS;
 }

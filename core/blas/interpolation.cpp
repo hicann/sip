@@ -120,7 +120,6 @@ AspbStatus rsInterpolationBySinc(const aclTensor *inputTensor, const aclTensor *
     Mki::Status status = RunAsdOpsV2(stream, opDesc, inTensors, outTensors, (uint8_t *)workSpace);
     ASDSIP_ECHECK(status.Ok(), status.Message(), ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
-    outputTensor = outTensors.at(0);
 
     ASDSIP_LOG(INFO) << "Execute interpolation success.";
     return ErrorType::ACL_SUCCESS;

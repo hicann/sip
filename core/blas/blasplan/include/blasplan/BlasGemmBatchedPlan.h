@@ -25,6 +25,7 @@ public:
 
 public:
     aclTensor* gatherOffsets{nullptr};
+    void* gatherOffsetsDeviceAddr{nullptr};
 };
 
 // for complex<float>
@@ -38,6 +39,7 @@ public:
 
 public:
     aclTensor* gatherOffsets{nullptr};
+    void* gatherOffsetsDeviceAddr{nullptr};
 };
 
 }

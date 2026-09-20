@@ -56,12 +56,16 @@ AspbStatus CgemmDtypeCheck(struct CgemmTensorParam parm)
     return ErrorType::ACL_SUCCESS;
 }
 
-AspbStatus CgemmShapeCheck(struct CgemmTensorParam parm)
+AspbStatus CgemmShapeCheck(struct CgemmTensorParam parm, const int64_t expectedA, const int64_t expectedB,
+                           const int64_t expectedC)
 {
     auto ret = ErrorType::ACL_ERROR_OP_INPUT_NOT_MATCH;
     SIP_OP_CHECK_INVALID_SHAPE(parm.A, ret);
     SIP_OP_CHECK_INVALID_SHAPE(parm.B, ret);
     SIP_OP_CHECK_INVALID_SHAPE(parm.C, ret);
+    SIP_OP_CHECK_NUM_NOT_MATCH(parm.A, expectedA, ret);
+    SIP_OP_CHECK_NUM_NOT_MATCH(parm.B, expectedB, ret);
+    SIP_OP_CHECK_NUM_NOT_MATCH(parm.C, expectedC, ret);
     return ErrorType::ACL_SUCCESS;
 }
 
@@ -81,7 +85,9 @@ AspbStatus asdBlasCgemm(asdBlasHandle handle, asdBlasOperation_t transa, asdBlas
     ASDSIP_CHECK(ret == ErrorType::ACL_SUCCESS, "blas asdBlasCgemm dtype check failed.",
                  return ErrorType::ACL_ERROR_UNSUPPORTED_DATA_TYPE);
 
-    ret = CgemmShapeCheck(parm);
+    int64_t aCols = (transa == asdBlasOperation_t::ASDBLAS_OP_N) ? k : m;
+    int64_t bCols = (transb == asdBlasOperation_t::ASDBLAS_OP_N) ? n : k;
+    ret = CgemmShapeCheck(parm, lda * aCols, ldb * bCols, ldc * n);
     ASDSIP_CHECK(ret == ErrorType::ACL_SUCCESS, "blas asdBlasCgemm shape check failed.",
                  return ErrorType::ACL_ERROR_OP_INPUT_NOT_MATCH);
 
@@ -151,14 +157,14 @@ AspbStatus asdBlasMakeCgemmPlan(asdBlasHandle handle, asdBlasOperation_t transa,
     AsdSip::BlasCgemmPlan* plan = nullptr;
     try {
         plan = new AsdSip::BlasCgemmPlan({transa, transb, m, n, k, lda, ldb, ldc});
-        BlasPlanCache::MakePlan(handle, plan);
-    } catch (const std::exception& e) {
-        if (plan != nullptr) {
+        if (!BlasPlanCache::MakePlan(handle, plan)) {
             delete plan;
+            ASDSIP_ELOG(ErrorType::ACL_ERROR_INVALID_PARAM) << "blas handle already bound to a plan, repeated initialization is not allowed.";
+            return ErrorType::ACL_ERROR_INVALID_PARAM;
         }
-        delete static_cast<int*>(handle);
+    } catch (const std::exception& e) {
         ASDSIP_ELOG(ErrorType::ACL_ERROR_INTERNAL_ERROR) << "Make Cgemm Plan failed: " << e.what();
-        throw std::runtime_error("Make Cgemm Plan failed.");
+        return ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }
     if (plan->CreateTensor() != ErrorType::ACL_SUCCESS) {
         plan->MarkFailed();

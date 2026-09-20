@@ -269,11 +269,12 @@ bool FFTCoreAny::PreAllocateInDevice()
 size_t FFTCoreAny::EstimateWorkspaceSize()
 {
     if (problemDesc.fftType == asdFftType::ASCEND_FFT_C2R) {
-        return getAlignedSize(problemDesc.nDoing * problemDesc.batch * K_SIZE_OF_COMPLEX_64 *
+        return getAlignedSize(static_cast<size_t>(problemDesc.nDoing) * problemDesc.batch * K_SIZE_OF_COMPLEX_64 *
                               DOUBLE_SIZE_OF_COMPLEX_64 * BUFFER_NUM) +
                getAlignedSize(ASYNC_WORKSPACE_SIZE);
     } else {
-        return getAlignedSize(problemDesc.nDoing * problemDesc.batch * K_SIZE_OF_COMPLEX_64 * BUFFER_NUM) +
+        return getAlignedSize(static_cast<size_t>(problemDesc.nDoing) * problemDesc.batch * K_SIZE_OF_COMPLEX_64 *
+                              BUFFER_NUM) +
                getAlignedSize(ASYNC_WORKSPACE_SIZE);
     }
 }

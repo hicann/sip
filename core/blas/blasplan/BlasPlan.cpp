@@ -78,10 +78,7 @@ void BlasPlan::SetStream(void *asdBalsStream)
 // 释放Plan相关的data
 void BlasPlan::DestroyPlanData()
 {
-    if (workspace != nullptr) {
-        Mki::MkiRtMemFreeDevice(workspace);
-        workspace = nullptr;
-    }
+    workspace = nullptr;
     FreeTensor();
 }
 

@@ -108,7 +108,7 @@ __aicore__ __inline__ __attribute__((always_inline)) void compute(
     AscendC::LocalTensor<float> ub_out,
     AscendC::GlobalTensor<float> A,
     float alphaReal, float alphaImag,
-    int32_t x_id,
+    int64_t x_id,
     int64_t calNum,  // 复数个数
     int64_t offset, uint32_t event_id)
 {

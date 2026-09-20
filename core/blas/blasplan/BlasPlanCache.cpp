@@ -9,11 +9,15 @@
  */
 #include <memory>
 #include <unordered_map>
+#include <unordered_set>
 #include "include/blasplan/BlasPlanCache.h"
 
 namespace BlasPlanCache {
 
 static std::unordered_map<AsdSip::asdBlasHandle, std::unique_ptr<AsdSip::BlasPlan>> plans;
+
+// handle 活性注册表：与 plan 绑定状态解耦，供 asdBlasDestroy 释放孤儿 handle 并防重复销毁
+static std::unordered_set<AsdSip::asdBlasHandle> liveHandles;
 
 bool MakePlan(AsdSip::asdBlasHandle& handle, AsdSip::BlasPlan* plan)
 {
@@ -29,7 +33,18 @@ bool MakePlan(AsdSip::asdBlasHandle& handle, AsdSip::BlasPlan* plan)
 AsdSip::asdBlasHandle InitHandle()
 {
     AsdSip::asdBlasHandle handle = new int();
+    liveHandles.insert(handle);
     return handle;
+}
+
+bool isHandleLive(AsdSip::asdBlasHandle& handle)
+{
+    return liveHandles.find(handle) != liveHandles.end();
+}
+
+void unregisterHandle(AsdSip::asdBlasHandle& handle)
+{
+    liveHandles.erase(handle);
 }
 
 bool doesPlanExist(AsdSip::asdBlasHandle& handle)

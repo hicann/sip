@@ -18,6 +18,12 @@ bool MakePlan(AsdSip::asdBlasHandle& handle, AsdSip::BlasPlan* plan);
 
 AsdSip::asdBlasHandle InitHandle();
 
+// handle 活性查询，需持有 blas_mtx
+bool isHandleLive(AsdSip::asdBlasHandle& handle);
+
+// 从活性注册表注销，需持有 blas_mtx
+void unregisterHandle(AsdSip::asdBlasHandle& handle);
+
 bool doesPlanExist(AsdSip::asdBlasHandle& handle);
 
 AsdSip::BlasPlan& getPlan(AsdSip::asdBlasHandle& handle);

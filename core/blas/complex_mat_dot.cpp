@@ -39,6 +39,9 @@ AspbStatus ComplexMatDotShapeCheck(ComplexMatDotTensorParam param, const int64_t
     SIP_OP_CHECK_INVALID_SHAPE(param.matx, ret);
     SIP_OP_CHECK_INVALID_SHAPE(param.maty, ret);
     SIP_OP_CHECK_INVALID_SHAPE(param.result, ret);
+    SIP_OP_CHECK_NUM_NOT_MATCH(param.matx, m * n, ret);
+    SIP_OP_CHECK_NUM_NOT_MATCH(param.maty, m * n, ret);
+    SIP_OP_CHECK_NUM_NOT_MATCH(param.result, m * n, ret);
     return ErrorType::ACL_SUCCESS;
 }
 
@@ -96,14 +99,14 @@ AspbStatus asdBlasMakeComplexMatDotPlan(asdBlasHandle handle)
     AsdSip::BlasComplexMatDotPlan* plan = nullptr;
     try {
         plan = new AsdSip::BlasComplexMatDotPlan();
-        BlasPlanCache::MakePlan(handle, plan);
-    } catch (const std::exception& e) {
-        if (plan != nullptr) {
+        if (!BlasPlanCache::MakePlan(handle, plan)) {
             delete plan;
+            ASDSIP_ELOG(ErrorType::ACL_ERROR_INVALID_PARAM) << "blas handle already bound to a plan, repeated initialization is not allowed.";
+            return ErrorType::ACL_ERROR_INVALID_PARAM;
         }
-        delete static_cast<int*>(handle);
+    } catch (const std::exception& e) {
         ASDSIP_ELOG(ErrorType::ACL_ERROR_INTERNAL_ERROR) << "Make ComplexMatDot Plan failed: " << e.what();
-        throw std::runtime_error("Make ComplexMatDot Plan failed.");
+        return ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }
     if (plan->CreateTensor() != ErrorType::ACL_SUCCESS) {
         plan->MarkFailed();

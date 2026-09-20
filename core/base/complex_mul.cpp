@@ -21,29 +21,32 @@ using namespace Mki;
 using namespace AsdSip;
 
 namespace AsdSip {
-AspbStatus asdMul(int n, const aclTensor *x, const aclTensor *y, aclTensor *z, void *stream, void *workspace)
+static AspbStatus GetStorageElementCount(const aclTensor *tensor, int64_t &elementCount)
 {
     int64_t *storageDims = nullptr;
     uint64_t storageDimsNum = 0;
-    CHECK_STATUS_WITH_ACL_RETURN(aclGetStorageShape(x, &storageDims, &storageDimsNum), "asdMul: aclGetStorageShape");
-    int64_t sizeX = (*storageDims) * static_cast<int64_t>(storageDimsNum);
-
-    delete[] storageDims;
-    storageDims = nullptr;
-
-    CHECK_STATUS_WITH_ACL_RETURN(aclGetStorageShape(y, &storageDims, &storageDimsNum), "asdMul: aclGetStorageShape");
-    int64_t sizeY = (*storageDims) * static_cast<int64_t>(storageDimsNum);
-
-    delete[] storageDims;
-    storageDims = nullptr;
-
-    CHECK_STATUS_WITH_ACL_RETURN(aclGetStorageShape(z, &storageDims, &storageDimsNum), "asdMul: aclGetStorageShape");
-    int64_t sizeZ = (*storageDims) * static_cast<int64_t>(storageDimsNum);
-
-    if (storageDims != nullptr) {
-        delete[] storageDims;
-        storageDims = nullptr;
+    CHECK_STATUS_WITH_ACL_RETURN(aclGetStorageShape(tensor, &storageDims, &storageDimsNum), "asdMul: aclGetStorageShape");
+    int64_t count = 1;
+    for (uint64_t i = 0; i < storageDimsNum; i++) {
+        if (storageDims[i] <= 0) {
+            count = 0;
+            break;
+        }
+        count *= storageDims[i];
     }
+    delete[] storageDims;
+    elementCount = count;
+    return ErrorType::ACL_SUCCESS;
+}
+
+AspbStatus asdMul(int n, const aclTensor *x, const aclTensor *y, aclTensor *z, void *stream, void *workspace)
+{
+    int64_t sizeX = 0;
+    CHECK_STATUS_WITH_ACL_RETURN(GetStorageElementCount(x, sizeX), "asdMul: aclGetStorageShape");
+    int64_t sizeY = 0;
+    CHECK_STATUS_WITH_ACL_RETURN(GetStorageElementCount(y, sizeY), "asdMul: aclGetStorageShape");
+    int64_t sizeZ = 0;
+    CHECK_STATUS_WITH_ACL_RETURN(GetStorageElementCount(z, sizeZ), "asdMul: aclGetStorageShape");
 
     op::DataType dataTypeX = op::DataType::DT_UNDEFINED;
     dataTypeX = x->GetDataType();

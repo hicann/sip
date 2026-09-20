@@ -36,8 +36,12 @@ AspbStatus asdBlasDotImpl(asdBlasHandle handle, DotImplParam implParam, int64_t 
     int64_t* storageDims = nullptr;
     uint64_t dotStorageDimsNum = 0;
     int64_t checkSize = 0;
-    CHECK_STATUS_WITH_ACL_RETURN(aclGetStorageShape(implParam.x, &storageDims, &dotStorageDimsNum),
-                                 "asdBlasDotImpl: aclGetStorageShape");
+    auto aclRet = aclGetStorageShape(implParam.x, &storageDims, &dotStorageDimsNum);
+    if (aclRet != 0) {
+        delete[] storageDims; // 防御性释放: ACL 失败时输出参数状态未知
+        ASDSIP_LOG(ERROR) << "asdBlasDotImpl: aclGetStorageShape fail, aclError code is: " << aclRet;
+        return ::ACL_ERROR_INTERNAL_ERROR;
+    }
     checkSize = sdot == 1 ? *storageDims : *storageDims * ELEMENTS_EACH_COMPLEX64;
     if (checkSize != implParam.n) {
         delete[] storageDims;
@@ -49,8 +53,12 @@ AspbStatus asdBlasDotImpl(asdBlasHandle handle, DotImplParam implParam, int64_t 
     delete[] storageDims;
     storageDims = nullptr;
 
-    CHECK_STATUS_WITH_ACL_RETURN(aclGetStorageShape(implParam.y, &storageDims, &dotStorageDimsNum),
-                                 "asdBlasDotImpl: aclGetStorageShape");
+    aclRet = aclGetStorageShape(implParam.y, &storageDims, &dotStorageDimsNum);
+    if (aclRet != 0) {
+        delete[] storageDims;
+        ASDSIP_LOG(ERROR) << "asdBlasDotImpl: aclGetStorageShape fail, aclError code is: " << aclRet;
+        return ::ACL_ERROR_INTERNAL_ERROR;
+    }
     checkSize = sdot == 1 ? *storageDims : *storageDims * ELEMENTS_EACH_COMPLEX64;
     if (checkSize != implParam.n) {
         delete[] storageDims;
@@ -59,10 +67,8 @@ AspbStatus asdBlasDotImpl(asdBlasHandle handle, DotImplParam implParam, int64_t 
         return ErrorType::ACL_ERROR_OP_INPUT_NOT_MATCH;
     }
 
-    if (storageDims != nullptr) {
-        delete[] storageDims;
-        storageDims = nullptr;
-    }
+    delete[] storageDims;
+    storageDims = nullptr;
 
     ASDSIP_ECHECK(implParam.n > 0, "blas asdBlasDotImpl get wrong input n, please check.",
                   ErrorType::ACL_ERROR_INVALID_PARAM);
@@ -178,14 +184,14 @@ AspbStatus asdBlasMakeDotPlan(asdBlasHandle handle)
     AsdSip::BlasDotPlan* plan = nullptr;
     try {
         plan = new AsdSip::BlasDotPlan();
-        BlasPlanCache::MakePlan(handle, plan);
-    } catch (const std::exception& e) {
-        if (plan != nullptr) {
+        if (!BlasPlanCache::MakePlan(handle, plan)) {
             delete plan;
+            ASDSIP_ELOG(ErrorType::ACL_ERROR_INVALID_PARAM) << "blas handle already bound to a plan, repeated initialization is not allowed.";
+            return ErrorType::ACL_ERROR_INVALID_PARAM;
         }
-        delete static_cast<int*>(handle);
+    } catch (const std::exception& e) {
         ASDSIP_ELOG(ErrorType::ACL_ERROR_INTERNAL_ERROR) << "Make Dot Plan failed: " << e.what();
-        throw std::runtime_error("Make Dot Plan failed.");
+        return ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }
     plan->MarkInitialized();
     return ErrorType::ACL_SUCCESS;

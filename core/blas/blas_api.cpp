@@ -36,11 +36,14 @@ AspbStatus asdBlasSetStream(asdBlasHandle handle, void* stream)
 AspbStatus asdBlasDestroy(asdBlasHandle handle)
 {
     std::lock_guard<std::mutex> lock(blas_mtx);
-    if (!BlasPlanCache::doesPlanExist(handle)) {
-        ASDSIP_LOG(ERROR) << "blas plan does not exist.";
+    if (!BlasPlanCache::isHandleLive(handle)) {
+        ASDSIP_LOG(ERROR) << "blas handle invalid or already destroyed.";
         return ErrorType::ACL_ERROR_INVALID_PARAM;
     }
-    BlasPlanCache::destroy_plan(handle);
+    if (BlasPlanCache::doesPlanExist(handle)) {
+        BlasPlanCache::destroy_plan(handle);
+    }
+    BlasPlanCache::unregisterHandle(handle);
     delete static_cast<int*>(handle);
     ASDSIP_LOG(INFO) << "BlasHandle destroy.";
     return ErrorType::ACL_SUCCESS;

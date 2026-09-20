@@ -48,6 +48,7 @@ AsdSip::AspbStatus BlasHCgemmBatchedPlan::CreateTensor()
     void* deviceAddr{nullptr};
     auto ret = aclrtMalloc(&deviceAddr, GATHER_OFFSETS_SIZE * sizeof(uint32_t), ACL_MEM_MALLOC_HUGE_FIRST);
     ASDSIP_ECHECK(ret == 0, "Malloc gather-offsets in device failed.", ErrorType::ACL_ERROR_INTERNAL_ERROR);
+    gatherOffsetsDeviceAddr = deviceAddr;
 
     // sync version
     ret = aclrtMemcpy(deviceAddr, GATHER_OFFSETS_SIZE * sizeof(uint32_t), offsets.data(), GATHER_OFFSETS_SIZE * sizeof(uint32_t), ACL_MEMCPY_HOST_TO_DEVICE);
@@ -55,7 +56,6 @@ AsdSip::AspbStatus BlasHCgemmBatchedPlan::CreateTensor()
 
     gatherOffsets = aclCreateTensor(shape, ONE, aclDataType::ACL_UINT32,
         stride, 0, aclFormat::ACL_FORMAT_ND, shape, ONE, deviceAddr);
-
     ASDSIP_ECHECK(gatherOffsets != nullptr, "Create gather-offsets aclTensor failed.", ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
     return ErrorType::ACL_SUCCESS;
@@ -64,6 +64,11 @@ AsdSip::AspbStatus BlasHCgemmBatchedPlan::CreateTensor()
 AsdSip::AspbStatus BlasHCgemmBatchedPlan::FreeTensor()
 {
     aclDestroyTensor(gatherOffsets);
+    gatherOffsets = nullptr;
+    if (gatherOffsetsDeviceAddr != nullptr) {
+        aclrtFree(gatherOffsetsDeviceAddr);
+        gatherOffsetsDeviceAddr = nullptr;
+    }
 
     return ErrorType::ACL_SUCCESS;
 }
@@ -108,23 +113,17 @@ AsdSip::AspbStatus BlasCgemmBatchedPlan::CreateTensor()
     void* deviceAddr{nullptr};
     auto ret = aclrtMalloc(&deviceAddr, GATHER_OFFSETS_SIZE * sizeof(uint32_t), ACL_MEM_MALLOC_HUGE_FIRST);
     ASDSIP_ECHECK(ret == 0, "Malloc gather-offsets in device failed.", ErrorType::ACL_ERROR_INTERNAL_ERROR);
+    gatherOffsetsDeviceAddr = deviceAddr;
 
     // sync version
     ret = aclrtMemcpy(
         deviceAddr, GATHER_OFFSETS_SIZE * sizeof(uint32_t), offsets.data(), GATHER_OFFSETS_SIZE * sizeof(uint32_t),
         ACL_MEMCPY_HOST_TO_DEVICE);
-    if (ret != 0) {
-        aclrtFree(deviceAddr);
-    }
     ASDSIP_ECHECK(ret == 0, "Memcpy gather-offsets to device failed.", ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
     gatherOffsets = aclCreateTensor(shape, ONE, aclDataType::ACL_UINT32,
         stride, 0, aclFormat::ACL_FORMAT_ND, shape, ONE, deviceAddr);
-    if (gatherOffsets == nullptr) {
-        aclrtFree(deviceAddr);
-    }
-    ASDSIP_ECHECK(
-        gatherOffsets != nullptr, "Create gather-offsets aclTensor failed.", ErrorType::ACL_ERROR_INTERNAL_ERROR);
+    ASDSIP_ECHECK(gatherOffsets != nullptr, "Create gather-offsets aclTensor failed.", ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
     return ErrorType::ACL_SUCCESS;
 }
@@ -132,6 +131,11 @@ AsdSip::AspbStatus BlasCgemmBatchedPlan::CreateTensor()
 AsdSip::AspbStatus BlasCgemmBatchedPlan::FreeTensor()
 {
     aclDestroyTensor(gatherOffsets);
+    gatherOffsets = nullptr;
+    if (gatherOffsetsDeviceAddr != nullptr) {
+        aclrtFree(gatherOffsetsDeviceAddr);
+        gatherOffsetsDeviceAddr = nullptr;
+    }
 
     return ErrorType::ACL_SUCCESS;
 }

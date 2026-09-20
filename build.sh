@@ -133,7 +133,7 @@ function fn_build_googletest()
     if [ ! -d $GTEST_DIR ]; then
         [[ ! -d $THIRD_PARTY_DIR_PATH ]] && mkdir -p $THIRD_PARTY_DIR_PATH
         cd $THIRD_PARTY_DIR_PATH
-        wget --no-check-certificate https://gitcode.com/cann-src-third-party/googletest/releases/download/v1.14.0/googletest-1.14.0.tar.gz
+        wget https://gitcode.com/cann-src-third-party/googletest/releases/download/v1.14.0/googletest-1.14.0.tar.gz
         tar -xf googletest-1.14.0.tar.gz
         rm googletest-1.14.0.tar.gz
     fi

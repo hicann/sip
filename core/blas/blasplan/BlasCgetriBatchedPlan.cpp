@@ -190,7 +190,7 @@ AsdSip::AspbStatus BlasCgetriBatchedPlan::CreateTensor()
 }
 
 
-void BlasCgetriBatchedPlan::FreeTensorData(Tensor input) const
+void BlasCgetriBatchedPlan::FreeTensorData(Tensor &input) const
 {
     if (input.data != nullptr) {
         FreeTensorInDevice(input);

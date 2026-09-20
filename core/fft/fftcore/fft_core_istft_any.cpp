@@ -285,8 +285,8 @@ size_t FFTCoreIstftAny::EstimateWorkspaceSize()
     size_t expandSize = WindowExpandSize();
     size_t sliceSize = SliceSize();
 
-    return unfoldBufferSize + getAlignedSize(ASYNC_WORKSPACE_SIZE) + tempCp64BufferSize + expandSize + sliceSize +
-           TempYSize();
+    return unfoldBufferSize + getAlignedSize(ASYNC_WORKSPACE_SIZE) + getAlignedSize(tempCp64BufferSize) +
+           getAlignedSize(expandSize) + getAlignedSize(sliceSize) + getAlignedSize(TempYSize());
 }
 
 void FFTCoreIstftAny::Run(Tensor &input, Tensor &window, Tensor &output, void *stream, workspace::Workspace &workspace)

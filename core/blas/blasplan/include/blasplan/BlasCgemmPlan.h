@@ -39,8 +39,8 @@ public:
 public:
     explicit BlasCgemmPlan(CgemmPlanParam planParam);
     AsdSip::AspbStatus CreateTensor() override;
-    void FreeGivenTensor(Mki::Tensor tensor) const;
-    void FreeAclTensors(Mki::SVector<aclTensor *> aclTensorList) const;
+    void FreeGivenTensor(Mki::Tensor &tensor) const;
+    void FreeAclTensors(Mki::SVector<aclTensor *> &aclTensorList) const;
     AsdSip::AspbStatus FreeTensor() override;
     int64_t GetWorkspaceSize() override;
     BlasCgemmPlan();

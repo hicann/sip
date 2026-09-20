@@ -36,7 +36,7 @@ private:
     void GenWorkAclTensor();
     void GenOffsetAndEyeMatData(std::vector<uint32_t> &gatherBuf1, std::vector<uint32_t> &gatherBuf2,
         std::vector<uint32_t> &gatherBuf3, std::vector<float> &eyeBuf) const;
-    void FreeTensorData(Tensor input) const;
+    void FreeTensorData(Tensor &input) const;
 
     int64_t n;
     int64_t batchSize;

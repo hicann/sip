@@ -1182,11 +1182,16 @@ AspbStatus asdFftGetWorkspaceSize(asdFftHandle handle, size_t& workspaceSize)
         return ErrorType::ACL_ERROR_INVALID_PARAM;
     }
     FFTPlan& plan = FFTPlanCache::getPlan(handle);
-    workspaceSize = 0;
-    if (shouldAllocTempCaches(plan)) {
-        workspaceSize += computeTempCachesSize(plan);
+    try {
+        workspaceSize = 0;
+        if (shouldAllocTempCaches(plan)) {
+            workspaceSize += computeTempCachesSize(plan);
+        }
+        workspaceSize += computeWorkspaceSize(plan);
+    } catch (const std::exception& e) {
+        ASDSIP_LOG(ERROR) << "asdFftGetWorkspaceSize failed: " << e.what();
+        return AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }
-    workspaceSize += computeWorkspaceSize(plan);
     return AsdSip::ErrorType::ACL_SUCCESS;
 }
 
@@ -1304,7 +1309,7 @@ AspbStatus asdFftExecV2(FFTPlan& plan, const aclTensor* input, const aclTensor* 
 
 bool matchC2C_(const FFTPlan& plan, const aclTensor* input)
 {
-    if (input == nullptr) {
+    if (input == nullptr || plan.fftStrides.empty() || plan.fftSizes.empty()) {
         return false;
     }
 
@@ -1353,7 +1358,7 @@ bool matchC2C_(const FFTPlan& plan, const aclTensor* input)
 
 bool matchC2R_(const FFTPlan& plan, const aclTensor* input)
 {
-    if (input == nullptr) {
+    if (input == nullptr || plan.fftStrides.empty() || plan.fftSizes.empty()) {
         return false;
     }
 
@@ -1402,7 +1407,7 @@ bool matchC2R_(const FFTPlan& plan, const aclTensor* input)
 
 bool matchR2C_(const FFTPlan& plan, const aclTensor* input)
 {
-    if (input == nullptr) {
+    if (input == nullptr || plan.fftStrides.empty() || plan.fftSizes.empty()) {
         return false;
     }
 
@@ -1451,6 +1456,7 @@ AsdSip::AspbStatus asdFftExecC2C(asdFftHandle handle, const aclTensor* input, co
     }
     FFTPlan& plan = FFTPlanCache::getPlan(handle);
 
+    ASDSIP_ECHECK(plan.isInitialized(), "plan is not initialized.", ErrorType::ACL_ERROR_INVALID_PARAM);
     if (!matchC2C_(plan, input)) {
         ASDSIP_LOG(ERROR) << "input does not match plan.";
         return ErrorType::ACL_ERROR_INVALID_PARAM;
@@ -1473,6 +1479,7 @@ AspbStatus asdFftExecC2R(asdFftHandle handle, const aclTensor* input, const aclT
     }
     FFTPlan& plan = FFTPlanCache::getPlan(handle);
 
+    ASDSIP_ECHECK(plan.isInitialized(), "plan is not initialized.", ErrorType::ACL_ERROR_INVALID_PARAM);
     if (!matchC2R_(plan, input)) {
         ASDSIP_LOG(ERROR) << "input does not match plan.";
         return ErrorType::ACL_ERROR_INVALID_PARAM;
@@ -1495,6 +1502,7 @@ AspbStatus asdFftExecR2C(asdFftHandle handle, const aclTensor* input, const aclT
     }
     FFTPlan& plan = FFTPlanCache::getPlan(handle);
 
+    ASDSIP_ECHECK(plan.isInitialized(), "plan is not initialized.", ErrorType::ACL_ERROR_INVALID_PARAM);
     if (!matchR2C_(plan, input)) {
         ASDSIP_LOG(ERROR) << "input does not match plan.";
         return ErrorType::ACL_ERROR_INVALID_PARAM;
@@ -1627,8 +1635,19 @@ AspbStatus asdFftExecC2CSeparated(asdFftHandle handle, const aclTensor* inputRea
     delete[] viewDimsOutReal;
     delete[] viewDimsOutImag;
 
+    const aclTensor* sepTensors[4] = {inputReal, inputImag, outputReal, outputImag};
+    const char* sepNames[4] = {"inputReal", "inputImag", "outputReal", "outputImag"};
+    for (int i = 0; i < 4; i++) {
+        aclDataType sepDtype = aclDataType::ACL_DT_UNDEFINED;
+        auto dtypeRet = aclGetDataType(sepTensors[i], &sepDtype);
+        if (dtypeRet != 0 || sepDtype != aclDataType::ACL_FLOAT) {
+            ASDSIP_ELOG(ErrorType::ACL_ERROR_OP_INPUT_NOT_MATCH)
+                << "asdFftExecC2CSeparated requires FLOAT " << sepNames[i] << " tensor.";
+            return AsdSip::ErrorType::ACL_ERROR_OP_INPUT_NOT_MATCH;
+        }
+    }
     FFTPlan& plan = FFTPlanCache::getPlan(handle);
-
+    ASDSIP_ECHECK(plan.isInitialized(), "plan is not initialized.", ErrorType::ACL_ERROR_INVALID_PARAM);
     return asdFftExecV2Separated(plan, inputReal, inputImag, outputReal, outputImag);
 }
 

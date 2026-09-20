@@ -54,18 +54,18 @@ AspbStatus DddCoreSep::InitRotationMatrix(FFTCoreType coreType, int64_t fftN, st
             throw std::runtime_error("dddRotationMatrixHost malloc failed:.");
         }
 
-        float cosTable[fftN];
-        float sinTable[fftN];
+        std::vector<float> cosTable(static_cast<size_t>(fftN));
+        std::vector<float> sinTable(static_cast<size_t>(fftN));
         for (int64_t i = 0; i < fftN; i++) {
-            *(cosTable + i) = cos(flag * K_2PI * i / fftN);
-            *(sinTable + i) = sin(flag * K_2PI * i / fftN);
+            cosTable[i] = cos(flag * K_2PI * i / fftN);
+            sinTable[i] = sin(flag * K_2PI * i / fftN);
         }
         // construct real part and imag part
         for (int64_t i = 0; i < fftN; i++) {
             for (int64_t j = 0; j < fftN; j++) {
-                *(dddRotationMatrixHost + i * fftN + j) = *(cosTable + (i * j) % fftN); // a
-                *(dddRotationMatrixHost + fftN * fftN + i * fftN + j) = -1 * (*(sinTable + (i * j) % fftN)); // b
-                *(dddRotationMatrixHost + fftN * fftN * 2 + i * fftN + j) = 1 * (*(sinTable + (i * j) % fftN)); // -b
+                *(dddRotationMatrixHost + i * fftN + j) = cosTable[(i * j) % fftN]; // a
+                *(dddRotationMatrixHost + fftN * fftN + i * fftN + j) = -1 * sinTable[(i * j) % fftN]; // b
+                *(dddRotationMatrixHost + fftN * fftN * 2 + i * fftN + j) = 1 * sinTable[(i * j) % fftN]; // -b
             }
         }
 

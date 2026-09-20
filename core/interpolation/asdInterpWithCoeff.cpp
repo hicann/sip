@@ -112,7 +112,6 @@ AspbStatus asdInterpWithCoeff(const aclTensor* x, const aclTensor* coefficient, 
     Mki::Status status = RunAsdOpsV2(stream, opDesc, inTensors, outTensors, (uint8_t*)workSpace);
     ASDSIP_ECHECK(status.Ok(), status.Message(), ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
-    output = outTensors.at(0);
 
     return ErrorType::ACL_SUCCESS;
 }

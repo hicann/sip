@@ -117,14 +117,14 @@ AspbStatus asdBlasMakeSsyr2Plan(asdBlasHandle handle)
     AsdSip::BlasPlan* plan = nullptr;
     try {
         plan = new AsdSip::BlasPlan();
-        BlasPlanCache::MakePlan(handle, plan);
-    } catch (const std::exception& e) {
-        if (plan != nullptr) {
+        if (!BlasPlanCache::MakePlan(handle, plan)) {
             delete plan;
+            ASDSIP_ELOG(ErrorType::ACL_ERROR_INVALID_PARAM) << "blas handle already bound to a plan, repeated initialization is not allowed.";
+            return ErrorType::ACL_ERROR_INVALID_PARAM;
         }
-        delete static_cast<int*>(handle);
+    } catch (const std::exception& e) {
         ASDSIP_ELOG(ErrorType::ACL_ERROR_INTERNAL_ERROR) << "Make Ssyr2 Plan failed: " << e.what();
-        throw std::runtime_error("Make Ssyr2 Plan failed.");
+        return ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }
     plan->MarkInitialized();
     return ErrorType::ACL_SUCCESS;

@@ -136,6 +136,9 @@ static Status RunAsdOpsImpl(LaunchParam& launchParam, const AsdSip::OpDesc& opDe
 
     ASDSIP_LOG_IF(!statusInfo.Ok(), ERROR) << kernel->GetName() << " run fail, error:" << statusInfo.ToString();
     if (!statusInfo.Ok()) {
+        if (workspace == nullptr) {
+            FreeWorkspace(kernel->GetKernelInfo(), runInfo);
+        }
         return statusInfo;
     }
 
@@ -247,6 +250,9 @@ static Status RunAsdOpsImplV2(LaunchParam& launchParam, const AsdSip::OpDesc& op
 
     ASDSIP_LOG_IF(!status.Ok(), ERROR) << kernel->GetName() << " run fail, error:" << status.ToString();
     if (!status.Ok()) {
+        if (workspace == nullptr) {
+            FreeWorkspace(kernel->GetKernelInfo(), runInfo);
+        }
         return status;
     }
 

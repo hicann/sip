@@ -103,7 +103,6 @@ AspbStatus asdBlasCgemv(asdBlasHandle handle, asdBlasOperation_t trans, const in
         status = RunAsdOpsV2(plan.GetStream(), opDesc, inTensors, outTensors, plan.GetWorkspace());
         ASDSIP_ECHECK(status.Ok(), status.Message(), ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
-        y = outTensors.at(0);
 
         ASDSIP_LOG(INFO) << "Execute asdBlasCgemv success.";
         return ErrorType::ACL_SUCCESS;
@@ -132,14 +131,14 @@ AspbStatus asdBlasMakeCgemvPlan(asdBlasHandle handle, asdBlasOperation_t trans, 
     AsdSip::BlasCgemvPlan* plan = nullptr;
     try {
         plan = new AsdSip::BlasCgemvPlan(trans, m, n, y, incy);
-        BlasPlanCache::MakePlan(handle, plan);
-    } catch (const std::exception& e) {
-        if (plan != nullptr) {
+        if (!BlasPlanCache::MakePlan(handle, plan)) {
             delete plan;
+            ASDSIP_ELOG(ErrorType::ACL_ERROR_INVALID_PARAM) << "blas handle already bound to a plan, repeated initialization is not allowed.";
+            return ErrorType::ACL_ERROR_INVALID_PARAM;
         }
-        delete static_cast<int*>(handle);
+    } catch (const std::exception& e) {
         ASDSIP_ELOG(ErrorType::ACL_ERROR_INTERNAL_ERROR) << "Make Cgemv Plan failed: " << e.what();
-        throw std::runtime_error("Make Cgemv Plan failed.");
+        return ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }
     if (plan->CreateTensor() != ErrorType::ACL_SUCCESS) {
         plan->MarkFailed();

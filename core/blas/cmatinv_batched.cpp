@@ -218,14 +218,14 @@ AspbStatus makeCmatinvBatchedPlan(asdBlasHandle handle, const int64_t n)
     AsdSip::BlasCmatinvBatchedPlan* plan = nullptr;
     try {
         plan = new AsdSip::BlasCmatinvBatchedPlan(n);
-        BlasPlanCache::MakePlan(handle, plan);
-    } catch (const std::exception& e) {
-        if (plan != nullptr) {
+        if (!BlasPlanCache::MakePlan(handle, plan)) {
             delete plan;
+            ASDSIP_ELOG(ErrorType::ACL_ERROR_INVALID_PARAM) << "blas handle already bound to a plan, repeated initialization is not allowed.";
+            return ErrorType::ACL_ERROR_INVALID_PARAM;
         }
-        delete static_cast<int*>(handle);
+    } catch (const std::exception& e) {
         ASDSIP_ELOG(ErrorType::ACL_ERROR_INTERNAL_ERROR) << "Make CmatinvBatched Plan failed: " << e.what();
-        throw std::runtime_error("Make CmatinvBatched Plan failed.");
+        return ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }
     if (plan->CreateTensor() != ErrorType::ACL_SUCCESS) {
         plan->MarkFailed();
@@ -241,14 +241,14 @@ AspbStatus makeCgetriBatchedPlan(asdBlasHandle handle, const int64_t n, const in
     AsdSip::BlasCgetriBatchedPlan* plan = nullptr;
     try {
         plan = new AsdSip::BlasCgetriBatchedPlan(n, batchSize, dtype);
-        BlasPlanCache::MakePlan(handle, plan);
-    } catch (const std::exception& e) {
-        if (plan != nullptr) {
+        if (!BlasPlanCache::MakePlan(handle, plan)) {
             delete plan;
+            ASDSIP_ELOG(ErrorType::ACL_ERROR_INVALID_PARAM) << "blas handle already bound to a plan, repeated initialization is not allowed.";
+            return ErrorType::ACL_ERROR_INVALID_PARAM;
         }
-        delete static_cast<int*>(handle);
+    } catch (const std::exception& e) {
         ASDSIP_ELOG(ErrorType::ACL_ERROR_INTERNAL_ERROR) << "Make CmatinvBatched (n >= 32) Plan failed: " << e.what();
-        throw std::runtime_error("Make CmatinvBatched (n >= 32) Plan failed.");
+        return ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }
     if (plan->CreateTensor() != ErrorType::ACL_SUCCESS) {
         plan->MarkFailed();

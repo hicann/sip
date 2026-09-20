@@ -30,7 +30,7 @@ using namespace Mki;
 namespace AsdSip {
 BlasCgemmPlan::BlasCgemmPlan(CgemmPlanParam planParam) : BlasPlan(), planParam{planParam} {};
 
-AsdSip::AspbStatus MallocTensorImpl(SVector<Tensor>& tensorList, int tensorNum, int tensorSize,
+AsdSip::AspbStatus MallocTensorImpl(SVector<Tensor>& tensorList, int tensorNum, int64_t tensorSize,
                                     SVector<aclTensor*>& aclTensorList)
 {
     for (int i = 0; i < tensorNum; i++) {
@@ -112,7 +112,7 @@ AsdSip::AspbStatus BlasCgemmPlan::CreateTensor()
     return ErrorType::ACL_SUCCESS;
 }
 
-void BlasCgemmPlan::FreeGivenTensor(Mki::Tensor tensor) const
+void BlasCgemmPlan::FreeGivenTensor(Mki::Tensor &tensor) const
 {
     if (tensor.data != nullptr) {
         FreeTensorInDevice(tensor);
@@ -124,7 +124,7 @@ void BlasCgemmPlan::FreeGivenTensor(Mki::Tensor tensor) const
     }
 }
 
-void BlasCgemmPlan::FreeAclTensors(Mki::SVector<aclTensor*> aclTensorList) const
+void BlasCgemmPlan::FreeAclTensors(Mki::SVector<aclTensor*> &aclTensorList) const
 {
     for (auto* ptr : aclTensorList) {
         aclDestroyTensor(ptr);
@@ -134,13 +134,13 @@ void BlasCgemmPlan::FreeAclTensors(Mki::SVector<aclTensor*> aclTensorList) const
 
 AsdSip::AspbStatus BlasCgemmPlan::FreeTensor()
 {
-    for (auto tensor : this->augATensors) {
+    for (auto &tensor : this->augATensors) {
         FreeGivenTensor(tensor);
     }
-    for (auto tensor : this->augBTensors) {
+    for (auto &tensor : this->augBTensors) {
         FreeGivenTensor(tensor);
     }
-    for (auto tensor : this->augCTensors) {
+    for (auto &tensor : this->augCTensors) {
         FreeGivenTensor(tensor);
     }
     FreeAclTensors(this->augAAclTensors);

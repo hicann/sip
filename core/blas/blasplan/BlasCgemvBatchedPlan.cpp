@@ -13,6 +13,7 @@
 #include "utils/ops_base.h"
 #include "utils/mem_base_inner.h"
 #include "log/log.h"
+#include "utils/assert.h"
 #include "utils/aspb_status.h"
 #include "acl/acl.h"
 #include "aclnn/acl_meta.h"
@@ -79,6 +80,8 @@ BlasCgemvBatchedPlan::BlasCgemvBatchedPlan(asdBlasOperation_t trans, asdDataType
 AsdSip::AspbStatus BlasCgemvBatchedPlan::CreateTensor()
 {
     SetMaskTensor();
+    ASDSIP_ECHECK(maskAclTensor != nullptr, "BlasCgemvBatchedPlan create mask tensor failed.",
+                  ErrorType::ACL_ERROR_INTERNAL_ERROR);
     return ErrorType::ACL_SUCCESS;
 }
 
@@ -118,7 +121,10 @@ void BlasCgemvBatchedPlan::SetMaskTensor()
     maskTensor.hostData = maskData;
     maskTensor.dataSize = maskSize * sizeof(uint32_t);
 
-    MallocTensorInDevice(maskTensor);
+    if (!MallocTensorInDevice(maskTensor).Ok()) {
+        ASDSIP_LOG(ERROR) << "BlasCgemvBatchedPlan malloc mask tensor in device failed.";
+        return;
+    }
     toAclTensor(maskTensor, maskAclTensor);
     maskData = nullptr;
 }

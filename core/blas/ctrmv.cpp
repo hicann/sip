@@ -36,6 +36,7 @@ AspbStatus CtrmvShapeCheck(CtrmvTensorParam param, const int64_t n, const int64_
                   ErrorType::ACL_ERROR_INVALID_PARAM);
     ASDSIP_ECHECK(incx > 0, "blas asdBlasCtrmv get incx < 0.", ErrorType::ACL_ERROR_INVALID_PARAM);
     ASDSIP_ECHECK(lda > 0, "blas asdBlasCtrmv get lda <= 0.", ErrorType::ACL_ERROR_INVALID_PARAM);
+    ASDSIP_ECHECK(lda == n, "blas asdBlasCtrmv only supports lda == n.", ErrorType::ACL_ERROR_INVALID_PARAM);
     auto ret = ErrorType::ACL_ERROR_OP_INPUT_NOT_MATCH;
     SIP_OP_CHECK_NUM_NOT_MATCH(param.A, n * n, ret);
     SIP_OP_CHECK_NUM_NOT_MATCH(param.x, n, ret);
@@ -115,14 +116,14 @@ AspbStatus asdBlasMakeCtrmvPlan(asdBlasHandle handle, asdBlasFillMode_t uplo, in
     AsdSip::BlasCtrmvPlan* plan = nullptr;
     try {
         plan = new AsdSip::BlasCtrmvPlan(uplo, n);
-        BlasPlanCache::MakePlan(handle, plan);
-    } catch (const std::exception& e) {
-        if (plan != nullptr) {
+        if (!BlasPlanCache::MakePlan(handle, plan)) {
             delete plan;
+            ASDSIP_ELOG(ErrorType::ACL_ERROR_INVALID_PARAM) << "blas handle already bound to a plan, repeated initialization is not allowed.";
+            return ErrorType::ACL_ERROR_INVALID_PARAM;
         }
-        delete static_cast<int*>(handle);
+    } catch (const std::exception& e) {
         ASDSIP_ELOG(ErrorType::ACL_ERROR_INTERNAL_ERROR) << "Make Ctrmv Plan failed: " << e.what();
-        throw std::runtime_error("Make Ctrmv Plan failed.");
+        return ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }
     if (plan->CreateTensor() != ErrorType::ACL_SUCCESS) {
         plan->MarkFailed();

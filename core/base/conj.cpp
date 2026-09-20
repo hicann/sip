@@ -14,7 +14,6 @@
 #include "conj.h"
 
 using namespace Mki;
-using namespace AsdSip;
 
 namespace AsdSip {
 AspbStatus Conj(const Tensor &inTensor, Tensor &outTensor, void *stream, uint8_t *workspace)

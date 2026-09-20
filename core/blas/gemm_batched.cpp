@@ -37,24 +37,6 @@ static int64_t GetTrans(const asdBlasOperation_t trans)
     return gTrans;
 }
 
-static AspbStatus checkStorage(aclTensor* tensor, const char* tensorName)
-{
-    int64_t* storageDims = nullptr;
-    uint64_t storageDimsNum = 0;
-    CHECK_STATUS_WITH_ACL_RETURN(aclGetStorageShape(tensor, &storageDims, &storageDimsNum),
-                                 "asdBlasCgemm: aclGetStorageShape");
-    if (*storageDims <= 0) {
-        delete[] storageDims;
-        storageDims = nullptr;
-        ASDSIP_ELOG(ErrorType::ACL_ERROR_OP_INPUT_NOT_MATCH)
-            << "blas asdBlasCgemm get wrong " << tensorName << " tensor num.";
-        return ErrorType::ACL_ERROR_OP_INPUT_NOT_MATCH;
-    }
-
-    delete[] storageDims;
-    return ErrorType::ACL_SUCCESS;
-}
-
 static AspbStatus checkDtype(aclTensor& tensor, op::DataType dtype, const char* tensorName)
 {
     op::DataType dataType = op::DataType::DT_UNDEFINED;
@@ -78,15 +60,9 @@ AspbStatus asdBlasHCgemmBatched(asdBlasHandle handle, asdBlasOperation_t transa,
                   ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
     AspbStatus status;
-    if ((status = checkStorage(A, "A")) != ErrorType::ACL_SUCCESS) {
-        return status;
-    }
-    if ((status = checkStorage(B, "B")) != ErrorType::ACL_SUCCESS) {
-        return status;
-    }
-    if ((status = checkStorage(C, "C")) != ErrorType::ACL_SUCCESS) {
-        return status;
-    }
+    SIP_OP_CHECK_NUM_NOT_MATCH(A, batchCount * m * k, ErrorType::ACL_ERROR_OP_INPUT_NOT_MATCH);
+    SIP_OP_CHECK_NUM_NOT_MATCH(B, batchCount * k * n, ErrorType::ACL_ERROR_OP_INPUT_NOT_MATCH);
+    SIP_OP_CHECK_NUM_NOT_MATCH(C, batchCount * m * n, ErrorType::ACL_ERROR_OP_INPUT_NOT_MATCH);
     if ((status = checkDtype(*A, op::DataType::DT_COMPLEX32, "A")) != ErrorType::ACL_SUCCESS) {
         return status;
     }
@@ -159,14 +135,14 @@ AspbStatus asdBlasMakeHCgemmBatchedPlan(asdBlasHandle handle)
     AsdSip::BlasHCgemmBatchedPlan* plan = nullptr;
     try {
         plan = new AsdSip::BlasHCgemmBatchedPlan();
-        BlasPlanCache::MakePlan(handle, plan);
-    } catch (const std::exception& e) {
-        if (plan != nullptr) {
+        if (!BlasPlanCache::MakePlan(handle, plan)) {
             delete plan;
+            ASDSIP_ELOG(ErrorType::ACL_ERROR_INVALID_PARAM) << "blas handle already bound to a plan, repeated initialization is not allowed.";
+            return ErrorType::ACL_ERROR_INVALID_PARAM;
         }
-        delete static_cast<int*>(handle);
+    } catch (const std::exception& e) {
         ASDSIP_ELOG(ErrorType::ACL_ERROR_INTERNAL_ERROR) << "Make HCgemmBatched Plan failed: " << e.what();
-        throw std::runtime_error("Make HCgemmBatched Plan failed.");
+        return ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }
     if (plan->CreateTensor() != ErrorType::ACL_SUCCESS) {
         plan->MarkFailed();
@@ -189,15 +165,9 @@ AspbStatus asdBlasCgemmBatched(asdBlasHandle handle, asdBlasOperation_t transa, 
                   ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
     AspbStatus status;
-    if ((status = checkStorage(A, "A")) != ErrorType::ACL_SUCCESS) {
-        return status;
-    }
-    if ((status = checkStorage(B, "B")) != ErrorType::ACL_SUCCESS) {
-        return status;
-    }
-    if ((status = checkStorage(C, "C")) != ErrorType::ACL_SUCCESS) {
-        return status;
-    }
+    SIP_OP_CHECK_NUM_NOT_MATCH(A, batchCount * m * k, ErrorType::ACL_ERROR_OP_INPUT_NOT_MATCH);
+    SIP_OP_CHECK_NUM_NOT_MATCH(B, batchCount * k * n, ErrorType::ACL_ERROR_OP_INPUT_NOT_MATCH);
+    SIP_OP_CHECK_NUM_NOT_MATCH(C, batchCount * m * n, ErrorType::ACL_ERROR_OP_INPUT_NOT_MATCH);
     if ((status = checkDtype(*A, op::DataType::DT_COMPLEX64, "A")) != ErrorType::ACL_SUCCESS) {
         return status;
     }
@@ -270,14 +240,14 @@ AspbStatus asdBlasMakeCgemmBatchedPlan(asdBlasHandle handle)
     AsdSip::BlasCgemmBatchedPlan* plan = nullptr;
     try {
         plan = new AsdSip::BlasCgemmBatchedPlan();
-        BlasPlanCache::MakePlan(handle, plan);
-    } catch (const std::exception& e) {
-        if (plan != nullptr) {
+        if (!BlasPlanCache::MakePlan(handle, plan)) {
             delete plan;
+            ASDSIP_ELOG(ErrorType::ACL_ERROR_INVALID_PARAM) << "blas handle already bound to a plan, repeated initialization is not allowed.";
+            return ErrorType::ACL_ERROR_INVALID_PARAM;
         }
-        delete static_cast<int*>(handle);
+    } catch (const std::exception& e) {
         ASDSIP_ELOG(ErrorType::ACL_ERROR_INTERNAL_ERROR) << "Make CgemmBatched Plan failed: " << e.what();
-        throw std::runtime_error("Make CgemmBatched Plan failed.");
+        return ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }
     if (plan->CreateTensor() != ErrorType::ACL_SUCCESS) {
         plan->MarkFailed();
