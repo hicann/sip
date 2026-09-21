@@ -3,27 +3,27 @@
 ## 产品支持情况
 
 <!-- npu="950" id1 -->
-- <term>Ascend 950PR/Ascend 950DT</term>：不支持
+- <term>Ascend 950PR&950DT系列产品</term>：不支持
 <!-- end id1 -->
 
 <!-- npu="A3" id2 -->
-- <term>Atlas A3 训练系列产品/Atlas A3 推理系列产品</term>：支持
+- <term>Atlas A3系列产品</term>：支持
 <!-- end id2 -->
 
 <!-- npu="910b" id3 -->
-- <term>Atlas A2 训练系列产品/Atlas A2 推理系列产品</term>：支持
+- <term>Atlas A2系列产品</term>：支持
 <!-- end id3 -->
 
 <!-- npu="310b" id4 -->
-- <term>Atlas 200I/500 A2 推理产品</term>：不支持
+- <term>Atlas 200I/500 A2推理产品</term>：不支持
 <!-- end id4 -->
 
 <!-- npu="310p" id5 -->
-- <term>Atlas 推理系列产品</term>：不支持
+- <term>Atlas推理系列产品</term>：不支持
 <!-- end id5 -->
 
 <!-- npu="910" id6 -->
-- <term>Atlas 训练系列产品</term>：不支持
+- <term>Atlas训练系列产品</term>：不支持
 <!-- end id6 -->
 
 ## 功能说明
@@ -37,14 +37,14 @@ asdBlasSsyr：用于计算单精度向量的外积并将结果加到一个矩阵
   A=alpha*x*x^T+A
   $$
 
-    示例：
+  示例：
   - 输入“x”为：\
   [   [ 1 ], \
     [ 2 ] ]
   - 输入“A”为：\
   [   [ 1, 2 ], \
     [ 3, 4 ]  ]\
-  - 输入“uplo”为：U\
+  - 输入“uplo”为：ASDBLAS_FILL_MODE_LOWER\
   - 输入“n”为：2，输入“lda”为：2，输入“incx”为：1。\
   - 输入“alpha”为：2.0。\
   - 调用“asdBlasSsyr”算子后，算子更新上三角数据，输出“A”为：\
@@ -64,7 +64,7 @@ AspbStatus asdBlasSsyr(
   asdBlasHandle         handle,
   asdBlasFillMode_t     uplo,
   const int64_t         n,
-  const float *         alpha,
+  const float &         alpha,
   aclTensor *           x,
   const int64_t         incx,
   aclTensor *           A,
@@ -131,7 +131,7 @@ AspbStatus asdBlasSsyr(
       <td>向量x中的元素个数，矩阵A的行列数。</td>
     </tr>
     <tr>
-      <td>alpha（float *）</td>
+      <td>alpha（float &）</td>
       <td>输入</td>
       <td>公式中的alpha，标量，向量乘积缩放因子。</td>
     </tr>

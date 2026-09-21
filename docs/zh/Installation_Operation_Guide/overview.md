@@ -6,7 +6,7 @@
 
 ## 架构图
 
-昇腾信号处理加速库（AscendSiPBoost）在昇腾算子技术栈中的位置下图所示。
+昇腾信号处理加速库（AscendSiPBoost）在昇腾算子技术栈中的位置如下图所示。
  ![架构图](../API_Reference/figures/zh-cn_image_0000002568414177.png)
 
 - 信号处理加速库框架：负责算子的管理，算子在Device侧的二进制加载及host侧的tiling；负责对上层提供接口支持单算子调用、多算子批量调用等。
@@ -18,6 +18,14 @@
 
 ## 架构图
 
-  <term>Atlas A2 训练系列产品/Atlas A2 推理系列产品</term>\
-  <term>Atlas A3 训练系列产品/Atlas A3 推理系列产品</term>\
-  <term>Ascend 950PR/Ascend 950DT</term> 
+  <!-- npu="910b" id1 -->
+  <term>Atlas A2 训练系列产品/Atlas A2 推理系列产品</term>
+  <!-- end id1 -->
+
+  <!-- npu="A3" id2 -->
+  <term>Atlas A3 训练系列产品/Atlas A3 推理系列产品</term>
+  <!-- end id2 -->
+
+  <!-- npu="950" id3 -->
+  <term>Ascend 950PR/Ascend 950DT</term>
+  <!-- end id3 -->

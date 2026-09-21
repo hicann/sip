@@ -3,27 +3,27 @@
 ## 产品支持情况
 
 <!-- npu="950" id1 -->
-- <term>Ascend 950PR/Ascend 950DT</term>：不支持
+- <term>Ascend 950PR&950DT系列产品</term>：不支持
 <!-- end id1 -->
 
 <!-- npu="A3" id2 -->
-- <term>Atlas A3 训练系列产品/Atlas A3 推理系列产品</term>：支持
+- <term>Atlas A3系列产品</term>：支持
 <!-- end id2 -->
 
 <!-- npu="910b" id3 -->
-- <term>Atlas A2 训练系列产品/Atlas A2 推理系列产品</term>：支持
+- <term>Atlas A2系列产品</term>：支持
 <!-- end id3 -->
 
 <!-- npu="310b" id4 -->
-- <term>Atlas 200I/500 A2 推理产品</term>：不支持
+- <term>Atlas 200I/500 A2推理产品</term>：不支持
 <!-- end id4 -->
 
 <!-- npu="310p" id5 -->
-- <term>Atlas 推理系列产品</term>：不支持
+- <term>Atlas推理系列产品</term>：不支持
 <!-- end id5 -->
 
 <!-- npu="910" id6 -->
-- <term>Atlas 训练系列产品</term>：不支持
+- <term>Atlas训练系列产品</term>：不支持
 <!-- end id6 -->
 
 ## 功能说明
@@ -150,7 +150,7 @@ AspbStatus asdBlasHCmatinvBatched(
       <td><ul><li>输入的矩阵，对应公式中的'A'。</li><li>行主序。</li><li>数据类型支持COMPLEX32。</li><li>数据格式支持ND。</li><li>shape为[batch,n,n]。</li></ul></td>
     </tr>
     <tr>
-      <td>lda（ int64_t）</td>
+      <td>lda（int64_t）</td>
       <td>输入</td>
       <td>A左右相邻元素间的内存地址偏移量（当前约束为n）。</td>
     </tr>
@@ -167,7 +167,7 @@ AspbStatus asdBlasHCmatinvBatched(
     <tr>
       <td>info（aclTensor *）</td>
       <td>输入</td>
-      <td><ul><li>每个batch矩阵的求逆结果信息。</li><li>数据类型支持int32_t。</li><li>数据格式支持ND。</li><li>shape为[batch, 1]。</li></ul></td>
+      <td><ul><li>每个batch矩阵的求逆结果信息。</li><li>数据类型支持int32_t。</li><li>数据格式支持ND。</li><li>shape为[batchSize]。</li></ul></td>
     </tr>
     <tr>
       <td>batchSize（int64_t）</td>

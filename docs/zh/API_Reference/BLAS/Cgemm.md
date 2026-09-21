@@ -3,27 +3,27 @@
 ## 产品支持情况
 
 <!-- npu="950" id1 -->
-- <term>Ascend 950PR/Ascend 950DT</term>：不支持
+- <term>Ascend 950PR&950DT系列产品</term>：不支持
 <!-- end id1 -->
 
 <!-- npu="A3" id2 -->
-- <term>Atlas A3 训练系列产品/Atlas A3 推理系列产品</term>：支持
+- <term>Atlas A3系列产品</term>：支持
 <!-- end id2 -->
 
 <!-- npu="910b" id3 -->
-- <term>Atlas A2 训练系列产品/Atlas A2 推理系列产品</term>：支持
+- <term>Atlas A2系列产品</term>：支持
 <!-- end id3 -->
 
 <!-- npu="310b" id4 -->
-- <term>Atlas 200I/500 A2 推理产品</term>：不支持
+- <term>Atlas 200I/500 A2推理产品</term>：不支持
 <!-- end id4 -->
 
 <!-- npu="310p" id5 -->
-- <term>Atlas 推理系列产品</term>：不支持
+- <term>Atlas推理系列产品</term>：不支持
 <!-- end id5 -->
 
 <!-- npu="910" id6 -->
-- <term>Atlas 训练系列产品</term>：不支持
+- <term>Atlas训练系列产品</term>：不支持
 <!-- end id6 -->
 
 ## 功能说明
@@ -50,8 +50,8 @@ asdBlasCgemm：矩阵乘法运算中的一种，用于计算两个复数矩阵�
 输入“m”为：2，输入“n”为： 2，输入“k”为：2，输入“alpha”为：1+i，“beta”为：2+2i。\
 输入“lda”为： 2，输入“ldb”为：2，输入“ldc”为：2。\
 调用“Cgemm”算子后，输出“outTensor”为：\
-[   [ -15+19i, -27+19i ],
-    [ -37+21i, -57+13i ]  ]
+[   [ -6+16i, -17+15i ],
+    [ -24+22i, -2+14i ]  ]
 
 ## 函数原型
 
@@ -233,6 +233,11 @@ AspbStatus asdBlasCgemm(
       <td>alpha（std::complex&ltfloat&gt *）</td>
       <td>输入</td>
       <td>对应公式中的alpha，复数标量，用于乘以矩阵乘法的结果。</td>
+    </tr>
+    <tr>
+      <td>beta（std::complex&ltfloat&gt &）</td>
+      <td>输入</td>
+      <td>对应公式中的beta，复数标量，用于乘以矩阵C。</td>
     </tr>
     </tbody>
     </table>
