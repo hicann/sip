@@ -101,7 +101,7 @@ AspbStatus asdConvolveGetWorkspaceSize(int64_t signalLen, int64_t kernelLen, siz
     ASDSIP_ECHECK(signalLen > 0 && kernelLen > 0, "asdConvolveGetWorkspaceSize get invalid params",
                   AsdSip::ErrorType::ACL_ERROR_INVALID_PARAM);
 
-    if (kernelLen > (static_cast<int64_t>(SIZE_MAX) / DIMS_TWO / DIMS_TWO)) {
+    if (kernelLen > static_cast<int64_t>(SIZE_MAX / DIMS_TWO / DIMS_TWO)) {
         ASDSIP_ELOG(ErrorType::ACL_ERROR_INVALID_PARAM)
             << "asdConvolveGetWorkspaceSize get too large kernelLen: " << kernelLen;
         return ErrorType::ACL_ERROR_INVALID_PARAM;
