@@ -290,25 +290,25 @@ AspbStatus asdFftExecC2CSeparated(
       <td>inputReal（ aclTensor *）</td>
       <td>输入</td>
       <td><ul><li>公式中的'x'的实部。</li><li>数据类型支持FLOAT32。</li><li>数据格式支持ND。</li>
-      <li>输入的shape为（batchSize，fftSize）。</li></ul></td>
+      <li>输入的shape为（batchSize，fftSizeX，fftSizeY，fftSizeZ）。</li></ul></td>
     </tr>
     <tr>
       <td>inputImag（aclTensor *）</td>
       <td>输入</td>
       <td><ul><li>公式中的'x'的虚部。</li><li>数据类型支持FLOAT32。</li><li>数据格式支持ND。</li>
-      <li>输入的shape为（batchSize，fftSize）。</li></ul></td>
+      <li>输入的shape为（batchSize，fftSizeX，fftSizeY，fftSizeZ）。</li></ul></td>
     </tr>
     <tr>
       <td>outputReal（aclTensor *）</td>
       <td>输出</td>
       <td><ul><li>公式中的'y'的实部。</li><li>数据类型支持FLOAT32。</li><li>数据格式支持ND。</li>
-      <li>输出的shape为（batchSize，fftSize）。</li></ul></td>
+      <li>输出的shape为（batchSize，fftSizeX，fftSizeY，fftSizeZ）。</li></ul></td>
     </tr>
     <tr>
       <td>outputImag（aclTensor *）</td>
       <td>输出</td>
       <td><ul><li>公式中的'y'的虚部。</li><li>数据类型支持FLOAT32。</li><li>数据格式支持ND。</li>
-      <li>输出的shape为（batchSize，fftSize）。</li></ul></td>
+      <li>输出的shape为（batchSize，fftSizeX，fftSizeY，fftSizeZ）。</li></ul></td>
     </tr>
     </tbody>
     </table>

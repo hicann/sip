@@ -47,7 +47,7 @@ asdBlasScasum：对输入的所有元素取绝对值后求和，输入元素为�
   - asdBlasScasum的公式
 
   $$
-  result=\sum _{i=0}^n(|real(x_{i})|+|imag(x_{i})|)
+  result=\sum _{i=0}^{n-1}(|real(x_{i})|+|imag(x_{i})|)
   $$
 
         示例：

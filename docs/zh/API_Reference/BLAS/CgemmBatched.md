@@ -46,12 +46,12 @@ asdBlasCgemmBatched：用于计算两批复数矩阵的乘积。
 [   [ 3+i, 3+2i ],
     [ 3+3i, 3+4i ]  ]\
 输入“transa”为： ASDBLAS_OP_N，输入“transb”为：ASDBLAS_OP_N。\
-输入“m”为：2，输入“n”为： 2，输入“k”为：2，输入“alpha”为：1+i，“beta”为：2+2i。\
+输入“m”为：2，输入“n”为： 2，输入“k”为：2，输入“alpha”为：1+0j，“beta”为：0+0j。\
 输入“lda”为： 2，输入“ldb”为：2，输入“ldc”为：2。\
 输入“batchCount”为：2。\
 调用“asdBlasCgemmBatched”算子后，输出“C”为：\
-[   [ -1+9i, -7+13i ],
-    [ -7+17i, -21+21i ]  ]
+[   [ -3+10i, -6+12i ],
+    [ -11+18i, -18+20i ]  ]
 
 ## 函数原型
 

@@ -299,7 +299,7 @@ int main(int argc, char **argv)
     const int64_t tensorASize = n * n;
 
     std::vector<float> tensorInAData;
-    tensorInAData.reserve(tensorYSize);
+    tensorInAData.reserve(tensorASize);
     for (int i = 0; i < tensorASize; i++) {
         tensorInAData.push_back(1.0f);
     }

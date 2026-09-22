@@ -232,7 +232,7 @@ int main(int argc, char **argv)
 
     int64_t coeffSize = batch * (nSignal - nRs) * nRs * 2;
     std::vector<float> coeffData;
-    coeffData.resize(xSize);
+    coeffData.resize(coeffSize);
     for (int64_t i = 0; i < coeffSize; i++) {
         coeffData[i] = 1;
     }
@@ -250,7 +250,7 @@ int main(int argc, char **argv)
     //     tensorInXData[i] = std::complex<float>(i * 2, i * 2 + 1);
     // }
     // int64_t coeffSize = batch * (nSignal - nRs) * nRs;
-    // std::vector<std::complex<float>> coeffData(xSize, std::complex<float>(0, 0));
+    // std::vector<std::complex<float>> coeffData(coeffSize, std::complex<float>(0, 0));
     // for (int i = 0; i < coeffSize; i++) {
     //     coeffData[i] = std::complex<float>(1, 1);
     // }

@@ -328,7 +328,6 @@ int main(int argc, char** argv)
     CHECK_RET(ret == ::ACL_SUCCESS, return ret);
     ret = CreateAclTensor(tensorInYData, yShape, &inputYDeviceAddr, aclDataType::ACL_COMPLEX64, &inputY);
     CHECK_RET(ret == ::ACL_SUCCESS, return ret);
-    CHECK_RET(ret == ::ACL_SUCCESS, return ret);
     ret = CreateAclTensor(tensorInAData, aShape, &inputADeviceAddr, aclDataType::ACL_COMPLEX64, &inputA);
     CHECK_RET(ret == ::ACL_SUCCESS, return ret);
 
