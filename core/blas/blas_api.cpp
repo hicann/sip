@@ -55,7 +55,11 @@ AspbStatus asdBlasSynchronize(asdBlasHandle handle)
     ASDSIP_ECHECK(BlasPlanCache::doesPlanExist(handle), "blas plan does not exist.",
                   ErrorType::ACL_ERROR_INTERNAL_ERROR);
     BlasPlan& plan = BlasPlanCache::getPlan(handle);
-    Mki::MkiRtStreamSynchronize(plan.GetStream());
+    // 同步失败必须上抛错误码，不得静默吞掉（issue #177）
+    if (Mki::MkiRtStreamSynchronize(plan.GetStream()) != 0) {
+        ASDSIP_LOG(ERROR) << "MkiRtStreamSynchronize failed.";
+        return ErrorType::ACL_ERROR_INTERNAL_ERROR;
+    }
     ASDSIP_LOG(INFO) << "Blas stream synchronized.";
     return ErrorType::ACL_SUCCESS;
 }

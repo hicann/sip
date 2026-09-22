@@ -34,19 +34,19 @@ asdFftExecIstft：执行逆短时傅里叶变换。
 - 计算公式：\
 istft函数用于进行逆短时傅里叶变换，它的目标是将stft得到的频域数据转换回时域信号，是stft的逆运算。短时距傅里叶变换是可逆的，也就是说原本的信号可以借由反短时距傅里叶变换将短时距傅里叶变换后的信号还原。其中最广为接受的反短时距傅里叶变换方法是重叠-相加之卷积法。
 
-  ![公式](../figures/Istft_1.png)
+  ![公式](../figures/istft_1.png)
 
   其中，傅里叶变换（Fourier transform）是一种线性积分变换，用于信号在时域和频域之间的变换，在物理学和工程学中有许多应用。对于给定长度为N的信号，DFT表达式如下：
 
-  ![公式](../figures/Istft_2.png)
+  ![公式](../figures/istft_2.png)
 
   将系数矩阵(N*N)和时域信号(N*1)看作两个Tensor，在NPU上直接使用矩阵乘，可完成DFT。但时间复杂度太高，因此需要快速傅里叶变换。其基本原理是利用三角函数在复数域的旋转对称性，将序列拆分成子序列，通过蝶形运算以降低计算的复杂度：
 
-  ![公式](../figures/Istft_3.png)
+  ![公式](../figures/istft_3.png)
 
   而重叠-相加之卷积法( Overlap-add method ) 是一种区块卷积 ( block convolution, sectioned convolution )，可以有效地计算一个很长的信号 x[n]和一个FIR滤波器h[n]的离散卷积。其中h[m]在 [1, M]之外为零。
 
-  ![公式](../figures/Istft_4.png)
+  ![公式](../figures/istft_4.png)
 
 ## 函数原型
 

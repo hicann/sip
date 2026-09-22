@@ -16,36 +16,29 @@ FFTPlan::FFTPlan() {}
 
 void FFTPlan::markInitialized()
 {
-    fftStatus = AsdSip::asdFftPlanStatus::PLAN_INITIALIZED;
+    // 初始化失败（PLAN_FAILED）的 plan 不允许被尾部 markInitialized 无条件
+    // 覆写回 INITIALIZED——否则 isInitialized() 守卫失效，空 operation 的
+    // plan 会在后续 GetWorkspaceSize/exec 中空指针崩溃（issue #169）
+    if (fftStatus != AsdSip::asdFftPlanStatus::PLAN_FAILED) {
+        fftStatus = AsdSip::asdFftPlanStatus::PLAN_INITIALIZED;
+    }
 }
 
-void FFTPlan::markFailed()
-{
-    fftStatus = AsdSip::asdFftPlanStatus::PLAN_FAILED;
-}
+void FFTPlan::markFailed() { fftStatus = AsdSip::asdFftPlanStatus::PLAN_FAILED; }
 
-bool FFTPlan::isInitialized() const
-{
-    return fftStatus == AsdSip::asdFftPlanStatus::PLAN_INITIALIZED;
-}
+bool FFTPlan::isInitialized() const { return fftStatus == AsdSip::asdFftPlanStatus::PLAN_INITIALIZED; }
 
-bool FFTPlan::hasWorkspace() const
-{
-    return workspaceAddr != nullptr;
-}
+bool FFTPlan::hasWorkspace() const { return workspaceAddr != nullptr; }
 
-bool FFTPlan::isForward() const
-{
-    return direction == AsdSip::asdFftDirection::ASCEND_FFT_FORWARD;
-}
+bool FFTPlan::isForward() const { return direction == AsdSip::asdFftDirection::ASCEND_FFT_FORWARD; }
 
 int64_t FFTPlan::eleNum() const
 {
     int64_t num = batchSize;
-    for (auto size: fftSizes) {
+    for (auto size : fftSizes) {
         num *= size;
     }
     return num;
 }
 
-}
+} // namespace AsdSip

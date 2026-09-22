@@ -8,6 +8,8 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
+#include <memory>
+
 #include "cgemv.h"
 #include "blas_common.h"
 #include "blasplan/include/blasplan/BlasCgemvPlan.h"
@@ -103,7 +105,6 @@ AspbStatus asdBlasCgemv(asdBlasHandle handle, asdBlasOperation_t trans, const in
         status = RunAsdOpsV2(plan.GetStream(), opDesc, inTensors, outTensors, plan.GetWorkspace());
         ASDSIP_ECHECK(status.Ok(), status.Message(), ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
-
         ASDSIP_LOG(INFO) << "Execute asdBlasCgemv success.";
         return ErrorType::ACL_SUCCESS;
     } catch (std::bad_cast& e) {
@@ -128,14 +129,20 @@ AspbStatus asdBlasMakeCgemvPlan(asdBlasHandle handle, asdBlasOperation_t trans, 
     ASDSIP_ECHECK(y != nullptr, "blas Cgemv y is nullptr.", ErrorType::ACL_ERROR_INTERNAL_ERROR);
     ASDSIP_ECHECK(incy == 1, "blas Cgemv get incy != 1.", ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
+    // 异常安全（issue #171，与 cgemm 同款）：plan 由局部 unique_ptr 持有至
+    // MakePlan 成功，避免 insert 抛出时 double-free；handle 归调用方所有，
+    // 不在此删除；异常翻译为错误码返回，不逃逸 AspbStatus API
+    std::unique_ptr<AsdSip::BlasCgemvPlan> planHolder;
     AsdSip::BlasCgemvPlan* plan = nullptr;
     try {
-        plan = new AsdSip::BlasCgemvPlan(trans, m, n, y, incy);
-        if (!BlasPlanCache::MakePlan(handle, plan)) {
-            delete plan;
-            ASDSIP_ELOG(ErrorType::ACL_ERROR_INVALID_PARAM) << "blas handle already bound to a plan, repeated initialization is not allowed.";
-            return ErrorType::ACL_ERROR_INVALID_PARAM;
+        planHolder.reset(new AsdSip::BlasCgemvPlan(trans, m, n, y, incy));
+        if (!BlasPlanCache::MakePlan(handle, planHolder.get())) {
+            ASDSIP_ELOG(ErrorType::ACL_ERROR_INTERNAL_ERROR) << "Make Cgemv Plan failed: insert to cache failed.";
+            return ErrorType::ACL_ERROR_INTERNAL_ERROR;
         }
+        // MakePlan 成功：缓存已接管所有权，release 解除 planHolder 持有避免 double-free；
+        // 失败路径 return 时 planHolder 析构自动释放（缓存未接管，无泄漏）
+        plan = planHolder.release();
     } catch (const std::exception& e) {
         ASDSIP_ELOG(ErrorType::ACL_ERROR_INTERNAL_ERROR) << "Make Cgemv Plan failed: " << e.what();
         return ErrorType::ACL_ERROR_INTERNAL_ERROR;

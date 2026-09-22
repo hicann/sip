@@ -8,7 +8,7 @@
 
 ## 算子调用流程
 
-![算子调用流程](../API_Reference/figures/zh-cn_image_0000002537574354.png)
+![算子调用流程](../API_Reference/figures/zh_cn_image_0000002537574354.png)
 
 ## 操作步骤
 

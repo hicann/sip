@@ -127,7 +127,7 @@ You can report, discuss, and track all issues you discover or new ideas you want
     - `2025` in the first line is the year when you created or modified the file. Modify it according to the actual time.
 
 3. Code Download and Contribution Process
-![Code Contribution Process](./zh/API_Reference/figures/docs_images_contrib-flow.png)
+![Code Contribution Process](./zh/API_Reference/figures/docs_images_contrib_flow.png)
    (1) Before starting code development, first fork the required SiP repository to your personal repository, then download the personal repository to your local machine. Make code modifications on a local branch.
    (2) After code validation meets the contribution requirements, submit a Pull-Request to contribute the code to SiP. You can find the submitted Pull-Request in the [Pull-Request list](https://gitcode.com/cann/sip/pulls).
    (3) In the comment section of the submitted Pull-Request, comment `compile` to trigger compilation.

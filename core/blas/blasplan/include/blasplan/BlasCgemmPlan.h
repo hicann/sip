@@ -31,13 +31,15 @@ public:
     Mki::SVector<Mki::Tensor> augATensors = {};
     Mki::SVector<Mki::Tensor> augBTensors = {};
     Mki::SVector<Mki::Tensor> augCTensors = {};
- 
-    Mki::SVector<aclTensor *> augAAclTensors = {};
-    Mki::SVector<aclTensor *> augBAclTensors = {};
-    Mki::SVector<aclTensor *> augCAclTensors = {};
+
+    Mki::SVector<aclTensor*> augAAclTensors = {};
+    Mki::SVector<aclTensor*> augBAclTensors = {};
+    Mki::SVector<aclTensor*> augCAclTensors = {};
 
 public:
     explicit BlasCgemmPlan(CgemmPlanParam planParam);
+    // plan 期参数只读访问：exec 期执行参数-plan 一致性校验使用（issue #170）
+    const CgemmPlanParam& GetPlanParam() const { return planParam; }
     AsdSip::AspbStatus CreateTensor() override;
     void FreeGivenTensor(Mki::Tensor &tensor) const;
     void FreeAclTensors(Mki::SVector<aclTensor *> &aclTensorList) const;
@@ -49,4 +51,4 @@ public:
 private:
     CgemmPlanParam planParam;
 };
-}
+} // namespace AsdSip

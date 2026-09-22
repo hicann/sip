@@ -7,7 +7,7 @@
 ## 架构图
 
 昇腾信号处理加速库（AscendSiPBoost）在昇腾算子技术栈中的位置如下图所示。
- ![架构图](../API_Reference/figures/zh-cn_image_0000002568414177.png)
+ ![架构图](../API_Reference/figures/zh_cn_image_0000002568414177.png)
 
 - 信号处理加速库框架：负责算子的管理，算子在Device侧的二进制加载及host侧的tiling；负责对上层提供接口支持单算子调用、多算子批量调用等。
 - FFT算子：包括专用的NPU Kernel、PLAN框架，对外提供接口以实现C2C、C2R和R2C，供开发者使用。

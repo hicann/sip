@@ -36,10 +36,10 @@ asdFftExecR2C：执行实数到复数的FFT变换。
 - 计算公式：\
 傅里叶变换（Fourier transform）是一种线性积分变换，用于信号在时域和频域之间的变换，在物理学和工程学中有许多应用。对应给定长度为N的信号，其离散形式DFT(Discrete Fourier Transform)表达式如下：
 
-  ![公式](../figures/FFT_2D_1.png)
+  ![公式](../figures/fft_2d_1.png)
 
   将系数矩阵(N*N)和时域信号(N*1)看做两个Tensor，在NPU上直接使用矩阵乘，可完成DFT，但时间复杂度太高，因此需要快速傅里叶变换。其基本原理是利用三角函数在复数域的旋转对称性，将序列拆分成子序列，通过蝶形运算以降低计算的复杂度：\
-  ![公式](../figures/FFT_ID_2.png)
+  ![公式](../figures/fft_1d_2.png)
 
 ## 函数原型
 

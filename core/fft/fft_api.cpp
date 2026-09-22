@@ -10,6 +10,8 @@
 #include <iostream>
 #include <algorithm>
 #include <cstdlib>
+#include <limits>
+#include <memory>
 #include <mki/utils/platform/platform_info.h>
 #include "aclnn/acl_meta.h"
 #include "log/log.h"
@@ -494,6 +496,10 @@ std::unique_ptr<FftOperation> InitFft2DOpPtr(
         if (!unique->init()) {
             plan.markFailed();
             ASDSIP_LOG(ERROR) << "initialize fftcore failed.";
+            // 与 1D InitFftOpPtr 口径对齐：失败必须抛出，由 API 边界翻译为
+            // 错误码——否则尾部 markInitialized 会把 FAILED 覆写回 INITIALIZED，
+            // 空 kernel 的 plan 通过守卫后崩溃（issue #169）
+            throw std::runtime_error("initialize fftcore failed.");
         }
     }
 
@@ -523,6 +529,9 @@ std::unique_ptr<FftOperation> InitFft3DOpPtr(std::optional<FFTCoreType> coreType
         if (!unique->init()) {
             plan.markFailed();
             ASDSIP_LOG(ERROR) << "initialize fftcore failed.";
+            // 与 1D/2D 口径对齐：失败必须抛出，由 API 边界翻译为错误码
+            // （issue #169，防止 FAILED 被尾部 markInitialized 覆写）
+            throw std::runtime_error("initialize fftcore failed.");
         }
     }
 
@@ -691,10 +700,16 @@ void addFFT2DStep(FFTPlan& plan, int radixX, int radixY)
 
 void addFFT3DStep(FFTPlan& plan, int64_t fftSizeX, int64_t fftSizeY, int64_t fftSizeZ)
 {
-    plan.steps.push_back(PlanStep{});
-    PlanStep& step = plan.steps.back();
-
-    step.operation = GetCore3D(fftSizeX, fftSizeY, fftSizeZ, plan.batchSize, plan.fftType, plan.isForward(), plan);
+    auto operation = GetCore3D(fftSizeX, fftSizeY, fftSizeZ, plan.batchSize, plan.fftType, plan.isForward(), plan);
+    // 950 平台 GetCore3D 返回 nullptr：plan 置 FAILED 并抛出，由 API 边界
+    // 统一翻译为错误码，杜绝空 operation 入 steps 后被 markInitialized
+    // 放行、GetWorkspaceSize/exec 空指针崩溃（issue #168）
+    if (operation == nullptr) {
+        plan.markFailed();
+        ASDSIP_LOG(ERROR) << "GetCore3D returned null operation (unsupported type on this platform).";
+        throw std::runtime_error("make 3D plan failed: core is null.");
+    }
+    plan.steps.push_back(PlanStep{std::move(operation)});
 }
 
 void init2DSteps(FFTPlan& plan)
@@ -957,6 +972,13 @@ AspbStatus asdFftMakePlan1D(asdFftHandle handle, int64_t fftSize, asdFftType fft
         ASDSIP_LOG(ERROR) << "Invalid batch_size.";
         return ErrorType::ACL_ERROR_INVALID_PARAM;
     }
+    // 步骤构造链 addFFTSteps(int)/getCore(unsigned) 存在 int64→int→unsigned
+    // 窄化（issue #175）：batch 超过 INT32_MAX 时截断为错误值，与 plan.batchSize
+    // 真值形成两套矛盾语义。入口拦截，保证窄化无损。
+    if (batchSize > static_cast<int64_t>(std::numeric_limits<int32_t>::max())) {
+        ASDSIP_LOG(ERROR) << "batch_size exceeds INT32_MAX.";
+        return ErrorType::ACL_ERROR_INVALID_PARAM;
+    }
 
     // 重复初始化守卫：与头文件"Any given handle can only be initialized once"契约对齐（issue #137）
     if (plan.isInitialized()) {
@@ -1217,7 +1239,11 @@ AspbStatus asdFftSynchronize(asdFftHandle handle)
         return AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }
     FFTPlan& plan = FFTPlanCache::getPlan(handle);
-    MkiRtStreamSynchronize(plan.stream);
+    // 同步失败（stream 非法/运行时错误等）必须上抛错误码，不得静默吞掉（issue #177）
+    if (MkiRtStreamSynchronize(plan.stream) != 0) {
+        ASDSIP_LOG(ERROR) << "MkiRtStreamSynchronize failed.";
+        return AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR;
+    }
     return AsdSip::ErrorType::ACL_SUCCESS;
 }
 
@@ -1328,13 +1354,9 @@ bool matchC2C_(const FFTPlan& plan, const aclTensor* input)
         return false;
     }
 
-    // avoid check for fft stride
-    if (plan.fftStrides[0] != 1) {
-        delete[] dims;
-        dims = nullptr;
-        return true;
-    }
-
+    // 尾维形状比较与 stride 语义正交：纵向（strided）plan 不能跳过——否则
+    // 尺寸不符的张量通过 match 直达内核造成设备越界读写；与 matchC2R_/
+    // matchR2C_ 口径对齐（issue #172）
     int64_t lastDim = static_cast<int64_t>(tensorDimSize) - 1;
     // 防护: 输入张量维度数小于 plan 的 fftSizes 维度数时, 循环索引会变为负值导致越界读
     if (static_cast<int64_t>(plan.fftSizes.size()) > lastDim + 1) {
@@ -1586,29 +1608,31 @@ AspbStatus asdFftExecC2CSeparated(asdFftHandle handle, const aclTensor* inputRea
         return ErrorType::ACL_ERROR_INVALID_PARAM;
     }
 
-    int64_t* viewDimsInReal = nullptr;
+    // RAII 管理：任一 aclGetViewShape 失败早退时，先前已获取的维度数组自动
+    // 释放，消除泄漏（issue #176）
+    int64_t* rawInReal = nullptr;
     uint64_t viewDimsNumInReal = 0;
-    CHECK_STATUS_WITH_ACL_RETURN(aclGetViewShape(inputReal, &viewDimsInReal, &viewDimsNumInReal), "aclGetViewShape");
+    CHECK_STATUS_WITH_ACL_RETURN(aclGetViewShape(inputReal, &rawInReal, &viewDimsNumInReal), "aclGetViewShape");
+    std::unique_ptr<int64_t[]> viewDimsInReal(rawInReal);
 
-    int64_t* viewDimsInImag = nullptr;
+    int64_t* rawInImag = nullptr;
     uint64_t viewDimsNumInImag = 0;
-    CHECK_STATUS_WITH_ACL_RETURN(aclGetViewShape(inputImag, &viewDimsInImag, &viewDimsNumInImag), "aclGetViewShape");
+    CHECK_STATUS_WITH_ACL_RETURN(aclGetViewShape(inputImag, &rawInImag, &viewDimsNumInImag), "aclGetViewShape");
+    std::unique_ptr<int64_t[]> viewDimsInImag(rawInImag);
 
-    int64_t* viewDimsOutReal = nullptr;
+    int64_t* rawOutReal = nullptr;
     uint64_t viewDimsNumOutReal = 0;
-    CHECK_STATUS_WITH_ACL_RETURN(aclGetViewShape(outputReal, &viewDimsOutReal, &viewDimsNumOutReal), "aclGetViewShape");
+    CHECK_STATUS_WITH_ACL_RETURN(aclGetViewShape(outputReal, &rawOutReal, &viewDimsNumOutReal), "aclGetViewShape");
+    std::unique_ptr<int64_t[]> viewDimsOutReal(rawOutReal);
 
-    int64_t* viewDimsOutImag = nullptr;
+    int64_t* rawOutImag = nullptr;
     uint64_t viewDimsNumOutImag = 0;
-    CHECK_STATUS_WITH_ACL_RETURN(aclGetViewShape(outputImag, &viewDimsOutImag, &viewDimsNumOutImag), "aclGetViewShape");
+    CHECK_STATUS_WITH_ACL_RETURN(aclGetViewShape(outputImag, &rawOutImag, &viewDimsNumOutImag), "aclGetViewShape");
+    std::unique_ptr<int64_t[]> viewDimsOutImag(rawOutImag);
 
     if ((viewDimsNumInReal != viewDimsNumInImag) || (viewDimsNumOutReal != viewDimsNumOutImag) ||
         (viewDimsNumInReal != viewDimsNumOutReal)) {
         ASDSIP_ELOG(ErrorType::ACL_ERROR_OP_INPUT_NOT_MATCH) << "invalid input/output format.";
-        delete[] viewDimsInReal;
-        delete[] viewDimsInImag;
-        delete[] viewDimsOutReal;
-        delete[] viewDimsOutImag;
         return AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }
 
@@ -1623,18 +1647,11 @@ AspbStatus asdFftExecC2CSeparated(asdFftHandle handle, const aclTensor* inputRea
 
     if (!validFlag) {
         ASDSIP_ELOG(ErrorType::ACL_ERROR_OP_INPUT_NOT_MATCH) << "invalid input/output shape.";
-        delete[] viewDimsInReal;
-        delete[] viewDimsInImag;
-        delete[] viewDimsOutReal;
-        delete[] viewDimsOutImag;
         return AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }
 
-    delete[] viewDimsInReal;
-    delete[] viewDimsInImag;
-    delete[] viewDimsOutReal;
-    delete[] viewDimsOutImag;
-
+    // 白盒扫描修复（!140）新增的分离张量 dtype 校验：与 #176 的 RAII 管理共存，
+    // 视图数组已由 unique_ptr 管理，早退路径自动释放，无需手动 delete[]
     const aclTensor* sepTensors[4] = {inputReal, inputImag, outputReal, outputImag};
     const char* sepNames[4] = {"inputReal", "inputImag", "outputReal", "outputImag"};
     for (int i = 0; i < 4; i++) {

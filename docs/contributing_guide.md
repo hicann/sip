@@ -127,7 +127,7 @@ SiP属于CANN开放项目，在参与贡献前，请了解[CANN开放项目行�
     - 第一行中`2025`为您创建或修改该文件的年份，请根据实际时间修改。
 
 3. 代码下载与贡献流程
-![代码贡献流程](./zh/API_Reference/figures/docs_images_contrib-flow.png)
+![代码贡献流程](./zh/API_Reference/figures/docs_images_contrib_flow.png)
    (1) 进行代码开发前，请先将所需SiP仓库fork到个人仓库，然后将个人仓库下载到本地。并在本地分支进行代码修改。
    (2) 代码验证满足贡献要求后，提交Pull-Request，将代码贡献到SiP，在[Pull-Request列表](https://gitcode.com/cann/sip/pulls)，可以找到提交的Pull-Request。
    (3) 在提交的Pull-Request的评论区，评论`compile`以触发编译。
