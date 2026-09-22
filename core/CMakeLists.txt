@@ -40,6 +40,12 @@ if(NOT "$ENV{TEST_TYPE}" STREQUAL "ST")
     else()
         target_link_libraries(asdsip PUBLIC utils base blas fft filter interpolation asdsip_core)
     endif()
+    if(TARGET ops_fft)
+        # 项目全局 CMAKE_SKIP_RPATH=TRUE (host_config.cmake), 运行时靠 set_env.sh 的
+        # LD_LIBRARY_PATH 定位 libcann_ops_fft.so (与 libasdsip.so 同目录);
+        # weak 引用不会触发 --as-needed 记录 DT_NEEDED, 须显式 --no-as-needed 强制依赖
+        target_link_libraries(asdsip PRIVATE "-Wl,--no-as-needed,${OPS_FFT_LIB},--as-needed")
+    endif()
     add_library(asdsip_static STATIC $<TARGET_OBJECTS:utils> $<TARGET_OBJECTS:blas> $<TARGET_OBJECTS:fft> $<TARGET_OBJECTS:base> $<TARGET_OBJECTS:filter> $<TARGET_OBJECTS:interpolation>)
     target_link_libraries(asdsip_static PUBLIC utils base blas fft filter interpolation)
     target_include_directories(asdsip_static PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)

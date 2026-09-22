@@ -17,6 +17,7 @@
 #include "utils/ops_base.h"
 #include "fft_c2c_arch35.h"
 #include "fftcore/fft_c2c_arch35_core.h"
+#include "fftcore/ops_fft_kernel_stub.h"
 #include "params/fft_c2c_arch35.h"
 
 constexpr double K_PI = 3.14159265358979323846;
@@ -60,6 +61,11 @@ void FftC2CCoreArch35::Run(void *input, void *output, void *stream, workspace::W
 {
     if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
         if (isMixedRadix) {
+            // stub 判空仅防护绕过 exec 的直接调用(缺失时走 internal)
+            if (AsdSip::UseOpsFftKernelBackend() && AsdSip::OpsFftArch35MixStubAvailable()) {
+                RunViaOpsFft(input, output, stream, workspace);
+                return;
+            }
             int64_t batch = static_cast<int64_t>(problemDesc.batch);
             int64_t n = static_cast<int64_t>(problemDesc.nDoing);
             int64_t fullComplexFloats = batch * n * 2;
@@ -168,7 +174,7 @@ void FftC2CCoreArch35::Run(void *input, void *output, void *stream, workspace::W
     }
 }
 
-void FftC2CCoreArch35::DestroyInDevice() const
+void FftC2CCoreArch35::DestroyInDevice()
 {
     if (!stageTilingDeviceAddrs.empty()) {
         for (uint8_t *deviceLaunchBuffer : stageTilingDeviceAddrs) {
@@ -183,6 +189,75 @@ void FftC2CCoreArch35::DestroyInDevice() const
     if (deviceLaunchBuffer != nullptr) {
         MkiRtMemFreeDevice(deviceLaunchBuffer);
     }
+    if (opsDftMatrix != nullptr) {
+        MkiRtMemFreeDevice(opsDftMatrix);
+        opsDftMatrix = nullptr;
+    }
+    if (opsTwMatrix != nullptr) {
+        MkiRtMemFreeDevice(opsTwMatrix);
+        opsTwMatrix = nullptr;
+    }
+    if (opsRadixList != nullptr) {
+        MkiRtMemFreeDevice(opsRadixList);
+        opsRadixList = nullptr;
+    }
+}
+
+bool FftC2CCoreArch35::OpsFftBackendStubReady() const
+{
+    return AsdSip::OpsFftArch35MixStubAvailable();
+}
+
+// ops-fft 直调路径 (950/arch35 mixed-radix): 常量/tiling/workspace 均复用 sip 产物,
+// tiling 为 InitTactic 上传的 FftAllMixTilingData device buffer, 与 ops-fft 逐字段同源
+void FftC2CCoreArch35::RunViaOpsFft(void *input, void *output, void *stream,
+                                    workspace::Workspace &workspace)
+{
+    // 常量一次性上传 device (plan 级缓存, 首次 Run 触发)
+    if (opsDftMatrix == nullptr || opsTwMatrix == nullptr || opsRadixList == nullptr) {
+        auto upload = [](void **dev, void *host, size_t size) -> bool {
+            if (dev == nullptr || host == nullptr || size == 0) {
+                return false;
+            }
+            int st = MkiRtMemMallocDevice(dev, size, MKIRT_MEM_DEFAULT);
+            if (st != MKIRT_SUCCESS) {
+                return false;
+            }
+            st = MkiRtMemCopy(*dev, size, host, size, MKIRT_MEMCOPY_HOST_TO_DEVICE);
+            return st == MKIRT_SUCCESS;
+        };
+        if (!upload(&opsDftMatrix, dftMatrixArray->hostData, dftMatrixArray->dataSize)) {
+            ASDSIP_LOG(ERROR) << "ops-fft backend(arch35): dftMatrix upload failed";
+            return;
+        }
+        if (!upload(&opsTwMatrix, twMatrixArray->hostData, twMatrixArray->dataSize)) {
+            ASDSIP_LOG(ERROR) << "ops-fft backend(arch35): twMatrix upload failed";
+            return;
+        }
+        if (!upload(&opsRadixList, radixListTensor->hostData, radixListTensor->dataSize)) {
+            ASDSIP_LOG(ERROR) << "ops-fft backend(arch35): radixList upload failed";
+            return;
+        }
+    }
+
+    // workspace: 与 internal mixed-radix 路径同源同尺寸 (2 * batch * n * complex * float)
+    int64_t batch = static_cast<int64_t>(problemDesc.batch);
+    int64_t n = static_cast<int64_t>(problemDesc.nDoing);
+    int64_t workspaceBytes = 2 * (batch * n * 2) * static_cast<int64_t>(sizeof(float));
+    void *scratch = workspace.allocate(static_cast<size_t>(workspaceBytes));
+
+    // blocks 一次性缓存: arch35 mix 为 __vector__ kernel, 取 AIV 核数 (对齐 ops-fft GetCoreNumAiv)
+    if (opsCachedBlocks == 0) {
+        uint32_t coreNum = Mki::PlatformInfo::Instance().GetCoreNum(Mki::CoreType::CORE_TYPE_VECTOR);
+        opsCachedBlocks = coreNum > 0 ? coreNum : 1;
+    }
+
+    fft_c2c_arch35_mix_multi_core(opsCachedBlocks, nullptr, stream, input, opsDftMatrix, opsTwMatrix,
+                                  opsRadixList, output, scratch, runInfo.GetTilingDeviceAddr());
+
+    workspace.recycleLast();
+    ASDSIP_LOG(INFO) << "FftC2CCoreArch35 run via ops-fft kernel (arch35 mix, blocks=" << opsCachedBlocks
+                     << ") success.";
 }
 
 void FftC2CCoreArch35::InitRadix()

@@ -43,6 +43,102 @@ function fn_build_mki()
     bash scripts/build.sh $build_options
 }
 
+function fn_select_ops_fft_soc()
+{
+    # 自动推导 ops-fft 存件 SoC, 不提供手动开关:
+    #   仅启用 910b/950 之一 → 跟随该目标; 两者均启用 → 按构建机架构选取
+    #   (910B 存件为 aarch64, 950 存件为 x86_64); 均未启用 → 输出空, 跳过联合构建
+    local targets
+    targets=$(python3 -c "import sys; sys.path.insert(0, '${CODE_ROOT}/scripts'); \
+import build_util; print(' '.join(build_util.get_build_target_list()))" 2>/dev/null)
+    local has_910b=0
+    local has_950=0
+    [[ "${targets}" == *"ascend910b"* ]] && has_910b=1
+    [[ "${targets}" == *"ascend950"* ]] && has_950=1
+
+    if [ ${has_910b} -eq 1 ] && [ ${has_950} -eq 0 ]; then
+        echo "Ascend910B"
+    elif [ ${has_950} -eq 1 ] && [ ${has_910b} -eq 0 ]; then
+        echo "Ascend950"
+    elif [ ${has_910b} -eq 1 ] && [ ${has_950} -eq 1 ]; then
+        if [ "$(uname -m)" = "aarch64" ]; then
+            echo "Ascend910B"
+        else
+            echo "Ascend950"
+        fi
+    fi
+}
+
+function fn_prepare_ops_fft_package()
+{
+    # ops-fft 联合构建为显式开启(--use_ops_fft), 默认不构建:
+    # 开启时存件为强依赖, 缺失/失配/目标不含 910b/950 报错终止
+    if [ "${USE_OPS_FFT}" != "ON" ]; then
+        echo "ops-fft: 未开启联合构建(默认纯 internal, 需要时加 --use_ops_fft)"
+        export OPS_FFT_PKG_VALID=0
+        return 0
+    fi
+    local pkg="${THIRD_PARTY_DIR}/ops-fft"
+    local soc
+    soc=$(fn_select_ops_fft_soc)
+    if [ -z "${soc}" ]; then
+        echo "[ERROR] ops-fft: --use_ops_fft 但 build targets 不含 ascend910b/ascend950"
+        exit 1
+    fi
+    if [ -n "${OPS_FFT_SOC}" ] && [ "${OPS_FFT_SOC}" != "${soc}" ]; then
+        echo "ops-fft: 环境变量 OPS_FFT_SOC=${OPS_FFT_SOC} 已忽略, 自动推导为 ${soc}"
+    fi
+    export OPS_FFT_SOC="${soc}"   # 导出供 cmake 选择制品目录
+    local so="${pkg}/lib/${soc}/libcann_ops_fft.so"
+    local manifest="${pkg}/lib/${soc}/manifest.info"
+
+    # 逐项校验: soc/arch 为硬门禁, cann_version/abi 仅信息性记录
+    # (CANN ABI 向后兼容且接口为 extern "C" 纯 C, 均不影响二进制兼容)
+    local host_arch="$(uname -m)"
+    local so_arch="unknown"
+    case "$(readelf -h "${so}" 2>/dev/null | sed -n 's/^ *Machine: *//p')" in
+        AArch64) so_arch="aarch64" ;;
+        *X86-64*) so_arch="x86_64" ;;
+    esac
+    local mismatch=""
+    if [ ! -f "${so}" ]; then
+        mismatch="so 缺失: ${so}"
+    elif [ ! -f "${manifest}" ]; then
+        mismatch="manifest 缺失: ${manifest}"
+    elif ! grep -q "^soc=${soc}$" "${manifest}"; then
+        mismatch="soc 不匹配 (需 ${soc}, manifest: $(grep '^soc=' ${manifest}))"
+    elif [ "${so_arch}" != "unknown" ] && [ "${so_arch}" != "${host_arch}" ]; then
+        mismatch="arch 不匹配 (本机 ${host_arch}, 存件 ${so_arch}: ${so})"
+    fi
+
+    if [ -z "${mismatch}" ]; then
+        echo "ops-fft binary package ready: ${so} (soc=${soc}, arch=${so_arch})"
+        export OPS_FFT_PKG_VALID=1
+        return 0
+    fi
+
+    # --use_ops_fft 下存件为强依赖: 缺失/失配直接报错终止
+    echo "================================================================================"
+    echo "[ERROR] ops-fft binary package validation failed (--use_ops_fft), build aborted:"
+    echo "[ERROR]   ${mismatch}"
+    echo "[ERROR] see docs/ops_fft_joint_build.md (存件更新) or use a matched-arch host"
+    echo "================================================================================"
+    exit 1
+}
+
+function fn_collect_ops_fft_artifacts()
+{
+    local pkg="${THIRD_PARTY_DIR}/ops-fft"
+    local soc="${OPS_FFT_SOC}"
+    if [ "${OPS_FFT_PKG_VALID}" != "1" ]; then
+        return
+    fi
+    mkdir -p ${OUTPUT_DIR}/lib ${OUTPUT_DIR}/include
+    cp -af "${pkg}/lib/${soc}"/libcann_ops_fft.so* ${OUTPUT_DIR}/lib/
+    cp -f "${pkg}/include/cann_ops_fft.h" ${OUTPUT_DIR}/include/ 2>/dev/null
+    echo "collect ops-fft artifacts: libcann_ops_fft.so, cann_ops_fft.h -> ${OUTPUT_DIR}"
+}
+
 function fn_make_run_package()
 {
     if [ $( uname -a | grep -c -i "x86_64" ) -ne 0 ]; then
@@ -84,6 +180,15 @@ EOF
     cp $CODE_ROOT/scripts/set_env.sh $OUTPUT_DIR
     cp $CODE_ROOT/scripts/uninstall.sh $OUTPUT_DIR/scripts
     cp $CODE_ROOT/scripts/filelist.csv $OUTPUT_DIR/scripts
+    # 收编的 ops-fft 制品登记进 filelist.csv, 否则 --uninstall 按 csv 清理会遗留孤儿文件
+    if ls ${OUTPUT_DIR}/lib/libcann_ops_fft.so* > /dev/null 2>&1; then
+        for f in ${OUTPUT_DIR}/lib/libcann_ops_fft.so*; do
+            echo "lib/$(basename ${f})"
+        done >> ${OUTPUT_DIR}/scripts/filelist.csv
+        if [ -f ${OUTPUT_DIR}/include/cann_ops_fft.h ]; then
+            echo "include/cann_ops_fft.h" >> ${OUTPUT_DIR}/scripts/filelist.csv
+        fi
+    fi
     sed -i "s/ASDSIPPKGARCH/${ARCH}/" $OUTPUT_DIR/install.sh
     sed -i "s!VERSION_PLACEHOLDER!${VERSION}!" $OUTPUT_DIR/install.sh
     sed -i "s!LOG_PATH_PLACEHOLDER!${LOG_PATH}!" $OUTPUT_DIR/install.sh
@@ -109,6 +214,7 @@ function fn_compile_and_pack()
         make -j64
     fi
     make install
+    fn_collect_ops_fft_artifacts
     fn_make_run_package
 }
 
@@ -222,6 +328,9 @@ function fn_build()
         cd $CODE_ROOT/
     fi
 
+    # ops-fft 二进制存件准入 (默认不构建; --use_ops_fft 显式开启, 缺失/失配时报错终止)
+    fn_prepare_ops_fft_package
+
     cmake -B build -S . -DCURRENT_DIR="$CURRENT_DIR"
 
     cd $CODE_ROOT/
@@ -250,6 +359,7 @@ function help_info() {
     echo "--output=<dir>               指定编译输出目录，默认为${repo}/output目录."
     echo "--use_cxx11_abi=0            设置-D_GLIBCXX_USE_CXX11_ABI=0 (默认选项)."
     echo "--use_cxx11_abi=1            设置-D_GLIBCXX_USE_CXX11_ABI=1."
+    echo "--use_ops_fft                开启 ops-fft 联合构建(默认不构建; 开启后存件缺失/失配时报错终止)."
     echo "--verbose                    打印详细的编译命令."
     echo "--mssanitizer                启用mssanitizer."
     echo
@@ -301,6 +411,9 @@ function fn_main()
             ;;
         "--use_cxx11_abi=0")
             USE_CXX11_ABI=OFF
+            ;;
+        "--use_ops_fft")
+            USE_OPS_FFT=ON
             ;;
         "--verbose")
             USE_VERBOSE=ON
@@ -370,7 +483,8 @@ LOG_NAME="cann_asdsip_install.log"
 export COMPILE_OPTIONS="-DNO_WERROR=ON"
 export USE_VERBOSE=OFF
 export USE_CXX11_ABI="OFF"
+export USE_OPS_FFT="OFF"
 BUILD_OPTION_LIST="ops_unit ut st ft smoke_pr smoke_all --ut --dev --clean --help"
-BUILD_CONFIGURE_LIST=("--output=.*" "--use_cxx11_abi=0" "--use_cxx11_abi=1 --verbose --mssanitizer")
+BUILD_CONFIGURE_LIST=("--output=.*" "--use_cxx11_abi=0" "--use_cxx11_abi=1 --verbose --mssanitizer" "--use_ops_fft")
 
 fn_main "$@"

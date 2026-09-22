@@ -46,6 +46,8 @@
 #include "fftcore/fft_c2c2d_arch35_core.h"
 #include "params/fft_c2c2d_arch35.h"
 
+#include "fftcore/ops_fft_kernel_stub.h"
+
 #include "fftplan/fft_plan_cache.h"
 #include "fftcore/select_core.h"
 #include "utils/include/utils/fft_common_func.h"
@@ -1273,6 +1275,27 @@ std::vector<void*> allocInterCachesV2(FFTPlan& plan, workspace::Workspace& wkspa
     return cache;
 }
 
+// ops-fft 后端统一拦截: 请求 ops-fft 时校验 plan 各 step 的适配性与 stub 可用性,
+// 任一不满足即返回 ACL_ERROR_API_NOT_SUPPORT, 不回退 internal
+AspbStatus OpsFftBackendUnifyIntercept(const FFTPlan &plan)
+{
+    if (!UseOpsFftKernelBackend()) {
+        return ErrorType::ACL_SUCCESS;
+    }
+    for (const auto &step : plan.steps) {
+        const bool adapted = step.operation->OpsFftBackendAdapted();
+        if (adapted && step.operation->OpsFftBackendStubReady()) {
+            continue;
+        }
+        ASDSIP_LOG(ERROR) << "SIP_FFT_BACKEND=ops-fft: "
+                          << (adapted ? "ops-fft kernel stub unavailable (binary package missing/mismatched)"
+                                      : "current FFT path is not adapted to ops-fft kernel")
+                          << ", aborting.";
+        return ErrorType::ACL_ERROR_API_NOT_SUPPORT;
+    }
+    return ErrorType::ACL_SUCCESS;
+}
+
 AspbStatus asdFftExecV2(FFTPlan& plan, const aclTensor* input, const aclTensor* output)
 {
     if (!plan.isInitialized()) {
@@ -1299,6 +1322,11 @@ AspbStatus asdFftExecV2(FFTPlan& plan, const aclTensor* input, const aclTensor* 
         return AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }
 
+    AspbStatus interceptStatus = OpsFftBackendUnifyIntercept(plan);
+    if (interceptStatus != ErrorType::ACL_SUCCESS) {
+        return interceptStatus;
+    }
+
     if (plan.steps.size() == 1) {
         // 核心在 Run 内做对齐/重叠校验并可能抛出异常，在 API 边界统一翻译为错误码，
         // 避免异常穿透 C 接口（issue #160）
@@ -1310,7 +1338,6 @@ AspbStatus asdFftExecV2(FFTPlan& plan, const aclTensor* input, const aclTensor* 
         }
         return AsdSip::ErrorType::ACL_SUCCESS;
     }
-
     std::vector<void*> tmpCache = allocInterCachesV2(plan, wkspace);
     int ping = 0;
     // 核心异常穿透防护：异常时回收已分配的多步临时缓存并翻译为错误码（issue #160）
@@ -1575,6 +1602,11 @@ AspbStatus asdFftExecV2Separated(FFTPlan& plan, const aclTensor* inputReal, cons
     if (outputImagData == nullptr) {
         ASDSIP_LOG(ERROR) << "output aclTensor data is nullptr.";
         return AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR;
+    }
+
+    AspbStatus interceptStatus = OpsFftBackendUnifyIntercept(plan);
+    if (interceptStatus != ErrorType::ACL_SUCCESS) {
+        return interceptStatus;
     }
 
     if (plan.steps.size() == 1) {

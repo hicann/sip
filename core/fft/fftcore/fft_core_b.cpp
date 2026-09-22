@@ -17,6 +17,7 @@
 #include "utils/aspb_status.h"
 #include "fftcore/fft_core_common_func.h"
 #include "fftcore/fft_core_common_func_utils.h"
+#include "fftcore/ops_fft_kernel_stub.h"
 #include "fft_b.h"
 
 #include "fftcore/fft_core_b.h"
@@ -61,6 +62,78 @@ void FFTCoreB::Run(Tensor &input, Tensor &output, void *stream, workspace::Works
 
     ASDSIP_LOG(INFO) << "FFTCoreB run success.";
     return;
+}
+
+// asdFftExecV2 实际调用的重载; stub 判空仅防护绕过 exec 的直接调用(缺失时走 internal)
+void FFTCoreB::Run(void *input, void *output, void *stream, workspace::Workspace &workspace)
+{
+    if (AsdSip::UseOpsFftKernelBackend() && AsdSip::OpsFftBStubAvailable()) {
+        RunViaOpsFft(input, output, stream, workspace);
+        return;
+    }
+    FftOperation::Run(input, output, stream, workspace);
+}
+
+bool FFTCoreB::OpsFftBackendStubReady() const
+{
+    return AsdSip::OpsFftBStubAvailable();
+}
+
+// ops-fft kernel 直调后端: 常量/tiling 复用 sip plan 期产物, exec 仅一次 stub 调用
+void FFTCoreB::RunViaOpsFft(void *input, void *output, void *stream, workspace::Workspace &workspace)
+{
+    // 常量一次性上传 device (plan 级缓存, 首次 Run 触发)
+    if (opsWMatrix == nullptr || opsTMatrix == nullptr || opsIndex == nullptr) {
+        auto upload = [](void **dev, void *host, size_t size) -> bool {
+            if (dev == nullptr || host == nullptr || size == 0) {
+                return false;
+            }
+            int st = MkiRtMemMallocDevice(dev, size, MKIRT_MEM_DEFAULT);
+            if (st != MKIRT_SUCCESS) {
+                return false;
+            }
+            st = MkiRtMemCopy(*dev, size, host, size, MKIRT_MEMCOPY_HOST_TO_DEVICE);
+            return st == MKIRT_SUCCESS;
+        };
+        if (!upload(&opsWMatrix, wMatrix->hostData, wMatrix->dataSize)) {
+            ASDSIP_LOG(ERROR) << "ops-fft backend: wMatrix upload failed";
+            return;
+        }
+        if (!upload(&opsTMatrix, tMatrix->hostData, tMatrix->dataSize)) {
+            ASDSIP_LOG(ERROR) << "ops-fft backend: tMatrix upload failed";
+            return;
+        }
+        if (!upload(&opsIndex, index->hostData, index->dataSize)) {
+            ASDSIP_LOG(ERROR) << "ops-fft backend: index upload failed";
+            return;
+        }
+    }
+
+    // workspace: 与 sip kernel 同源同尺寸 (SCRATCH_SIZES * needCoreNum)
+    const KernelInfo &kernelInfo = kernel->GetKernelInfo();
+    size_t bufferSize = kernelInfo.GetTotalScratchSize();
+    void *scratch = workspace.allocate(bufferSize);
+
+    // blocks / sync addr 一次性缓存 (plan 级)
+    if (opsCachedBlocks == 0) {
+        uint32_t maxCore = Mki::PlatformInfo::Instance().GetCoreNum(Mki::CoreType::CORE_TYPE_CUBE);
+        uint32_t needCoreNum = static_cast<uint32_t>(problemDesc.batch) > maxCore
+                                   ? maxCore : static_cast<uint32_t>(problemDesc.batch);
+        if (needCoreNum == 0) {
+            needCoreNum = 1;
+        }
+        opsCachedBlocks = needCoreNum;
+        if (aclrtGetHardwareSyncAddr(reinterpret_cast<void **>(&opsCachedSync)) != 0 || opsCachedSync == nullptr) {
+            ASDSIP_LOG(ERROR) << "ops-fft backend: get hardware sync addr failed";
+            return;
+        }
+    }
+
+    fft_b(opsCachedBlocks, nullptr, stream, opsCachedSync, input, opsWMatrix, opsTMatrix,
+          opsIndex, output, scratch, runInfo.GetTilingDeviceAddr());
+
+    workspace.recycleLast();
+    ASDSIP_LOG(INFO) << "FFTCoreB run via ops-fft kernel (blocks=" << opsCachedBlocks << ") success.";
 }
 
 AspbStatus FFTCoreB::InitTactic()
@@ -273,10 +346,22 @@ bool FFTCoreB::PreAllocateInDevice()
     return true;
 }
 
-void FFTCoreB::DestroyInDevice() const
+void FFTCoreB::DestroyInDevice()
 {
     uint8_t *deviceBuffer = runInfo.GetTilingDeviceAddr();
     if (deviceBuffer != nullptr) {
         MkiRtMemFreeDevice(deviceBuffer);
+    }
+    if (opsWMatrix != nullptr) {
+        MkiRtMemFreeDevice(opsWMatrix);
+        opsWMatrix = nullptr;
+    }
+    if (opsTMatrix != nullptr) {
+        MkiRtMemFreeDevice(opsTMatrix);
+        opsTMatrix = nullptr;
+    }
+    if (opsIndex != nullptr) {
+        MkiRtMemFreeDevice(opsIndex);
+        opsIndex = nullptr;
     }
 }

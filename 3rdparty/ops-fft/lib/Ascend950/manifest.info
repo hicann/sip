@@ -1,0 +1,6 @@
+soc=Ascend950
+abi=OFF
+cann_version=9.2.0
+cann_path=/usr/local/Ascend/cann-9.1.0
+source_head=7b2ae1555f6e15e55d4e428083c8e3051ac052f3
+so_md5=0076c1a189000dea36293bd0484bc629

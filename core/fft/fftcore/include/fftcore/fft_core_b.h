@@ -28,13 +28,16 @@ public:
     }
     size_t EstimateWorkspaceSize() override;
     void Run(Tensor &input, Tensor &output, void *stream, workspace::Workspace &workspace) override;
+    void Run(void *input, void *output, void *stream, workspace::Workspace &workspace) override;
+    bool OpsFftBackendAdapted() const override { return true; }
+    bool OpsFftBackendStubReady() const override;
 
 private:
     void InitRadix() override;
     bool PreAllocateInDevice() override;
-    void DestroyInDevice() const;
-
-    Mki::Any InitParam();
+    void DestroyInDevice();
+    // ops-fft kernel 直调后端 (SIP_FFT_BACKEND=ops-fft)
+    void RunViaOpsFft(void *input, void *output, void *stream, workspace::Workspace &workspace);
     AsdSip::AspbStatus InitIndex();
     AsdSip::AspbStatus InitWMatrix();
     AsdSip::AspbStatus InitTMatrix();
@@ -42,6 +45,12 @@ private:
     std::shared_ptr<AsdSip::FFTensor> wMatrix;
     std::shared_ptr<AsdSip::FFTensor> tMatrix;
     std::shared_ptr<AsdSip::FFTensor> index;
+    // ops-fft 后端: 常量 device 缓存 (首次 Run 时上传, plan 级生命周期)
+    void *opsWMatrix = nullptr;
+    void *opsTMatrix = nullptr;
+    void *opsIndex = nullptr;
+    uint32_t opsCachedBlocks = 0;
+    uint8_t *opsCachedSync = nullptr;
 };
 
 #endif

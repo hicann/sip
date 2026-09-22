@@ -52,6 +52,19 @@ public:
     virtual void allocateWorkspace() {}
     virtual void recycleWorkspace() {}
 
+    // ops-fft 后端适配声明 (SIP_FFT_BACKEND=ops-fft): 默认未适配,
+    // 请求时由 exec 入口统一拦截报错; 已接入直调的 core 重写返回 true
+    virtual bool OpsFftBackendAdapted() const
+    {
+        return false;
+    }
+
+    // 适配 core 的 ops-fft stub 可用性 (weak 符号判空), 供 exec 入口统一拦截校验
+    virtual bool OpsFftBackendStubReady() const
+    {
+        return false;
+    }
+
 protected:
     std::unique_ptr<Mki::Kernel> kernel;
     Mki::RunInfo runInfo;

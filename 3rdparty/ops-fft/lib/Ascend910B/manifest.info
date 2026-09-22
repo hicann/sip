@@ -1,0 +1,6 @@
+soc=Ascend910B
+abi=OFF
+cann_version=9.2.0
+cann_path=/opt/tjh/ascend0902/cann-9.2.0
+source_head=ddbf170e4f189f50124f4825f28d00cd565de38a
+so_md5=ce25a265ff6eb25ed0b4518b164f8c19

@@ -33,15 +33,20 @@ public:
     size_t EstimateWorkspaceSize() override;
     void Run(Tensor& input, Tensor& output, void *stream, workspace::Workspace& workspace) override {}
     void Run(void *input, void *output, void *stream, workspace::Workspace &workspace) override;
+    // ops-fft 后端仅适配 mixed-radix 路径 (radix-2 单阶段未接入, 请求时由统一拦截报错)
+    bool OpsFftBackendAdapted() const override { return isMixedRadix; }
+    bool OpsFftBackendStubReady() const override;
 
     static constexpr int64_t ALLOWED_RADICES[] = {2, 3, 5, 7, 11, 13, 17, 19};
 
 private:
     void InitRadix() override;
     bool PreAllocateInDevice() override;
-    void DestroyInDevice() const;
+    void DestroyInDevice();
     AsdSip::AspbStatus BuildFftPlan();
     AsdSip::AspbStatus InitTactic();
+    // ops-fft kernel 直调后端 (SIP_FFT_BACKEND=ops-fft, 仅 mixed-radix 路径, 950/arch35)
+    void RunViaOpsFft(void *input, void *output, void *stream, workspace::Workspace &workspace);
 
     std::vector<FftC2CPlanStage> plan;
     bool isMixedRadix{false};
@@ -49,6 +54,11 @@ private:
     std::shared_ptr<AsdSip::FFTensor> dftMatrixArray;
     std::shared_ptr<AsdSip::FFTensor> twMatrixArray;
     std::vector<uint8_t *> stageTilingDeviceAddrs;
+    // ops-fft 后端: 常量 device 缓存 (首次 Run 时上传, plan 级生命周期)
+    void *opsDftMatrix = nullptr;
+    void *opsTwMatrix = nullptr;
+    void *opsRadixList = nullptr;
+    uint32_t opsCachedBlocks = 0;
 
     std::string opName{"FftC2CArch35Operation"};
 };

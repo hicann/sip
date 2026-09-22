@@ -13,6 +13,7 @@
 #include "fftplan/fft_plan_cache.h"
 #include "fft_api.h"
 #include "fftcore/fft_core_istft_any.h"
+#include "fftcore/ops_fft_kernel_stub.h"
 #include "fftoperation/transpose.h"
 
 namespace AsdSip {
@@ -234,6 +235,11 @@ AspbStatus asdFftExecIstftV2(FFTPlan& plan, const aclTensor* input, const aclTen
     if (outputData == nullptr) {
         ASDSIP_LOG(ERROR) << "output aclTensor data is nullptr.";
         return AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR;
+    }
+
+    AspbStatus interceptStatus = OpsFftBackendUnifyIntercept(plan);
+    if (interceptStatus != ErrorType::ACL_SUCCESS) {
+        return interceptStatus;
     }
 
     std::vector<void*> tmpCache = IstftAllocInterCaches(plan, wkspace);

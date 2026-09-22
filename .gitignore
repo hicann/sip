@@ -26,7 +26,11 @@ build/
 coverage_result/
 
 output/
-3rdparty/
+# 3rdparty 整体不入库，例外: ops-fft 预编译二进制包 (联合构建)
+3rdparty/*
+!3rdparty/ops-fft/
+# 全局 *.so 规则需要显式排除例外 (放在文件末尾, 后规则优先生效)
+!3rdparty/ops-fft/lib/**/*.so
 
 oat_reports/
 

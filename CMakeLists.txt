@@ -36,6 +36,20 @@ set(OP_LIST_YAML_DIR "${CMAKE_CURRENT_LIST_DIR}/configs")
 set(MKI_SCRIPT_DIR "${MKI_PACKAGE_DIR}/scripts")
 
 include(${PROJECT_SOURCE_DIR}/cmake/host_config.cmake)
+
+# ops-fft 联合构建 (二进制依赖): 3rdparty/ops-fft/lib/<soc>/libcann_ops_fft.so
+# 仅当 build.sh --use_ops_fft 且存件门禁通过时链接, 环境变量 OPS_FFT_PKG_VALID/OPS_FFT_SOC
+# 由 build.sh 导出; 默认构建与直接 cmake 均不链接
+if("$ENV{OPS_FFT_PKG_VALID}" STREQUAL "1")
+    set(OPS_FFT_LIB ${THIRD_PARTY_DIR}/ops-fft/lib/$ENV{OPS_FFT_SOC}/libcann_ops_fft.so)
+    if(EXISTS ${OPS_FFT_LIB})
+        add_library(ops_fft SHARED IMPORTED GLOBAL)
+        set_target_properties(ops_fft PROPERTIES IMPORTED_LOCATION ${OPS_FFT_LIB})
+        message(STATUS "ops-fft binary package: ${OPS_FFT_LIB}")
+    else()
+        message(WARNING "ops-fft binary package not found (${OPS_FFT_LIB}), ops-fft backend unavailable")
+    endif()
+endif()
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pipe -fstack-protector-all")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated-copy")
