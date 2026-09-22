@@ -19,13 +19,13 @@
 ## 架构图
 
   <!-- npu="910b" id1 -->
-  <term>Atlas A2 训练系列产品/Atlas A2 推理系列产品</term>
+  <term>Atlas A2系列产品</term>
   <!-- end id1 -->
 
   <!-- npu="A3" id2 -->
-  <term>Atlas A3 训练系列产品/Atlas A3 推理系列产品</term>
+  <term>Atlas A3系列产品</term>
   <!-- end id2 -->
 
   <!-- npu="950" id3 -->
-  <term>Ascend 950PR/Ascend 950DT</term>
+  <term>Ascend 950PR&950DT系列产品</term>
   <!-- end id3 -->
