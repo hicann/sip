@@ -12,6 +12,7 @@
 #define EXAMPLES_COMMON_HELPER_HPP
 
 #include <cstdio>
+#include <cstdlib>
 #include <fstream>
 #include <iostream>
 #include <vector>
@@ -29,11 +30,15 @@ using op::bfloat16;
 using op::fp16_t;
 
 // Macro function for unwinding acl errors.
+// 失败即终止进程：示例主流程的 ACL 调用（aclInit/Malloc/Memcpy/内核 launch 等）都
+// 以"失败即停"为前提，若仅打印不中止，分配失败后以空指针继续执行会产生级联错误
+// 与误导性的性能/精度输出（issue #179）
 #define ACL_CHECK(status)                                                                   \
     do {                                                                                    \
         aclError error = status;                                                            \
         if (error != ACL_ERROR_NONE) {                                                      \
             std::cerr << __FILE__ << ":" << __LINE__ << " aclError:" << error << std::endl; \
+            std::exit(EXIT_FAILURE);                                                        \
         }                                                                                   \
     } while (0)
 

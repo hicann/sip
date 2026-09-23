@@ -61,9 +61,11 @@ struct FftOptions {
                                    "  data_dir: directory for input/golden/output bin files (default: data)\n"
                                    "  --benchmark: skip verification for clean profiling.\n"
                                    "  --perf: 10 warmup + 10 measured iterations with timing.\n"
-                                   "  --roundtrip: reproduce fft_demo.cu loop (RO x CH loop, forward+inverse,\n"
-                                   "               no fftshift / no 1/N); prints Time / Total FFTs / FFTs/sec /\n"
-                                   "               Max diff / PASSED.\n";
+                                   "  --roundtrip: reproduce fft_demo.cu loop (RO x CH loop, fftshift ->\n"
+                                   "               forward -> inverse -> ifftshift(+1/N)); round-trip restores\n"
+                                   "               the original input; prints Time / Total FFTs / FFTs/sec /\n"
+                                   "               Max diff (vs original input, absolute 1e-5) / PASSED; exit\n"
+                                   "               code 0 on PASSED, non-zero on FAILED.\n";
 
     int64_t b1{B1_DEFAULT};
     int64_t fftN1{FFT_N1_DEFAULT};
@@ -330,7 +332,7 @@ static void Run(const FftOptions& options)
 // input; verification compares the output against the original input with a
 // 1e-5 gate.
 // ---------------------------------------------------------------------------
-static void RunRoundTrip(const FftOptions& options)
+static bool RunRoundTrip(const FftOptions& options)
 {
     aclrtStream stream{nullptr};
     ACL_CHECK(aclInit(nullptr));
@@ -480,6 +482,10 @@ static void RunRoundTrip(const FftOptions& options)
     ACL_CHECK(aclrtFree(dShiftFwd));
     ACL_CHECK(aclrtFree(dShiftInv));
     Cleanup(stream, options.deviceId);
+
+    // 自检结果同步到进程退出码，供 run.sh / CI 等自动化链路判定（issue #181）；
+    // 返回位于资源释放之后，避免跳过清理（检视意见）
+    return passed;
 }
 
 int main(int argc, const char** argv)
@@ -490,8 +496,7 @@ int main(int argc, const char** argv)
         return 1;
     }
     if (options.roundtrip) {
-        RunRoundTrip(options);
-        return 0;
+        return RunRoundTrip(options) ? 0 : 1;
     }
     Run(options);
     return 0;

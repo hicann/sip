@@ -556,15 +556,22 @@ AspbStatus asdFftIstftMakePlan(asdFftHandle handle, const aclTensor* input, cons
                   ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
     FFTPlan& plan = FFTPlanCache::getPlan(handle);
-    plan.istftDesc = istftAnyParms;
+    // 对共享 plan 的突变段加锁（issue #188）：istftDesc 赋值与 InitIstftSteps 对
+    // plan.steps 的 push_back/swap 须与各 exec 入口互斥，避免并发数据竞争；
+    // 注意不能包住整个函数——上方 MakePlan1DFft 已调用持非递归 fft_mtx 的
+    // asdFftMakePlan1D，外层再加锁会自锁死锁
+    {
+        std::lock_guard<std::mutex> lock(fft_mtx);
+        plan.istftDesc = istftAnyParms;
 
-    // getIstftCore 初始化失败会抛异常，在 API 边界统一翻译为错误码（issue #131 同类加固）
-    try {
-        InitIstftSteps(plan, istftAnyParms);
-    } catch (const std::exception& e) {
-        plan.steps.clear();
-        ASDSIP_LOG(ERROR) << "asdFftIstftMakePlan failed: " << e.what();
-        return ErrorType::ACL_ERROR_INTERNAL_ERROR;
+        // getIstftCore 初始化失败会抛异常，在 API 边界统一翻译为错误码（issue #131 同类加固）
+        try {
+            InitIstftSteps(plan, istftAnyParms);
+        } catch (const std::exception& e) {
+            plan.steps.clear();
+            ASDSIP_LOG(ERROR) << "asdFftIstftMakePlan failed: " << e.what();
+            return ErrorType::ACL_ERROR_INTERNAL_ERROR;
+        }
     }
     return AsdSip::ErrorType::ACL_SUCCESS;
 }

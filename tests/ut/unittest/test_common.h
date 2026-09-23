@@ -14,6 +14,7 @@
 #include <cmath>
 #include <complex>
 #include <cstdio>
+#include <cstdlib>
 #include <fstream>
 #include <iostream>
 #include <set>
@@ -134,6 +135,15 @@ static inline std::string PrepareDataDirOnce(const std::string& currentDir, cons
 {
     std::string originPath = currentDir + "/tests/ut/unittest/" + relUnderTests + "/" + dataDirName;
     std::string destPath = currentDir + "/build/tests/ut/unittest/" + relUnderTests;
+    // UT 分片并行（build.sh --ut 按 GTEST_TOTAL_SHARDS/GTEST_SHARD_INDEX 分片）时，
+    // 各分片为独立进程，会在运行期向数据目录写入 input/golden（SaveTensorToBin /
+    // gen_data_*.py）。共享目录会互踩产物导致假失败，按分片隔离目录：
+    // 单进程运行（未设置分片环境变量）路径不变，完全兼容
+    const char* totalShards = std::getenv("GTEST_TOTAL_SHARDS");
+    const char* shardIndex = std::getenv("GTEST_SHARD_INDEX");
+    if (totalShards != nullptr && shardIndex != nullptr) {
+        destPath += "/shard_" + std::string(shardIndex);
+    }
     static std::set<std::string> doneKeys;
     if (doneKeys.count(destPath) != 0) {
         return destPath;
