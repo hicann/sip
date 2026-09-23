@@ -386,12 +386,50 @@ def exe_cmd(cmd):
     return 0
 
 
+def parse_parallel_jobs():
+    """Concurrency for per-tiling-key kernel compiles.
+
+    Controlled by ASCENDC_PARALLEL_JOBS (default 8, capped by CPU count).
+    A single .asc source may expand to dozens of tiling-key compiles; running
+    them serially dominates total build time (e.g. FftRealRegBase ~50 keys).
+    """
+    try:
+        jobs = int(os.getenv("ASCENDC_PARALLEL_JOBS", "8"))
+    except ValueError:
+        jobs = 8
+    return max(1, min(jobs, os.cpu_count() or 1))
+
+
+def run_parallel(pending_cmds, jobs):
+    """Run per-tiling-key compile commands concurrently (order preserved)."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    failed = []
+
+    def worker(item):
+        dst, cmd = item
+        print(cmd, flush=True)
+        if os.system(cmd) != 0:
+            failed.append(dst)
+
+    # os.system blocks on subprocesses and releases the GIL, so threads are
+    # sufficient; pending_cmds is built in source order so dsts order is stable.
+    with ThreadPoolExecutor(max_workers=jobs) as pool:
+        list(pool.map(worker, pending_cmds))
+    if failed:
+        logging.error(
+            "parallel ascendc compile failed, first failed target: %s", failed[0]
+        )
+        return -1
+    return 0
+
+
 def compile_ascendc_operation(args):
     dsts = []
     kernels = []
+    pending_cmds = []
     options = get_common_options(args)
     arch = get_arch(args.soc, args.channel)
-    compile_cmd = ""
     link_cmd = ""
     ascend_home_path = os.getenv("ASCEND_HOME_PATH", "ASCEND_HOME_PATH does not exist.")
     mssanitizer_path = os.path.join(ascend_home_path, "tools", "mssanitizer", "lib64")
@@ -408,8 +446,7 @@ def compile_ascendc_operation(args):
                 f"-DTILING_KEY_VAR={key}",
             ]
             compile_cmd = " ".join(gen_compile_cmd(args, dst, arch, opt))
-            if (exe_cmd(compile_cmd)) != 0:
-                return -1
+            pending_cmds.append((dst, compile_cmd))
             dsts.append(dst)
             if args.use_mssanitizer == "ON" and args.soc == "ascend310p":
                 dsts.append("--dependent-libraries")
@@ -424,8 +461,7 @@ def compile_ascendc_operation(args):
                     f"-DTILING_KEY_VAR={key}",
                 ]
                 compile_cmd = " ".join(gen_compile_cmd_v220(args, dst, arch, opt))
-                if (exe_cmd(compile_cmd)) != 0:
-                    return -1
+                pending_cmds.append((dst, compile_cmd))
                 dsts.append(dst)
                 if args.use_mssanitizer == "ON":
                     dsts.append("--dependent-libraries")
@@ -448,8 +484,7 @@ def compile_ascendc_operation(args):
                 compile_cmd = " ".join(
                     gen_compile_cmd_v220(args, dst, "dav-c220-cube", aic_opt)
                 )
-                if (exe_cmd(compile_cmd)) != 0:
-                    return -1
+                pending_cmds.append((dst, compile_cmd))
                 dsts.append(dst)
                 if args.use_mssanitizer == "ON":
                     dsts.append("--dependent-libraries")
@@ -466,8 +501,7 @@ def compile_ascendc_operation(args):
                 compile_cmd = " ".join(
                     gen_compile_cmd_v220(args, dst, "dav-c220-vec", aiv_opt)
                 )
-                if (exe_cmd(compile_cmd)) != 0:
-                    return -1
+                pending_cmds.append((dst, compile_cmd))
                 dsts.append(dst)
                 if args.use_mssanitizer == "ON":
                     dsts.append("--dependent-libraries")
@@ -483,8 +517,7 @@ def compile_ascendc_operation(args):
                 f"-DTILING_KEY_VAR={key}",
             ]
             compile_cmd = " ".join(gen_compile_cmd_v300(args, dst, arch, opt))
-            if (exe_cmd(compile_cmd)) != 0:
-                return -1
+            pending_cmds.append((dst, compile_cmd))
             dsts.append(dst)
         elif args.soc == "ascend950":
             if args.channel != "mix" or args.srcs.endswith(".asc"):
@@ -496,8 +529,7 @@ def compile_ascendc_operation(args):
                     f"-DTILING_KEY_VAR={key}",
                 ]
                 compile_cmd = " ".join(gen_compile_cmd_c310(args, dst, arch, opt))
-                if (exe_cmd(compile_cmd)) != 0:
-                    return -1
+                pending_cmds.append((dst, compile_cmd))
                 dsts.append(dst)
             else:
                 dst = os.path.splitext(args.dst)[0] + f"_mix_aic_{key}.o"
@@ -508,8 +540,7 @@ def compile_ascendc_operation(args):
                 compile_cmd = " ".join(
                     gen_compile_cmd_c310(args, dst, "dav-c310", aic_opt)
                 )
-                if (exe_cmd(compile_cmd)) != 0:
-                    return -1
+                pending_cmds.append((dst, compile_cmd))
                 dsts.append(dst)
                 dst = os.path.splitext(args.dst)[0] + f"_mix_aiv_{key}.o"
                 aiv_opt = options + [
@@ -519,13 +550,18 @@ def compile_ascendc_operation(args):
                 compile_cmd = " ".join(
                     gen_compile_cmd_c310(args, dst, "dav-c310", aiv_opt)
                 )
-                if (exe_cmd(compile_cmd)) != 0:
-                    return -1
+                pending_cmds.append((dst, compile_cmd))
                 dsts.append(dst)
         else:
             logging.error("soc version %s is not supported", args.soc)
             sys.exit(1)
         kernels.append(f"{args.kernel}_{key}")
+
+    # Per-tiling-key compiles are independent of each other; run them
+    # concurrently. Serial execution of dozens of keys (e.g. FftRealRegBase
+    # ~50 keys x ~25s) dominated total build time (~21 min tail).
+    if run_parallel(pending_cmds, parse_parallel_jobs()) != 0:
+        return -1
 
     link_cmd = " ".join(gen_fatbin_cmd(args, dsts, args.dst))
     if (exe_cmd(link_cmd)) != 0:

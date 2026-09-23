@@ -41,3 +41,5 @@ lcov/
 lcov-1.16/
 .ruff_cache/
 oat_reports*/
+sip_pta/dist/
+sip_pta/*.egg-info/

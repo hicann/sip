@@ -208,10 +208,12 @@ EOF
 function fn_compile_and_pack()
 {
     cmake $1 $2
+    # 并行度: 默认 CPU 全核; ccec kernel 编译内存占用较高, 可用 BUILD_JOBS 显式上限保护
+    local jobs="${BUILD_JOBS:-$(nproc)}"
     if [ "$USE_VERBOSE" == "ON" ];then
-        VERBOSE=1 make -j
+        VERBOSE=1 make -j"${jobs}"
     else
-        make -j64
+        make -j"${jobs}"
     fi
     make install
     fn_collect_ops_fft_artifacts
@@ -337,8 +339,39 @@ function fn_run_unittest()
         cp test_detail.xml unittest_result.xml
         exit ${ret}
     fi
-    echo "UT PASSED (${shards} shards)"
-    cp test_detail_shard_0.xml unittest_result.xml
+    # 合并各分片 XML 为一份完整报告（此前仅拷贝 shard_0，导致总用例数
+    # 少了一半、只显示 ~71/143 个）。用例总数为各分片之和。
+    python3 - ${shards} <<'PYEOF'
+import sys
+import xml.etree.ElementTree as ET
+
+shards = int(sys.argv[1])
+merged = None
+total = failed = 0
+for idx in range(shards):
+    path = f"test_detail_shard_{idx}.xml"
+    root = ET.parse(path).getroot()
+    total += int(root.get("tests", 0))
+    failed += int(root.get("failures", 0)) + int(root.get("errors", 0))
+    if merged is None:
+        merged = root
+        continue
+    for ts in root.findall("testsuite"):
+        merged.append(ts)
+merged.set("tests", str(total))
+merged.set("failures", str(sum(int(ts.get("failures", 0)) for ts in merged.findall("testsuite"))))
+merged.set("errors", str(sum(int(ts.get("errors", 0)) for ts in merged.findall("testsuite"))))
+merged.set("time", str(round(sum(float(ts.get("time", 0)) for ts in merged.findall("testsuite")), 3)))
+ET.ElementTree(merged).write("test_detail.xml", encoding="utf-8", xml_declaration=True)
+print(f"merged UT report: {total} tests from {shards} shards, failures={merged.get('failures')}")
+PYEOF
+    [ $? -eq 0 ] || fail=1
+    if [ ${fail} -ne 0 ]; then
+        echo "UT report merge failed"
+        exit 1
+    fi
+    echo "UT PASSED (${shards} shards, $(grep -oE 'tests="[0-9]+"' test_detail.xml | tail -1) total)"
+    cp test_detail.xml unittest_result.xml
 }
 
 function fn_build()
@@ -372,8 +405,6 @@ function fn_build()
 
     # ops-fft 二进制存件准入 (默认不构建; --use_ops_fft 显式开启, 缺失/失配时报错终止)
     fn_prepare_ops_fft_package
-
-    cmake -B build -S . -DCURRENT_DIR="$CURRENT_DIR"
 
     cd $CODE_ROOT/
     echo  "current commid id of ascendSipBoost: $(git rev-parse HEAD)"
