@@ -437,7 +437,7 @@ def compile_ascendc_operation(args):
     if arch == "None":
         return -1
     tiling_key_ids = get_tiling_key_ids(args.srcs)
-    logging.debug("tiling_key_ids: ", tiling_key_ids)
+    logging.debug("tiling_key_ids: %s", tiling_key_ids)
     for key in tiling_key_ids:
         if args.soc == "ascend310p" or args.soc == "ascend910":
             dst = os.path.splitext(args.dst)[0] + f"_{key}.o"
