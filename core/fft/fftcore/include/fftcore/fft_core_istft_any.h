@@ -19,38 +19,35 @@
 #include "fft_api.h"
 
 enum class FftNormMode {
-    NONE,       // No normalization
-    BY_ROOT_N,  // Divide by sqrt(signal_size)
-    BY_N,       // Divide by signal_size
+    NONE,      // No normalization
+    BY_ROOT_N, // Divide by sqrt(signal_size)
+    BY_N,      // Divide by signal_size
 };
 
 class FFTCoreIstftAny : public FftOperation {
 public:
-    explicit FFTCoreIstftAny(const struct AsdSip::IstftDesc istftParamDesc)
-        : istftAnyDesc{istftParamDesc}
-    {
-    }
+    explicit FFTCoreIstftAny(const struct AsdSip::IstftDesc istftParamDesc) : istftAnyDesc{istftParamDesc} {}
     bool init() override
     {
         ASDSIP_LOG(DEBUG) << "Success to initialize istft fftcore.";
         return true;
     };
-    void Run(Tensor &input, Tensor &output, void *stream, workspace::Workspace &workspace) override {};
-    void Run(Tensor &input, Tensor &window, Tensor &output, void *stream, workspace::Workspace &workspace) override;
-    void Run(void *input, void *window, void *output, void *stream, workspace::Workspace &workspace) override;
+    void Run(Tensor& input, Tensor& output, void* stream, workspace::Workspace& workspace) override {};
+    void Run(Tensor& input, Tensor& window, Tensor& output, void* stream, workspace::Workspace& workspace) override;
+    void Run(void* input, void* window, void* output, void* stream, workspace::Workspace& workspace) override;
     size_t EstimateWorkspaceSize() override;
     ~FFTCoreIstftAny() override {}
 
 protected:
     struct AsdSip::IstftDesc istftAnyDesc;
+
 private:
-    uint8_t *tempCP64Buffer = nullptr; // 缓存temp tensor
-    uint8_t *deviceBuffer = nullptr; // 小算子的workspace
-    uint8_t *unfoldGradBuffer = nullptr; // unFoldGrad算子的workspace
-    uint8_t *ySliceBuffer = nullptr; // unFoldGrad算子的workspace
-    uint8_t *windowSliceeBuffer = nullptr; // unFoldGrad算子的workspace
-    uint8_t *windowExpandBuffer = nullptr; // unFoldGrad算子的workspace
-    uint8_t *tempYBuffer = nullptr;
+    uint8_t* tempCP64Buffer = nullptr;     // 缓存temp tensor
+    uint8_t* deviceBuffer = nullptr;       // 小算子的workspace
+    uint8_t* unfoldGradBuffer = nullptr;   // unFoldGrad算子的workspace
+    uint8_t* windowSliceeBuffer = nullptr; // 窗口包络 w^2 的 scratch（避免回写用户 window 存储）
+    uint8_t* windowExpandBuffer = nullptr; // unFoldGrad算子的workspace
+    uint8_t* tempYBuffer = nullptr;
 
     size_t ComputerUnfoldBufferSize();
     size_t WindowExpandSize();

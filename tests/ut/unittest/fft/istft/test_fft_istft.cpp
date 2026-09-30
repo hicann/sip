@@ -10,6 +10,7 @@
 
 #include <gtest/gtest.h>
 #include <cmath>
+#include <cstring>
 #include <complex>
 #include <random>
 #include <string>
@@ -47,7 +48,10 @@ std::vector<float> MakeIstftWindow(int64_t nFft)
     return window;
 }
 
-void RunIstftTest(int64_t batch, int64_t nFft, int64_t hop, int64_t frames, const std::string& suffix)
+// execTimes: 同一 plan + 同一 window 的连续执行次数（issue #191）。>1 时额外校验
+// ① 每次执行输出都与单次参考值（golden）一致 ② 执行后用户 window 张量内容不变。
+void RunIstftTest(int64_t batch, int64_t nFft, int64_t hop, int64_t frames, const std::string& suffix,
+                  int64_t execTimes = 1)
 {
     static std::string destPath = PrepareDataDirOnce(GetIstftOutputDirectory(), "fft/istft", "istft_data");
     std::string dataDir = destPath + "/istft_data";
@@ -132,11 +136,31 @@ void RunIstftTest(int64_t batch, int64_t nFft, int64_t hop, int64_t frames, cons
     fftStatus = asdFftSetStream(handle, aclStream);
     ASSERT_EQ(fftStatus, AsdSip::ErrorType::ACL_SUCCESS);
 
-    fftStatus = asdFftExecIstft(handle, aclInput, aclWindow, aclOutput);
-    ASSERT_EQ(fftStatus, AsdSip::ErrorType::ACL_SUCCESS);
+    // issue #191：同一 plan + 同一 window 连续执行 execTimes 次；首轮输出快照用于重复执行一致性比对
+    const size_t outBytes = static_cast<size_t>(batch * outSignalLen) * sizeof(std::complex<float>);
+    std::vector<std::complex<float>> outFirstSnapshot;
+    for (int64_t round = 1; round <= execTimes; ++round) {
+        fftStatus = asdFftExecIstft(handle, aclInput, aclWindow, aclOutput);
+        ASSERT_EQ(fftStatus, AsdSip::ErrorType::ACL_SUCCESS);
 
-    fftStatus = asdFftSynchronize(handle);
-    ASSERT_EQ(fftStatus, AsdSip::ErrorType::ACL_SUCCESS);
+        fftStatus = asdFftSynchronize(handle);
+        ASSERT_EQ(fftStatus, AsdSip::ErrorType::ACL_SUCCESS);
+
+        if (round < execTimes) {
+            outFirstSnapshot.resize(static_cast<size_t>(batch * outSignalLen));
+            ret = aclrtMemcpy(outFirstSnapshot.data(), outBytes, outputDeviceAddr, outBytes, ACL_MEMCPY_DEVICE_TO_HOST);
+            ASSERT_EQ(ret, ::ACL_SUCCESS);
+        }
+    }
+
+    // issue #191 验收②：执行后用户 window 张量内容不变（const 语义，不被 w^2 回写污染）
+    if (execTimes > 1) {
+        std::vector<float> windowAfter(window.size(), 0.0f);
+        ret = aclrtMemcpy(windowAfter.data(), window.size() * sizeof(float), windowDeviceAddr,
+                          window.size() * sizeof(float), ACL_MEMCPY_DEVICE_TO_HOST);
+        ASSERT_EQ(ret, ::ACL_SUCCESS);
+        ASSERT_EQ(memcmp(windowAfter.data(), window.data(), window.size() * sizeof(float)), 0);
+    }
 
     asdFftDestroy(handle);
 
@@ -163,6 +187,15 @@ void RunIstftTest(int64_t batch, int64_t nFft, int64_t hop, int64_t frames, cons
               << ", max_rel=" << maxRelErr << ")" << std::endl;
     ASSERT_EQ(res, 0);
 
+    // issue #191 验收①：首轮输出同样与单次执行参考值一致（两次均对 golden 即两两一致）
+    if (execTimes > 1) {
+        res = CompareGoldenWithOutput(goldenFile, outFirstSnapshot.data(), static_cast<size_t>(numel), true, ISTFT_RTOL,
+                                      ISTFT_ATOL, &maxAbsErr, &maxRelErr);
+        std::cout << "first-exec compare result = " << (res == 0 ? 0 : 1) << " (mismatch=" << res
+                  << ", max_abs=" << maxAbsErr << ", max_rel=" << maxRelErr << ")" << std::endl;
+        ASSERT_EQ(res, 0);
+    }
+
     OpTestEnd(deviceId, context, stream);
 }
 } // namespace
@@ -170,3 +203,6 @@ void RunIstftTest(int64_t batch, int64_t nFft, int64_t hop, int64_t frames, cons
 TEST(TestFftIstft, TestIstftBatch2N64Hop16) { RunIstftTest(2, 64, 16, 8, "_a"); }
 TEST(TestFftIstft, TestIstftBatch1N128Hop32) { RunIstftTest(1, 128, 32, 6, "_b"); }
 TEST(TestFftIstft, TestIstftBatch3N256Hop64) { RunIstftTest(3, 256, 64, 5, "_c"); }
+
+// issue #191 回归：同一 plan + 同一 window 连续执行两次，且 hop*(frames-1) < nFft
+TEST(TestFftIstft, TestIstftRepeatExecWindowUnchanged) { RunIstftTest(1, 128, 16, 4, "_rep", 2); }

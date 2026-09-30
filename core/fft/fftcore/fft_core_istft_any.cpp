@@ -8,7 +8,6 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
-
 #include <vector>
 #include <complex>
 #include <numeric>
@@ -39,14 +38,14 @@ struct UnfoldParams {
 };
 
 // 计算out expected signal len
-int64_t ComputerExpectedSliceSignalLen(struct IstftDesc &istftAnyParms)
+int64_t ComputerExpectedSliceSignalLen(struct IstftDesc& istftAnyParms)
 {
     const bool center = istftAnyParms.center;
     const int64_t nFft = istftAnyParms.nFft;
     int64_t expectedOutputSignalLen = nFft + istftAnyParms.hopLengthOpt * (istftAnyParms.nFrames - 1);
     const auto lengthOpt = istftAnyParms.lengthOpt;
     const auto start = center ? nFft / 2 : 0;
-    const auto end = [&] () -> int64_t {
+    const auto end = [&]() -> int64_t {
         if (lengthOpt > 0) {
             return start + lengthOpt;
         }
@@ -66,13 +65,12 @@ float IstftFftNormalizationScale(int64_t normalization, int64_t signal)
         return 1.0f;
     }
 
-    const float scaleDenom = (norm == FftNormMode::BY_ROOT_N) ?
-        std::sqrt(signal) : static_cast<float>(signal);
+    const float scaleDenom = (norm == FftNormMode::BY_ROOT_N) ? std::sqrt(signal) : static_cast<float>(signal);
     return 1.0f / scaleDenom;
 }
 
 // 规归一化
-void IstftApplyNormalization(Tensor &out, int64_t normalization, int64_t signal, void *stream, uint8_t *deviceBuffer)
+void IstftApplyNormalization(Tensor& out, int64_t normalization, int64_t signal, void* stream, uint8_t* deviceBuffer)
 {
     auto scale = IstftFftNormalizationScale(normalization, signal);
     const float epsilon = 1e-6f;
@@ -81,8 +79,8 @@ void IstftApplyNormalization(Tensor &out, int64_t normalization, int64_t signal,
     }
 }
 
-void Slice(Tensor &input, Tensor &out, int64_t dim, int64_t start, int64_t end, int64_t step, void *stream,
-           uint8_t *deviceBuffer)
+void Slice(Tensor& input, Tensor& out, int64_t dim, int64_t start, int64_t end, int64_t step, void* stream,
+           uint8_t* deviceBuffer)
 {
     input.desc.dtype = Mki::TensorDType::TENSOR_DTYPE_FLOAT;
     SVector<int64_t> originalShape = input.desc.dims;
@@ -117,7 +115,8 @@ void Slice(Tensor &input, Tensor &out, int64_t dim, int64_t start, int64_t end, 
     AsStrided(input, out, tmpDims, strides, stream, start * strides[dim] * 2, deviceBuffer);
 }
 
-void Expand(Tensor &input, Tensor &out, int64_t expandDim, int64_t expandDimValue, void *stream, uint8_t *deviceBuffer)
+void Expand(const Tensor& input, Tensor& out, int64_t expandDim, int64_t expandDimValue, void* stream,
+            uint8_t* deviceBuffer)
 {
     SVector<int64_t> shape = input.desc.dims;
     std::vector<int64_t> strides = input.desc.strides;
@@ -144,8 +143,8 @@ void Expand(Tensor &input, Tensor &out, int64_t expandDim, int64_t expandDimValu
     AsStrided(input, out, expandShape, expandStrides, stream, 0, deviceBuffer);
 }
 
-void GetRealAndImagTensor(Tensor &complexTensor, Tensor &realTensor, Tensor &imagTensor,
-                          void *stream, uint8_t *deviceBuffer)
+void GetRealAndImagTensor(Tensor& complexTensor, Tensor& realTensor, Tensor& imagTensor, void* stream,
+                          uint8_t* deviceBuffer)
 {
     SVector<int64_t> originalShape = complexTensor.desc.dims;
     std::vector<int64_t> originalStrieds = complexTensor.desc.strides;
@@ -173,7 +172,8 @@ void GetRealAndImagTensor(Tensor &complexTensor, Tensor &realTensor, Tensor &ima
     complexTensor.desc.dims.erase(complexTensor.desc.dims.end() - 1);
 }
 
-void ComplexTensor(Tensor &complexTensor, Tensor &realTensor, Tensor &imagTensor, void *stream, uint8_t *deviceBuffer)
+void ComplexTensor(Tensor& complexTensor, const Tensor& realTensor, const Tensor& imagTensor, void* stream,
+                   uint8_t* deviceBuffer)
 {
     // view_as_real 形状 [..., 2]
     complexTensor.desc.dtype = Mki::TensorDType::TENSOR_DTYPE_FLOAT;
@@ -186,8 +186,8 @@ void ComplexTensor(Tensor &complexTensor, Tensor &realTensor, Tensor &imagTensor
     complexTensor.desc.dims.erase(complexTensor.desc.dims.end() - 1);
 }
 
-void UnfoldBackwardCp64(Mki::Tensor &grad, Mki::Tensor &out, struct UnfoldParams unfoldParms,
-                        void *&stream, uint8_t *tempCP64Buffer, uint8_t *deviceBuffer, uint8_t *unfoldGradBuffer)
+void UnfoldBackwardCp64(Mki::Tensor& grad, Mki::Tensor& out, struct UnfoldParams unfoldParms, void* stream,
+                        uint8_t* tempCP64Buffer, uint8_t* deviceBuffer, uint8_t* unfoldGradBuffer)
 {
     SVector<int64_t> dims = unfoldParms.sizes;
     int64_t dim = unfoldParms.dim;
@@ -197,14 +197,20 @@ void UnfoldBackwardCp64(Mki::Tensor &grad, Mki::Tensor &out, struct UnfoldParams
     SVector<int64_t> outShape = out.desc.dims;
 
     Tensor real;
-    real.desc = {
-        Mki::TensorDType::TENSOR_DTYPE_FLOAT, TENSOR_FORMAT_ND, originalShape, {originalShape[1] * originalShape[2], originalShape[2], 1}, 0};
+    real.desc = {Mki::TensorDType::TENSOR_DTYPE_FLOAT,
+                 TENSOR_FORMAT_ND,
+                 originalShape,
+                 {originalShape[1] * originalShape[2], originalShape[2], 1},
+                 0};
     real.data = tempCP64Buffer;
     real.dataSize = grad.dataSize / 2;
 
     Tensor imag;
-    imag.desc = {
-        Mki::TensorDType::TENSOR_DTYPE_FLOAT, TENSOR_FORMAT_ND, originalShape, {originalShape[1] * originalShape[2], originalShape[2], 1}, 0};
+    imag.desc = {Mki::TensorDType::TENSOR_DTYPE_FLOAT,
+                 TENSOR_FORMAT_ND,
+                 originalShape,
+                 {originalShape[1] * originalShape[2], originalShape[2], 1},
+                 0};
     imag.data = tempCP64Buffer + grad.dataSize / 2;
     imag.dataSize = grad.dataSize / 2;
 
@@ -238,13 +244,22 @@ size_t SliceWindowSize(struct IstftDesc istftAnyDesc)
     size_t dtypeSize = istftAnyDesc.windowDtype == COMPLEX_CODE ? sizeof(std::complex<float>) : sizeof(float);
     return static_cast<size_t>(ComputerExpectedSliceSignalLen(istftAnyDesc)) * dtypeSize;
 }
+
+// 窗口包络 w^2 scratch 容量：按窗口长度 winLengthOpt 分配（与写入量 nFft*elemSize 一致，
+// istft.cpp 参数校验强约束 winLength == nFft），避免按输出信号长度分配在 hop*(nFrames-1) < nFft
+// 时容量不足导致段间越界写（PR !160 检视意见 HIGH）
+size_t WindowSqScratchSize(struct IstftDesc istftAnyDesc)
+{
+    size_t dtypeSize = istftAnyDesc.windowDtype == COMPLEX_CODE ? sizeof(std::complex<float>) : sizeof(float);
+    return static_cast<size_t>(istftAnyDesc.winLengthOpt) * dtypeSize;
 }
+} // namespace
 
 size_t FFTCoreIstftAny::ComputerUnfoldBufferSize()
 {
-    const size_t expectedOutputSignalLen =
-        static_cast<size_t>(istftAnyDesc.nFft + istftAnyDesc.hopLengthOpt * (istftAnyDesc.nFrames - 1));
-    return  static_cast<size_t>(istftAnyDesc.channel) * expectedOutputSignalLen * sizeof(float) + SYS_WORKSPACE_SIZE;
+    const size_t expectedOutputSignalLen = static_cast<size_t>(istftAnyDesc.nFft +
+                                                               istftAnyDesc.hopLengthOpt * (istftAnyDesc.nFrames - 1));
+    return static_cast<size_t>(istftAnyDesc.channel) * expectedOutputSignalLen * sizeof(float) + SYS_WORKSPACE_SIZE;
 }
 
 size_t FFTCoreIstftAny::WindowExpandSize()
@@ -253,28 +268,24 @@ size_t FFTCoreIstftAny::WindowExpandSize()
     return static_cast<size_t>(istftAnyDesc.nFrames * istftAnyDesc.nFft) * dtypeSize;
 }
 
-size_t FFTCoreIstftAny::SliceSize()
-{
-    return SliceWindowSize(istftAnyDesc) + SliceYSize(istftAnyDesc);
-}
+size_t FFTCoreIstftAny::SliceSize() { return WindowSqScratchSize(istftAnyDesc) + SliceYSize(istftAnyDesc); }
 
 size_t FFTCoreIstftAny::TempYSize()
 {
     size_t dtypeSize = istftAnyDesc.returnComplex ? sizeof(std::complex<float>) : sizeof(float);
-    return static_cast<size_t>(istftAnyDesc.channel * (istftAnyDesc.nFft +
-           istftAnyDesc.hopLengthOpt * (istftAnyDesc.nFrames - 1))) * dtypeSize;
+    return static_cast<size_t>(istftAnyDesc.channel *
+                               (istftAnyDesc.nFft + istftAnyDesc.hopLengthOpt * (istftAnyDesc.nFrames - 1))) *
+           dtypeSize;
 }
 
 size_t FFTCoreIstftAny::TempCp64Size()
 {
-    const size_t expectedOutputSignalLen =
-        static_cast<size_t>(istftAnyDesc.nFft + istftAnyDesc.hopLengthOpt * (istftAnyDesc.nFrames - 1));
+    const size_t expectedOutputSignalLen = static_cast<size_t>(istftAnyDesc.nFft +
+                                                               istftAnyDesc.hopLengthOpt * (istftAnyDesc.nFrames - 1));
     size_t realAndImagOutputBufferSize = istftAnyDesc.channel * expectedOutputSignalLen * sizeof(float) * 2;
-    size_t realAndImagInputBufferSize =
-        istftAnyDesc.channel * istftAnyDesc.nFft * istftAnyDesc.nFrames * sizeof(std::complex<float>);
-    return istftAnyDesc.returnComplex
-               ? getAlignedSize(realAndImagOutputBufferSize + realAndImagInputBufferSize)
-               : 0;
+    size_t realAndImagInputBufferSize = istftAnyDesc.channel * istftAnyDesc.nFft * istftAnyDesc.nFrames *
+                                        sizeof(std::complex<float>);
+    return istftAnyDesc.returnComplex ? getAlignedSize(realAndImagOutputBufferSize + realAndImagInputBufferSize) : 0;
 }
 
 size_t FFTCoreIstftAny::EstimateWorkspaceSize()
@@ -289,7 +300,7 @@ size_t FFTCoreIstftAny::EstimateWorkspaceSize()
            getAlignedSize(expandSize) + getAlignedSize(sliceSize) + getAlignedSize(TempYSize());
 }
 
-void FFTCoreIstftAny::Run(Tensor &input, Tensor &window, Tensor &output, void *stream, workspace::Workspace &workspace)
+void FFTCoreIstftAny::Run(Tensor& input, Tensor& window, Tensor& output, void* stream, workspace::Workspace& workspace)
 {
     // 参数准备
     int64_t nFft = istftAnyDesc.nFft;
@@ -300,19 +311,19 @@ void FFTCoreIstftAny::Run(Tensor &input, Tensor &window, Tensor &output, void *s
     int64_t expectedOutputSignalLen = nFft + hopeLength * (nFrames - 1);
 
     // buffer 准备
-    tempCP64Buffer = (uint8_t *)workspace.allocate(TempCp64Size());
-    deviceBuffer = (uint8_t *)workspace.allocate(ASYNC_WORKSPACE_SIZE);
-    unfoldGradBuffer = (uint8_t *)workspace.allocate(ComputerUnfoldBufferSize());
-    ySliceBuffer = (uint8_t *)workspace.allocate(SliceYSize(istftAnyDesc));
-    windowSliceeBuffer = (uint8_t *)workspace.allocate(SliceWindowSize(istftAnyDesc));
-    windowExpandBuffer = (uint8_t *)workspace.allocate(WindowExpandSize());
-    tempYBuffer = (uint8_t *)workspace.allocate(TempYSize());
+    tempCP64Buffer = (uint8_t*)workspace.allocate(TempCp64Size());
+    deviceBuffer = (uint8_t*)workspace.allocate(ASYNC_WORKSPACE_SIZE);
+    unfoldGradBuffer = (uint8_t*)workspace.allocate(ComputerUnfoldBufferSize());
+    // ySliceBuffer 全仓无读写使用点，本次一并移除（检视意见顺带），Estimate 口径见 SliceSize()
+    windowSliceeBuffer = (uint8_t*)workspace.allocate(WindowSqScratchSize(istftAnyDesc));
+    windowExpandBuffer = (uint8_t*)workspace.allocate(WindowExpandSize());
+    tempYBuffer = (uint8_t*)workspace.allocate(TempYSize());
 
     // sip fft 不支持 normalize, 需在这先ifft normalize 预处理
     FftNormMode norm = istftAnyDesc.normalized ? FftNormMode::BY_ROOT_N : FftNormMode::BY_N;
     int64_t normInt = static_cast<int64_t>(norm);
     IstftApplyNormalization(input, normInt, nFft, stream, deviceBuffer);
-    
+
     Tensor yTemp = input; // size: (channel, n_frames, n_fft)yTemp
 
     // 窗口应用、重叠相加
@@ -322,8 +333,13 @@ void FFTCoreIstftAny::Run(Tensor &input, Tensor &window, Tensor &output, void *s
     yTemp.desc.strides = {nFrames * nFft, nFft, 1};
 
     Tensor y;
-    TensorDType dtype = istftAnyDesc.returnComplex ? Mki::TensorDType::TENSOR_DTYPE_COMPLEX64 : Mki::TensorDType::TENSOR_DTYPE_FLOAT;
-    y.desc = {dtype, Mki::TensorFormat::TENSOR_FORMAT_ND, {channel, expectedOutputSignalLen}, {expectedOutputSignalLen, 1}, 0};
+    TensorDType dtype = istftAnyDesc.returnComplex ? Mki::TensorDType::TENSOR_DTYPE_COMPLEX64 :
+                                                     Mki::TensorDType::TENSOR_DTYPE_FLOAT;
+    y.desc = {dtype,
+              Mki::TensorFormat::TENSOR_FORMAT_ND,
+              {channel, expectedOutputSignalLen},
+              {expectedOutputSignalLen, 1},
+              0};
     y.dataSize = static_cast<size_t>(channel * expectedOutputSignalLen) * GetTensorElementSize(dtype);
     y.data = tempYBuffer;
 
@@ -333,16 +349,19 @@ void FFTCoreIstftAny::Run(Tensor &input, Tensor &window, Tensor &output, void *s
     } else {
         UnfoldBackwardCp64(yTemp, y, unfoldParms, stream, tempCP64Buffer, deviceBuffer, unfoldGradBuffer);
     }
-    // 窗口包络计算
-    Mul(window, window, window, stream, deviceBuffer); // size: window (1, 1, nFft)
+    // 窗口包络计算：w^2 写入 workspace scratch，不回写用户 window 存储（避免同一 plan 重复执行时包络被平方）
+    Tensor windowSq = window;
+    windowSq.data = windowSliceeBuffer;
+    windowSq.dataSize = static_cast<size_t>(nFft) * GetTensorElementSize(window.desc.dtype);
+    Mul(window, window, windowSq, stream, deviceBuffer); // size: windowSq (1, 1, nFft)
 
     Tensor expandWin; // {1, nframes, fft}
     expandWin.desc = {
         window.desc.dtype, Mki::TensorFormat::TENSOR_FORMAT_ND, {1, nFrames, nFft}, {nFrames * nFft, nFft, 1}, 0};
     expandWin.dataSize = static_cast<size_t>(nFrames * nFft) * GetTensorElementSize(window.desc.dtype);
     expandWin.data = windowExpandBuffer;
-    Expand(window, expandWin, 1, nFrames, stream, deviceBuffer);
-    
+    Expand(windowSq, expandWin, 1, nFrames, stream, deviceBuffer);
+
     // windowEnvelop size: (1, expected_output_signal_len)
     Tensor windowEnvelop;
     SVector<int64_t> windowEnvelopShape = {1, expectedOutputSignalLen};
@@ -353,16 +372,16 @@ void FFTCoreIstftAny::Run(Tensor &input, Tensor &window, Tensor &output, void *s
 
     struct UnfoldParams unfoldParmsCp64 = {{1, expectedOutputSignalLen}, 1, nFft, hopeLength};
     if (window.desc.dtype == Mki::TensorDType::TENSOR_DTYPE_FLOAT) {
-        UnfoldGrad(
-            expandWin, windowEnvelop, {1, expectedOutputSignalLen}, 1, nFft, hopeLength, stream, unfoldGradBuffer);
+        UnfoldGrad(expandWin, windowEnvelop, {1, expectedOutputSignalLen}, 1, nFft, hopeLength, stream,
+                   unfoldGradBuffer);
     } else {
-        UnfoldBackwardCp64(
-            expandWin, windowEnvelop, unfoldParmsCp64, stream, tempCP64Buffer, deviceBuffer, unfoldGradBuffer);
+        UnfoldBackwardCp64(expandWin, windowEnvelop, unfoldParmsCp64, stream, tempCP64Buffer, deviceBuffer,
+                           unfoldGradBuffer);
     }
 
     // 中心裁剪和长度调整
     auto start = istftAnyDesc.center ? nFft / 2 : 0;
-    auto end = [&] () -> int64_t {
+    auto end = [&]() -> int64_t {
         if (istftAnyDesc.lengthOpt > 0) {
             return start + istftAnyDesc.lengthOpt;
         }
@@ -379,8 +398,7 @@ void FFTCoreIstftAny::Run(Tensor &input, Tensor &window, Tensor &output, void *s
     Div(y, windowEnvelop, y, stream, deviceBuffer);
     Slice(y, output, DIM_SLICE, start, end, 1, stream, deviceBuffer);
 
-    // worskspace内存回收
-    workspace.recycleLast();
+    // workspace 内存回收（与上方 allocate 次数配平：ySliceBuffer 死分配移除后为 6 次）
     workspace.recycleLast();
     workspace.recycleLast();
     workspace.recycleLast();
@@ -391,7 +409,7 @@ void FFTCoreIstftAny::Run(Tensor &input, Tensor &window, Tensor &output, void *s
 }
 
 // void * tensor to mki tensor
-void FFTCoreIstftAny::Run(void *input, void *window, void *output, void *stream, workspace::Workspace &workspace)
+void FFTCoreIstftAny::Run(void* input, void* window, void* output, void* stream, workspace::Workspace& workspace)
 {
     Tensor inTensor;
     Tensor outTensor;
@@ -408,12 +426,12 @@ void FFTCoreIstftAny::Run(void *input, void *window, void *output, void *stream,
     size_t dtypeSize = istftAnyDesc.returnComplex ? sizeof(std::complex<float>) : sizeof(float);
     inTensor.desc = {dtype, Mki::TensorFormat::TENSOR_FORMAT_ND, inputShape, inputStrides, 0};
     inTensor.data = input;
-    inTensor.dataSize =
-        dtypeSize * static_cast<size_t>(istftAnyDesc.nFrames * istftAnyDesc.nFft * istftAnyDesc.channel);
+    inTensor.dataSize = dtypeSize *
+                        static_cast<size_t>(istftAnyDesc.nFrames * istftAnyDesc.nFft * istftAnyDesc.channel);
 
     outTensor.desc = {dtype, Mki::TensorFormat::TENSOR_FORMAT_ND, oputShape, ouputStrides, 0};
     outTensor.data = output;
-    outTensor.dataSize = dtypeSize *  static_cast<size_t>(istftAnyDesc.channel * istftAnyDesc.outSignalLen);
+    outTensor.dataSize = dtypeSize * static_cast<size_t>(istftAnyDesc.channel * istftAnyDesc.outSignalLen);
 
     if (istftAnyDesc.windowDtype == COMPLEX_CODE) {
         dtype = Mki::TensorDType::TENSOR_DTYPE_COMPLEX64;
