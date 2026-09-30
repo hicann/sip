@@ -23,7 +23,7 @@ struct IstftDesc {
     int64_t nFrames;
     int64_t fftSize;
     int64_t outSignalLen; // 输出参数
-    int64_t windowDtype; // 输出参数 ACL_COMPLEX64:16  ACL_FLOAT:0
+    int64_t windowDtype;  // 输出参数 ACL_COMPLEX64:16  ACL_FLOAT:0
 
     // sip库1d fft入参参数
     int64_t sipFftSize;
@@ -51,12 +51,13 @@ public:
     asdFftPlanStatus fftStatus = AsdSip::asdFftPlanStatus::PLAN_UNINITIALIZED;
     asdFftType fftType = ASCEND_FFT_C2C;
     asdFftDirection direction = ASCEND_FFT_FORWARD;
-    void *stream = nullptr;
+    void* stream = nullptr;
     int64_t batchSize = 0;
     std::vector<int64_t> fftSizes;
     std::vector<int64_t> fftStrides;
     std::vector<PlanStep> steps;
     void* workspaceAddr = nullptr;
+    size_t workspaceSize = 0; // make 后由 GetWorkspaceSize 记录的需求量，用于 SetWorkspace 后的越界防护（issue #195）
 
     FFTPlan();
     void markInitialized();
@@ -69,4 +70,4 @@ public:
     struct IstftDesc istftDesc = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0}; // istft 相关参数存储
 };
 
-}
+} // namespace AsdSip

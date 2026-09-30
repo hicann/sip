@@ -20,7 +20,7 @@ public:
     DddCoreSep(unsigned fftX, unsigned fftY, unsigned fftZ, unsigned batch, AsdSip::asdFftType fftType, bool forward)
         : FftCore3DBase(FFTCoreType::kDd, fftX, fftY, fftZ, batch, fftType, forward)
     {}
-    ~DddCoreSep() override {}
+    ~DddCoreSep() override { DestroyInDevice(); }
     size_t EstimateWorkspaceSize() override;
     void Run(void* inputReal, void* inputImag, void* outputReal, void* outputImag, void* stream,
              workspace::Workspace& workspace) override;

@@ -23,20 +23,23 @@ namespace workspace {
 class Workspace {
 public:
     Workspace() = default;
-    Workspace(const Mki::Tensor &dataSegment);
-    Workspace(void *workSpace);
+    Workspace(const Mki::Tensor& dataSegment);
+    Workspace(void* workSpace);
+    // 带容量构造：capacity > 0 时 allocate 越界即抛异常（issue #195，防用户传入过小 workspace 静默越界写）
+    Workspace(void* workSpace, size_t capacity);
     bool isInitialized() const;
     void Reset();
-    void *allocate(size_t dataSize);
+    void* allocate(size_t dataSize);
     void recycleLast();
 
 private:
-    void *dataPtr_ = nullptr;
+    void* dataPtr_ = nullptr;
     size_t dataSize_ = 0;
+    size_t capacity_ = 0; // 0 表示容量未知，不做越界校验
     std::vector<size_t> offsets_ = {0};
 };
 
-}
+} // namespace workspace
 
 inline size_t getAlignedSize(size_t size)
 {

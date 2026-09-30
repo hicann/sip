@@ -17,14 +17,12 @@
 
 class FFTCoreN : public FFTCoreBase {
 public:
-    FFTCoreN(unsigned nDone, unsigned nDoing, unsigned nLeft, unsigned batch, AsdSip::asdFftType fftType,
-             bool forward)
+    FFTCoreN(unsigned nDone, unsigned nDoing, unsigned nLeft, unsigned batch, AsdSip::asdFftType fftType, bool forward)
         : FFTCoreBase(FFTCoreType::kFftN, nDone, nDoing, nLeft, batch, fftType, forward)
-    {
-    }
-    ~FFTCoreN() override {}
+    {}
+    ~FFTCoreN() override { DestroyInDevice(); }
     size_t EstimateWorkspaceSize() override;
-    void Run(Tensor &input, Tensor &output, void *stream, workspace::Workspace &workspace) override;
+    void Run(Tensor& input, Tensor& output, void* stream, workspace::Workspace& workspace) override;
 
 private:
     void InitRadix() override;

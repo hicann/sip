@@ -1212,6 +1212,8 @@ AspbStatus asdFftGetWorkspaceSize(asdFftHandle handle, size_t& workspaceSize)
             workspaceSize += computeTempCachesSize(plan);
         }
         workspaceSize += computeWorkspaceSize(plan);
+        // 记录需求量供执行期 Workspace 越界校验使用（issue #195）
+        plan.workspaceSize = workspaceSize;
     } catch (const std::exception& e) {
         ASDSIP_LOG(ERROR) << "asdFftGetWorkspaceSize failed: " << e.what();
         return AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR;
@@ -1277,19 +1279,19 @@ std::vector<void*> allocInterCachesV2(FFTPlan& plan, workspace::Workspace& wkspa
 
 // ops-fft 后端统一拦截: 请求 ops-fft 时校验 plan 各 step 的适配性与 stub 可用性,
 // 任一不满足即返回 ACL_ERROR_API_NOT_SUPPORT, 不回退 internal
-AspbStatus OpsFftBackendUnifyIntercept(const FFTPlan &plan)
+AspbStatus OpsFftBackendUnifyIntercept(const FFTPlan& plan)
 {
     if (!UseOpsFftKernelBackend()) {
         return ErrorType::ACL_SUCCESS;
     }
-    for (const auto &step : plan.steps) {
+    for (const auto& step : plan.steps) {
         const bool adapted = step.operation->OpsFftBackendAdapted();
         if (adapted && step.operation->OpsFftBackendStubReady()) {
             continue;
         }
         ASDSIP_LOG(ERROR) << "SIP_FFT_BACKEND=ops-fft: "
-                          << (adapted ? "ops-fft kernel stub unavailable (binary package missing/mismatched)"
-                                      : "current FFT path is not adapted to ops-fft kernel")
+                          << (adapted ? "ops-fft kernel stub unavailable (binary package missing/mismatched)" :
+                                        "current FFT path is not adapted to ops-fft kernel")
                           << ", aborting.";
         return ErrorType::ACL_ERROR_API_NOT_SUPPORT;
     }
@@ -1308,7 +1310,8 @@ AspbStatus asdFftExecV2(FFTPlan& plan, const aclTensor* input, const aclTensor* 
         return AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }
 
-    workspace::Workspace wkspace(plan.workspaceAddr);
+    // 带容量构造：allocate 越界即抛异常，防止用户传入小于需求量的 workspace 静默越界写（issue #195）
+    workspace::Workspace wkspace(plan.workspaceAddr, plan.workspaceSize);
     wkspace.Reset();
 
     void* inputData = Mki::GetStorageAddr(input);
@@ -1580,7 +1583,8 @@ AspbStatus asdFftExecV2Separated(FFTPlan& plan, const aclTensor* inputReal, cons
         return AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }
 
-    workspace::Workspace wkspace(plan.workspaceAddr);
+    // 带容量构造：allocate 越界即抛异常，防止用户传入小于需求量的 workspace 静默越界写（issue #195）
+    workspace::Workspace wkspace(plan.workspaceAddr, plan.workspaceSize);
     wkspace.Reset();
 
     void* inputRealData = Mki::GetStorageAddr(inputReal);

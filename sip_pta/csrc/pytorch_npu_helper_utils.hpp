@@ -47,17 +47,15 @@ using aclFloatArray = struct aclFloatArray;
 using aclBoolArray = struct aclBoolArray;
 using aclTensorList = struct aclTensorList;
 
-using _aclCreateTensor = aclTensor* (*)(const int64_t* view_dims, uint64_t view_dims_num,
-                                        aclDataType data_type, const int64_t* stride,
-                                        int64_t offset, aclFormat format,
-                                        const int64_t* storage_dims, uint64_t storage_dims_num,
-                                        void* tensor_data);
+using _aclCreateTensor = aclTensor* (*)(const int64_t* view_dims, uint64_t view_dims_num, aclDataType data_type,
+                                        const int64_t* stride, int64_t offset, aclFormat format,
+                                        const int64_t* storage_dims, uint64_t storage_dims_num, void* tensor_data);
 
 using _aclCreateScalar = aclScalar* (*)(void* value, aclDataType data_type);
 using _aclCreateIntArray = aclIntArray* (*)(const int64_t* value, uint64_t size);
 using _aclCreateFloatArray = aclFloatArray* (*)(const float* value, uint64_t size);
 using _aclCreateBoolArray = aclBoolArray* (*)(const bool* value, uint64_t size);
-using _aclCreateTensorList = aclTensorList *(*)(const aclTensor *const *value, uint64_t size);
+using _aclCreateTensorList = aclTensorList* (*)(const aclTensor* const* value, uint64_t size);
 
 using _aclDestroyTensor = int (*)(const aclTensor* tensor);
 using _aclDestroyScalar = int (*)(const aclScalar* scalar);
@@ -71,26 +69,26 @@ constexpr int kHashBufMaxSize = kHashBufSize + 1024;
 extern thread_local char g_hashBuf[kHashBufSize];
 extern thread_local int g_hashOffset;
 
-#define AT_ALL_SCALAR_TYPE_AND_ACL_DATATYPE_PAIR(_)                                                \
-    _(at::ScalarType::Byte, ACL_UINT8)                                                             \
-    _(at::ScalarType::Char, ACL_INT8)                                                              \
-    _(at::ScalarType::Short, ACL_INT16)                                                            \
-    _(at::ScalarType::Int, ACL_INT32)                                                              \
-    _(at::ScalarType::Long, ACL_INT64)                                                             \
-    _(at::ScalarType::Half, ACL_FLOAT16)                                                           \
-    _(at::ScalarType::Float, ACL_FLOAT)                                                            \
-    _(at::ScalarType::Double, ACL_DOUBLE)                                                          \
-    _(at::ScalarType::ComplexHalf, ACL_COMPLEX32)                                                  \
-    _(at::ScalarType::ComplexFloat, ACL_COMPLEX64)                                                 \
-    _(at::ScalarType::ComplexDouble, ACL_COMPLEX128)                                               \
-    _(at::ScalarType::Bool, ACL_BOOL)                                                              \
-    _(at::ScalarType::QInt8, ACL_DT_UNDEFINED)                                                     \
-    _(at::ScalarType::QUInt8, ACL_DT_UNDEFINED)                                                    \
-    _(at::ScalarType::QInt32, ACL_DT_UNDEFINED)                                                    \
-    _(at::ScalarType::BFloat16, ACL_BF16)                                                          \
-    _(at::ScalarType::QUInt4x2, ACL_DT_UNDEFINED)                                                  \
-    _(at::ScalarType::QUInt2x4, ACL_DT_UNDEFINED)                                                  \
-    _(at::ScalarType::Undefined, ACL_DT_UNDEFINED)                                                 \
+#define AT_ALL_SCALAR_TYPE_AND_ACL_DATATYPE_PAIR(_)  \
+    _(at::ScalarType::Byte, ACL_UINT8)               \
+    _(at::ScalarType::Char, ACL_INT8)                \
+    _(at::ScalarType::Short, ACL_INT16)              \
+    _(at::ScalarType::Int, ACL_INT32)                \
+    _(at::ScalarType::Long, ACL_INT64)               \
+    _(at::ScalarType::Half, ACL_FLOAT16)             \
+    _(at::ScalarType::Float, ACL_FLOAT)              \
+    _(at::ScalarType::Double, ACL_DOUBLE)            \
+    _(at::ScalarType::ComplexHalf, ACL_COMPLEX32)    \
+    _(at::ScalarType::ComplexFloat, ACL_COMPLEX64)   \
+    _(at::ScalarType::ComplexDouble, ACL_COMPLEX128) \
+    _(at::ScalarType::Bool, ACL_BOOL)                \
+    _(at::ScalarType::QInt8, ACL_DT_UNDEFINED)       \
+    _(at::ScalarType::QUInt8, ACL_DT_UNDEFINED)      \
+    _(at::ScalarType::QInt32, ACL_DT_UNDEFINED)      \
+    _(at::ScalarType::BFloat16, ACL_BF16)            \
+    _(at::ScalarType::QUInt4x2, ACL_DT_UNDEFINED)    \
+    _(at::ScalarType::QUInt2x4, ACL_DT_UNDEFINED)    \
+    _(at::ScalarType::Undefined, ACL_DT_UNDEFINED)   \
     _(at::ScalarType::NumOptions, ACL_DT_UNDEFINED)
 
 inline std::vector<std::string> split_str(std::string s, const std::string& del)
@@ -197,10 +195,9 @@ inline std::vector<std::string> get_default_custom_lib_path()
 const std::vector<std::string> g_custom_lib_path = get_custom_lib_path();
 const std::vector<std::string> g_default_custom_lib_path = get_default_custom_lib_path();
 
-constexpr aclDataType
-    kATenScalarTypeToAclDataTypeTable[static_cast<int64_t>(at::ScalarType::NumOptions) + 1] = {
+constexpr aclDataType kATenScalarTypeToAclDataTypeTable[static_cast<int64_t>(at::ScalarType::NumOptions) + 1] = {
 #define DEFINE_ENUM(_1, n) (n),
-        AT_ALL_SCALAR_TYPE_AND_ACL_DATATYPE_PAIR(DEFINE_ENUM)
+    AT_ALL_SCALAR_TYPE_AND_ACL_DATATYPE_PAIR(DEFINE_ENUM)
 #undef DEFINE_ENUM
 };
 
@@ -218,8 +215,7 @@ inline void* GetAsdSipApiFuncAddr(const char* apiName)
 
     auto funcAddr = dlsym(opApiHandler, apiName);
     if (funcAddr == nullptr) {
-        ASCEND_LOGW("dlsym %s from %s failed, error:%s.", apiName, GetAsdSipApiLibName(),
-                    dlerror());
+        ASCEND_LOGW("dlsym %s from %s failed, error:%s.", apiName, GetAsdSipApiLibName(), dlerror());
     }
 
     return funcAddr;
@@ -252,7 +248,9 @@ inline void* GetOpApiFuncAddr(const char* apiName)
         for (auto& it : g_custom_lib_path) {
             auto cust_opapi_lib = real_path(it + "/" + GetCustOpApiLibName());
             if (cust_opapi_lib.empty()) {
-                break;
+                // 路径不可用仅跳过本项，不得终止整个多路径搜索（issue #200）
+                ASCEND_LOGW("custom lib path is not available: %s.", it.c_str());
+                continue;
             }
             auto custOpApiHandler = GetOpApiLibHandler(cust_opapi_lib.c_str());
             if (custOpApiHandler == nullptr) {
@@ -271,7 +269,9 @@ inline void* GetOpApiFuncAddr(const char* apiName)
         for (auto& it : g_default_custom_lib_path) {
             auto default_cust_opapi_lib = real_path(it + "/" + GetCustOpApiLibName());
             if (default_cust_opapi_lib.empty()) {
-                break;
+                // 同上：跳过失效路径，继续搜索后续合法路径（issue #200）
+                ASCEND_LOGW("default custom lib path is not available: %s.", it.c_str());
+                continue;
             }
             auto custOpApiHandler = GetOpApiLibHandler(default_cust_opapi_lib.c_str());
             if (custOpApiHandler == nullptr) {
@@ -385,14 +385,20 @@ inline void Release(aclTensorList* p)
     aclDestroyTensorList(p);
 }
 
-template <typename T> void Release(T value) { (void)value; }
+template <typename T>
+void Release(T value)
+{
+    (void)value;
+}
 
-template <typename Tuple, size_t... I> void CallRelease(Tuple t, std::index_sequence<I...>)
+template <typename Tuple, size_t... I>
+void CallRelease(Tuple t, std::index_sequence<I...>)
 {
     (void)std::initializer_list<int>{(Release(std::get<I>(t)), 0)...};
 }
 
-template <typename Tuple> void ReleaseConvertTypes(Tuple& t)
+template <typename Tuple>
+void ReleaseConvertTypes(Tuple& t)
 {
     static constexpr auto size = std::tuple_size<Tuple>::value;
     CallRelease(t, std::make_index_sequence<size>{});

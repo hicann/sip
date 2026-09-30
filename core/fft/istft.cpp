@@ -216,7 +216,8 @@ AspbStatus asdFftExecIstftV2(FFTPlan& plan, const aclTensor* input, const aclTen
         return AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }
 
-    workspace::Workspace wkspace(plan.workspaceAddr);
+    // 带容量构造：allocate 越界即抛异常，防止用户传入小于需求量的 workspace 静默越界写（issue #195）
+    workspace::Workspace wkspace(plan.workspaceAddr, plan.workspaceSize);
     wkspace.Reset();
 
     void* inputData = Mki::GetStorageAddr(input);
@@ -247,16 +248,24 @@ AspbStatus asdFftExecIstftV2(FFTPlan& plan, const aclTensor* input, const aclTen
     // 1 transpose transposeOut size: (channel, n_frames, fft_size)
     // 2 c2c or c2r size: (channel, n_frames, n_fft) c2c n_fft = fft_size; c2r n_fft = (fft_size - 1) * 2
     int ping = 0;
-    for (int64_t i = 0; i < static_cast<int64_t>(plan.steps.size()); i++) {
-        void* tmpIn = i == 0 ? inputData : tmpCache[1 - ping];
-        void* tmpOut = i == static_cast<int64_t>(plan.steps.size()) - 1 ? outputData : tmpCache[ping];
+    // 执行链异常防护：workspace 回收/对齐校验等抛出的异常不得穿透 extern "C" 边界（issue #193），
+    // 口径与 asdFftExecV2 一致——异常时回收临时缓存并翻译为错误码
+    try {
+        for (int64_t i = 0; i < static_cast<int64_t>(plan.steps.size()); i++) {
+            void* tmpIn = i == 0 ? inputData : tmpCache[1 - ping];
+            void* tmpOut = i == static_cast<int64_t>(plan.steps.size()) - 1 ? outputData : tmpCache[ping];
 
-        if (i != ISTFTANY_CORE_STEP) {
-            plan.steps[i].operation->Run(tmpIn, tmpOut, plan.stream, wkspace);
-        } else {
-            plan.steps[i].operation->Run(tmpIn, windowData, tmpOut, plan.stream, wkspace);
+            if (i != ISTFTANY_CORE_STEP) {
+                plan.steps[i].operation->Run(tmpIn, tmpOut, plan.stream, wkspace);
+            } else {
+                plan.steps[i].operation->Run(tmpIn, windowData, tmpOut, plan.stream, wkspace);
+            }
+            ping = 1 - ping;
         }
-        ping = 1 - ping;
+    } catch (const std::exception& e) {
+        IstftRecycleInterCaches(plan, wkspace);
+        ASDSIP_LOG(ERROR) << "asdFftExecIstft failed: " << e.what();
+        return AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }
 
     IstftRecycleInterCaches(plan, wkspace);

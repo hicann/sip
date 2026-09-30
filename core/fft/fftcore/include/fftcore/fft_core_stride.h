@@ -20,11 +20,10 @@ public:
     FFTCoreStride(unsigned nDone, unsigned nDoing, unsigned nLeft, unsigned batch, AsdSip::asdFftType fftType,
                   bool forward)
         : FFTCoreBase(FFTCoreType::kFftStride, nDone, nDoing, nLeft, batch, fftType, forward)
-    {
-    }
-    ~FFTCoreStride() override {}
+    {}
+    ~FFTCoreStride() override { DestroyInDevice(); }
     size_t EstimateWorkspaceSize() override;
-    void Run(Tensor &input, Tensor &output, void *stream, workspace::Workspace &workspace) override;
+    void Run(Tensor& input, Tensor& output, void* stream, workspace::Workspace& workspace) override;
 
 private:
     void InitRadix() override;

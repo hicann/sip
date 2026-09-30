@@ -94,6 +94,12 @@ print(result)  # 复数逐元素乘法结果
 
 ### 脚本运行方法（最小环境组合，实测验证）
 
+**前置条件**：本节脚本依赖 asdsip 动态库与 MKI 头文件目录，请先确认已完成以下两步，否则运行会报找不到库/头文件的错误（issue #201）：
+
+1. **安装 asdsip 包**：在 sip 仓根目录执行 `bash build.sh` 并安装产物 `output/Ascend-cann-SIP_*.run`（或已有的 `/usr/local/Ascend/asdsip` 安装目录）；
+2. **生成 3rdparty 目录**：执行过一次 sip 仓根目录的 `bash build.sh` 后，`3rdparty/ascend-boost-comm`（MKI 头文件来源）会被自动创建；若仍缺失，手动执行
+   `git clone https://gitcode.com/cann/ascend-boost-comm.git ../3rdparty/ascend-boost-comm`（相对 sip_pta 的 `BOOST_COMM_PATH` 默认值）。
+
 运行 whl 无需再手动 export 任何环境变量，只需三步：
 
 ```bash

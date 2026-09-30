@@ -15,35 +15,39 @@ using Mki::Tensor;
 
 namespace workspace {
 
-Workspace::Workspace(const Tensor &dataSegment)
+Workspace::Workspace(const Tensor& dataSegment)
 {
     dataPtr_ = dataSegment.data;
     dataSize_ = dataSegment.dataSize;
 }
 
-Workspace::Workspace(void *workSpace)
+Workspace::Workspace(void* workSpace) { dataPtr_ = workSpace; }
+
+Workspace::Workspace(void* workSpace, size_t capacity)
 {
     dataPtr_ = workSpace;
+    dataSize_ = capacity;
+    capacity_ = capacity;
 }
 
-bool Workspace::isInitialized() const
-{
-    return dataPtr_ != nullptr;
-}
+bool Workspace::isInitialized() const { return dataPtr_ != nullptr; }
 
-void Workspace::Reset()
-{
-    offsets_.resize(1);
-}
+void Workspace::Reset() { offsets_.resize(1); }
 
-void *Workspace::allocate(size_t dataSize)
+void* Workspace::allocate(size_t dataSize)
 {
     dataSize = getAlignedSize(dataSize);
     size_t offset = offsets_.back();
 
+    if (capacity_ != 0 && offset + dataSize > capacity_) {
+        ASDSIP_LOG(ERROR) << "Workspace allocation exceeds capacity: need " << offset + dataSize << ", capacity "
+                          << capacity_ << ".";
+        throw std::runtime_error("Workspace allocation exceeds capacity.");
+    }
+
     offsets_.push_back(offset + dataSize);
 
-    return (uint8_t *)dataPtr_ + offset;
+    return (uint8_t*)dataPtr_ + offset;
 }
 
 void Workspace::recycleLast()
@@ -56,4 +60,4 @@ void Workspace::recycleLast()
     offsets_.pop_back();
 }
 
-}
+} // namespace workspace

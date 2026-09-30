@@ -9,6 +9,8 @@
  */
 
 #include <vector>
+#include <string>
+#include <stdexcept>
 #include <complex>
 #include <numeric>
 #include <iostream>
@@ -29,6 +31,16 @@ constexpr size_t SYS_WORKSPACE_SIZE = 16 * 1024 * 1024; // unfold_grad 默认需
 constexpr int DIM_TWO = 2;
 constexpr int DIM_SLICE = 1;
 constexpr int64_t COMPLEX_CODE = 16;
+
+// 小算子返回码检查：底层失败时抛出异常，由执行入口 asdFftExecIstftV2 的 try/catch
+// 统一翻译为错误码，避免底层失败被静默吞掉后仍返回 ACL_SUCCESS（issue #194）
+void CheckOpStatus(AspbStatus status, const char* opName)
+{
+    if (status != AsdSip::ErrorType::ACL_SUCCESS) {
+        ASDSIP_LOG(ERROR) << "istft op " << opName << " failed.";
+        throw std::runtime_error(std::string("istft op failed: ") + opName);
+    }
+}
 
 struct UnfoldParams {
     const SVector<int64_t> sizes;
@@ -75,7 +87,7 @@ void IstftApplyNormalization(Tensor& out, int64_t normalization, int64_t signal,
     auto scale = IstftFftNormalizationScale(normalization, signal);
     const float epsilon = 1e-6f;
     if (std::abs(scale - 1.0f) > epsilon) {
-        Muls(out, scale, out, stream, deviceBuffer);
+        CheckOpStatus(Muls(out, scale, out, stream, deviceBuffer), "Muls");
     }
 }
 
@@ -112,11 +124,10 @@ void Slice(Tensor& input, Tensor& out, int64_t dim, int64_t start, int64_t end, 
         strides[i] = tmpStrides[i] * step;
     }
 
-    AsStrided(input, out, tmpDims, strides, stream, start * strides[dim] * 2, deviceBuffer);
+    CheckOpStatus(AsStrided(input, out, tmpDims, strides, stream, start * strides[dim] * 2, deviceBuffer), "AsStrided");
 }
 
-void Expand(const Tensor& input, Tensor& out, int64_t expandDim, int64_t expandDimValue, void* stream,
-            uint8_t* deviceBuffer)
+void Expand(Tensor& input, Tensor& out, int64_t expandDim, int64_t expandDimValue, void* stream, uint8_t* deviceBuffer)
 {
     SVector<int64_t> shape = input.desc.dims;
     std::vector<int64_t> strides = input.desc.strides;
@@ -140,7 +151,7 @@ void Expand(const Tensor& input, Tensor& out, int64_t expandDim, int64_t expandD
     }
     expandShape[expandDim] = expandDimValue;
 
-    AsStrided(input, out, expandShape, expandStrides, stream, 0, deviceBuffer);
+    CheckOpStatus(AsStrided(input, out, expandShape, expandStrides, stream, 0, deviceBuffer), "AsStrided");
 }
 
 void GetRealAndImagTensor(Tensor& complexTensor, Tensor& realTensor, Tensor& imagTensor, void* stream,
@@ -163,30 +174,31 @@ void GetRealAndImagTensor(Tensor& complexTensor, Tensor& realTensor, Tensor& ima
     imagTensor.desc = {Mki::TensorDType::TENSOR_DTYPE_FLOAT, TENSOR_FORMAT_ND, originalShape, {}, 0};
 
     // 实部
-    AsStrided(complexTensor, realTensor, originalShape, realAndImagStrieds, stream, 0, deviceBuffer);
+    CheckOpStatus(AsStrided(complexTensor, realTensor, originalShape, realAndImagStrieds, stream, 0, deviceBuffer),
+                  "AsStrided");
     // 虚部
-    AsStrided(complexTensor, imagTensor, originalShape, realAndImagStrieds, stream, 1, deviceBuffer);
+    CheckOpStatus(AsStrided(complexTensor, imagTensor, originalShape, realAndImagStrieds, stream, 1, deviceBuffer),
+                  "AsStrided");
 
     // view_as_complex
     complexTensor.desc.dtype = Mki::TensorDType::TENSOR_DTYPE_COMPLEX64;
     complexTensor.desc.dims.erase(complexTensor.desc.dims.end() - 1);
 }
 
-void ComplexTensor(Tensor& complexTensor, const Tensor& realTensor, const Tensor& imagTensor, void* stream,
-                   uint8_t* deviceBuffer)
+void ComplexTensor(Tensor& complexTensor, Tensor& realTensor, Tensor& imagTensor, void* stream, uint8_t* deviceBuffer)
 {
     // view_as_real 形状 [..., 2]
     complexTensor.desc.dtype = Mki::TensorDType::TENSOR_DTYPE_FLOAT;
     complexTensor.desc.dims.push_back(DIM_TWO);
 
-    MakeComplex(realTensor, imagTensor, complexTensor, -1, stream, deviceBuffer);
+    CheckOpStatus(MakeComplex(realTensor, imagTensor, complexTensor, -1, stream, deviceBuffer), "MakeComplex");
 
     // view_as_complex
     complexTensor.desc.dtype = Mki::TensorDType::TENSOR_DTYPE_COMPLEX64;
     complexTensor.desc.dims.erase(complexTensor.desc.dims.end() - 1);
 }
 
-void UnfoldBackwardCp64(Mki::Tensor& grad, Mki::Tensor& out, struct UnfoldParams unfoldParms, void* stream,
+void UnfoldBackwardCp64(Mki::Tensor& grad, Mki::Tensor& out, struct UnfoldParams unfoldParms, void*& stream,
                         uint8_t* tempCP64Buffer, uint8_t* deviceBuffer, uint8_t* unfoldGradBuffer)
 {
     SVector<int64_t> dims = unfoldParms.sizes;
@@ -227,8 +239,8 @@ void UnfoldBackwardCp64(Mki::Tensor& grad, Mki::Tensor& out, struct UnfoldParams
     // 虚实分离
     GetRealAndImagTensor(grad, real, imag, stream, deviceBuffer);
     // unfold
-    UnfoldGrad(real, realOut, dims, dim, size, step, stream, unfoldGradBuffer);
-    UnfoldGrad(imag, imagOut, dims, dim, size, step, stream, unfoldGradBuffer);
+    CheckOpStatus(UnfoldGrad(real, realOut, dims, dim, size, step, stream, unfoldGradBuffer), "UnfoldGrad");
+    CheckOpStatus(UnfoldGrad(imag, imagOut, dims, dim, size, step, stream, unfoldGradBuffer), "UnfoldGrad");
     // 虚实结合
     ComplexTensor(out, realOut, imagOut, stream, deviceBuffer);
 }
@@ -243,15 +255,6 @@ size_t SliceWindowSize(struct IstftDesc istftAnyDesc)
 {
     size_t dtypeSize = istftAnyDesc.windowDtype == COMPLEX_CODE ? sizeof(std::complex<float>) : sizeof(float);
     return static_cast<size_t>(ComputerExpectedSliceSignalLen(istftAnyDesc)) * dtypeSize;
-}
-
-// 窗口包络 w^2 scratch 容量：按窗口长度 winLengthOpt 分配（与写入量 nFft*elemSize 一致，
-// istft.cpp 参数校验强约束 winLength == nFft），避免按输出信号长度分配在 hop*(nFrames-1) < nFft
-// 时容量不足导致段间越界写（PR !160 检视意见 HIGH）
-size_t WindowSqScratchSize(struct IstftDesc istftAnyDesc)
-{
-    size_t dtypeSize = istftAnyDesc.windowDtype == COMPLEX_CODE ? sizeof(std::complex<float>) : sizeof(float);
-    return static_cast<size_t>(istftAnyDesc.winLengthOpt) * dtypeSize;
 }
 } // namespace
 
@@ -268,7 +271,7 @@ size_t FFTCoreIstftAny::WindowExpandSize()
     return static_cast<size_t>(istftAnyDesc.nFrames * istftAnyDesc.nFft) * dtypeSize;
 }
 
-size_t FFTCoreIstftAny::SliceSize() { return WindowSqScratchSize(istftAnyDesc) + SliceYSize(istftAnyDesc); }
+size_t FFTCoreIstftAny::SliceSize() { return SliceWindowSize(istftAnyDesc) + SliceYSize(istftAnyDesc); }
 
 size_t FFTCoreIstftAny::TempYSize()
 {
@@ -314,8 +317,8 @@ void FFTCoreIstftAny::Run(Tensor& input, Tensor& window, Tensor& output, void* s
     tempCP64Buffer = (uint8_t*)workspace.allocate(TempCp64Size());
     deviceBuffer = (uint8_t*)workspace.allocate(ASYNC_WORKSPACE_SIZE);
     unfoldGradBuffer = (uint8_t*)workspace.allocate(ComputerUnfoldBufferSize());
-    // ySliceBuffer 全仓无读写使用点，本次一并移除（检视意见顺带），Estimate 口径见 SliceSize()
-    windowSliceeBuffer = (uint8_t*)workspace.allocate(WindowSqScratchSize(istftAnyDesc));
+    ySliceBuffer = (uint8_t*)workspace.allocate(SliceYSize(istftAnyDesc));
+    windowSliceeBuffer = (uint8_t*)workspace.allocate(SliceWindowSize(istftAnyDesc));
     windowExpandBuffer = (uint8_t*)workspace.allocate(WindowExpandSize());
     tempYBuffer = (uint8_t*)workspace.allocate(TempYSize());
 
@@ -329,7 +332,7 @@ void FFTCoreIstftAny::Run(Tensor& input, Tensor& window, Tensor& output, void* s
     // 窗口应用、重叠相加
     window.desc.dims = {1, 1, nFft};
     window.desc.strides = {nFft, nFft, 1};
-    Mul(input, window, yTemp, stream, deviceBuffer); // size: yTemp (channel, n_frames, nFft)
+    CheckOpStatus(Mul(input, window, yTemp, stream, deviceBuffer), "Mul"); // size: yTemp (channel, n_frames, nFft)
     yTemp.desc.strides = {nFrames * nFft, nFft, 1};
 
     Tensor y;
@@ -345,7 +348,9 @@ void FFTCoreIstftAny::Run(Tensor& input, Tensor& window, Tensor& output, void* s
 
     struct UnfoldParams unfoldParms = {{inputShape[0], expectedOutputSignalLen}, 1, nFft, hopeLength};
     if (!istftAnyDesc.returnComplex) {
-        UnfoldGrad(yTemp, y, {inputShape[0], expectedOutputSignalLen}, 1, nFft, hopeLength, stream, unfoldGradBuffer);
+        CheckOpStatus(UnfoldGrad(yTemp, y, {inputShape[0], expectedOutputSignalLen}, 1, nFft, hopeLength, stream,
+                                 unfoldGradBuffer),
+                      "UnfoldGrad");
     } else {
         UnfoldBackwardCp64(yTemp, y, unfoldParms, stream, tempCP64Buffer, deviceBuffer, unfoldGradBuffer);
     }
@@ -353,7 +358,7 @@ void FFTCoreIstftAny::Run(Tensor& input, Tensor& window, Tensor& output, void* s
     Tensor windowSq = window;
     windowSq.data = windowSliceeBuffer;
     windowSq.dataSize = static_cast<size_t>(nFft) * GetTensorElementSize(window.desc.dtype);
-    Mul(window, window, windowSq, stream, deviceBuffer); // size: windowSq (1, 1, nFft)
+    CheckOpStatus(Mul(window, window, windowSq, stream, deviceBuffer), "Mul"); // size: windowSq (1, 1, nFft)
 
     Tensor expandWin; // {1, nframes, fft}
     expandWin.desc = {
@@ -372,8 +377,9 @@ void FFTCoreIstftAny::Run(Tensor& input, Tensor& window, Tensor& output, void* s
 
     struct UnfoldParams unfoldParmsCp64 = {{1, expectedOutputSignalLen}, 1, nFft, hopeLength};
     if (window.desc.dtype == Mki::TensorDType::TENSOR_DTYPE_FLOAT) {
-        UnfoldGrad(expandWin, windowEnvelop, {1, expectedOutputSignalLen}, 1, nFft, hopeLength, stream,
-                   unfoldGradBuffer);
+        CheckOpStatus(UnfoldGrad(expandWin, windowEnvelop, {1, expectedOutputSignalLen}, 1, nFft, hopeLength, stream,
+                                 unfoldGradBuffer),
+                      "UnfoldGrad");
     } else {
         UnfoldBackwardCp64(expandWin, windowEnvelop, unfoldParmsCp64, stream, tempCP64Buffer, deviceBuffer,
                            unfoldGradBuffer);
@@ -395,10 +401,11 @@ void FFTCoreIstftAny::Run(Tensor& input, Tensor& window, Tensor& output, void* s
     }
 
     // 归一化
-    Div(y, windowEnvelop, y, stream, deviceBuffer);
+    CheckOpStatus(Div(y, windowEnvelop, y, stream, deviceBuffer), "Div");
     Slice(y, output, DIM_SLICE, start, end, 1, stream, deviceBuffer);
 
-    // workspace 内存回收（与上方 allocate 次数配平：ySliceBuffer 死分配移除后为 6 次）
+    // worskspace内存回收
+    workspace.recycleLast();
     workspace.recycleLast();
     workspace.recycleLast();
     workspace.recycleLast();

@@ -45,6 +45,7 @@ private:
     uint8_t* tempCP64Buffer = nullptr;     // 缓存temp tensor
     uint8_t* deviceBuffer = nullptr;       // 小算子的workspace
     uint8_t* unfoldGradBuffer = nullptr;   // unFoldGrad算子的workspace
+    uint8_t* ySliceBuffer = nullptr;       // unFoldGrad算子的workspace
     uint8_t* windowSliceeBuffer = nullptr; // 窗口包络 w^2 的 scratch（避免回写用户 window 存储）
     uint8_t* windowExpandBuffer = nullptr; // unFoldGrad算子的workspace
     uint8_t* tempYBuffer = nullptr;

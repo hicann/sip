@@ -56,12 +56,22 @@ void FFTMixCache::setCapacity(int64_t maxSize)
     }
 }
 
-int64_t FFTMixCache::getCapacity() { return capacity; }
+int64_t FFTMixCache::getCapacity()
+{
+    std::lock_guard<std::mutex> guard(fftMutex);
+    return capacity;
+}
 
-int64_t FFTMixCache::getSize() { return list.size(); }
+int64_t FFTMixCache::getSize()
+{
+    std::lock_guard<std::mutex> guard(fftMutex);
+    return list.size();
+}
 
+// 持锁遍历销毁，与 get()/setCapacity() 及 BlasMixCache::clear() 口径一致，避免并发数据竞争（issue #196）
 void FFTMixCache::clear()
 {
+    std::lock_guard<std::mutex> guard(fftMutex);
     for (auto it = list.begin(); it != list.end(); ++it) {
         FFTPair tmp = *it;
         destroyFftHandle(tmp.second.handle);

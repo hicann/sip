@@ -19,7 +19,8 @@
 inline at::Tensor CopyTensorHostToDevice(const at::Tensor& cpu_tensor)
 {
     at::Tensor cpuPinMemTensor = cpu_tensor.pin_memory();
-    int deviceIndex = 0;
+    // 使用当前 NPU 设备号而非硬编码 0，避免多卡环境标量张量被拷贝到非当前设备（issue #197）
+    auto deviceIndex = c10_npu::getCurrentNPUStream().device_index();
     return cpuPinMemTensor.to(c10::Device(torch_npu::utils::get_npu_device_type(), deviceIndex),
                               cpuPinMemTensor.scalar_type(), true, true);
 }
@@ -72,7 +73,14 @@ inline aclTensor* ConvertType(const at::Tensor& at_tensor)
         // 构成 use-after-free（issue #119）。一次算子执行可能连续转换多个标量，
         // 单个 static 槽位会被后续调用覆盖；与 #120 一致，用 thread_local 容器
         // 为每次调用持有独立张量（无覆盖/无别名/无线程竞态，覆盖 EXEC_FUNC 窗口）。
+        // thread_local 容器只增不清会随调用次数无界增长（issue #198）。
+        // 设置上限：超限时先清空旧持有项再写入。持有容器语义是"覆盖当前算子执行窗口"，
+        // 上限清空仅影响前序窗口中早已执行完成的引用，不引入悬垂风险。
+        constexpr size_t kScalarHolderLimit = 1024;
         thread_local std::vector<at::Tensor> scalarTensorHolder;
+        if (scalarTensorHolder.size() >= kScalarHolderLimit) {
+            scalarTensorHolder.clear();
+        }
         scalarTensorHolder.push_back(CopyScalarToDevice(expScalar, scalar_data_type));
         const at::Tensor& aclInput = scalarTensorHolder.back();
         return aclCreateTensor(aclInput.sizes().data(), aclInput.sizes().size(), acl_data_type,
@@ -324,7 +332,13 @@ inline aclTensor* CreateAclTensorFromAtTensor(const at::Tensor& at_tensor)
     // 单个 static 槽位会被后续调用覆盖导致前序指针再次悬垂；改用 thread_local
     // 容器为每次调用持有独立张量：无跨调用覆盖、无别名、无线程间数据竞态，
     // 生命周期延续至该线程后续调用（覆盖 EXEC_FUNC 同步执行窗口）。
+    // 设置上限防止长时服务内存无界增长（issue #198）：超限清空仅释放前序窗口中
+    // 早已执行完成的张量，不影响当前窗口的悬垂指针保护语义。
+    constexpr size_t kContiguousHolderLimit = 1024;
     thread_local std::vector<at::Tensor> tensorContiguousHolder;
+    if (tensorContiguousHolder.size() >= kContiguousHolderLimit) {
+        tensorContiguousHolder.clear();
+    }
     tensorContiguousHolder.push_back(at_tensor.is_contiguous() ? at_tensor : at_tensor.contiguous());
     const at::Tensor& tensor_contiguous = tensorContiguousHolder.back();
 

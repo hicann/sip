@@ -8,7 +8,6 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
-
 #ifndef __DD_CORE__
 #define __DD_CORE__
 
@@ -18,16 +17,17 @@
 
 class DdCore : public FftCore2DBase {
 public:
-    DdCore(unsigned fftX, unsigned fftY,
-        unsigned batch, AsdSip::asdFftType fftType, bool forward)
-        : FftCore2DBase(FFTCoreType::kDd, fftX, fftY, batch, fftType, forward) {}
-    ~DdCore() override {}
+    DdCore(unsigned fftX, unsigned fftY, unsigned batch, AsdSip::asdFftType fftType, bool forward)
+        : FftCore2DBase(FFTCoreType::kDd, fftX, fftY, batch, fftType, forward)
+    {}
+    ~DdCore() override { DestroyInDevice(); }
     size_t EstimateWorkspaceSize() override;
-    void Run(Tensor& input, Tensor& output, void *stream, workspace::Workspace& workspace) override;
+    void Run(Tensor& input, Tensor& output, void* stream, workspace::Workspace& workspace) override;
+
 private:
     bool PreAllocateInDevice() override;
     void DestroyInDevice() const;
-    
+
     std::string opName{"DdOperation"};
     AsdSip::AspbStatus InitPMatrix();
     AsdSip::AspbStatus InitQMatrix();

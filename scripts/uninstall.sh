@@ -35,7 +35,11 @@ else
     log_file=${LOG_PATH}${LOG_NAME}
 fi
 
-chmod 640 "$log_file"
+# 日志文件可能不存在（root/普通用户路径差异、日志目录被清理等），
+# set -e 下无条件 chmod 会使卸载在任何动作前失败退出（issue #199）
+if [ -f "$log_file" ]; then
+    chmod 640 "$log_file"
+fi
 
 function print() {
     if [ ! -f "$log_file" ]; then
