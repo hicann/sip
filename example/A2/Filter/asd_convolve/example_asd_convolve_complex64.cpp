@@ -7,6 +7,7 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
+#include <cstdlib>
 #include <iostream>
 #include "asdsip.h"
 #include "filter_api.h"
@@ -97,6 +98,11 @@ void printTensor(std::vector<T> tensorData, int64_t tensorSize)
 int main(int argc, char** argv)
 {
     int deviceId = 0;
+    // 优先从环境变量 ASDSIP_DEVICE_ID 获取实际 device id(build.sh 按 CI 映射卡注入), 未设置时默认 0
+    const char* envDeviceId = std::getenv("ASDSIP_DEVICE_ID");
+    if (envDeviceId != nullptr) {
+        deviceId = std::atoi(envDeviceId);
+    }
 
     aclrtStream stream;
     aclmdlRI modelRI;

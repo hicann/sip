@@ -12,6 +12,7 @@
 
 #include <array>
 #include <cfloat>
+#include <cstdlib>
 #include <functional>
 #include <map>
 #include <memory>
@@ -116,10 +117,27 @@ static int CreateAclTensor(const std::vector<T>& hostData, const std::vector<int
 }
 
 /**
+ * @brief 获取测试实际使用的 deviceId: 优先读取环境变量 ASDSIP_DEVICE_ID
+ *        (build.sh 按 CI 映射卡解析出的物理卡号注入, 值可能为列表如 "4,5", 取首个编号),
+ *        未设置时沿用用例传入的默认值(0)。
+ *        注: UT 进程启动时已剥离 ASCEND_RT_VISIBLE_DEVICES, 无可见性限制时物理卡号
+ *        即进程内合法 id, 不依赖运行时对可见卡的重编号语义。
+ */
+static int OpTestGetDeviceId(int deviceId)
+{
+    const char* envDeviceId = std::getenv("ASDSIP_DEVICE_ID");
+    if (envDeviceId == nullptr || envDeviceId[0] == '\0') {
+        return deviceId;
+    }
+    return std::atoi(envDeviceId);
+}
+
+/**
  * @brief 设置deviceid并创造stream.
  */
 static MkiRtStream OpTestInit(int deviceId)
 {
+    deviceId = OpTestGetDeviceId(deviceId);
     ASDSIP_LOG(INFO) << "MkiRtDeviceSetCurrent " << deviceId;
     int ret = MkiRtDeviceSetCurrent(deviceId);
     if (ret != 0) {
@@ -144,6 +162,7 @@ static MkiRtStream OpTestInit(int deviceId)
  */
 static int OpTestAclInit(int deviceId, aclrtStream* stream)
 {
+    deviceId = OpTestGetDeviceId(deviceId);
     // auto ret = aclInit(nullptr);
     // CHECK_RET(ret == ::ACL_SUCCESS, LOG_PRINT("aclInit failed. ERROR: %d\n", ret); return ret);
     auto ret = aclrtSetDevice(deviceId);
@@ -208,6 +227,7 @@ static void OpTestCleanup(aclTensorContext& tensorContext)
 
 static void OpTestEnd(int deviceId, TensorContext& tensorContext, MkiRtStream& stream)
 {
+    deviceId = OpTestGetDeviceId(deviceId);
     OpTestCleanup(tensorContext, stream);
     int ret = MkiRtDeviceResetCurrent(deviceId);
     ASDSIP_LOG_IF(ret != 0, ERROR) << "MkiRtDeviceResetCurrent fail";
@@ -215,6 +235,7 @@ static void OpTestEnd(int deviceId, TensorContext& tensorContext, MkiRtStream& s
 
 static void OpTestEnd(int deviceId, aclTensorContext& tensorContext, MkiRtStream& stream)
 {
+    deviceId = OpTestGetDeviceId(deviceId);
     OpTestCleanup(tensorContext);
     int ret = aclrtDestroyStream(stream);
     ASDSIP_LOG_IF(ret != 0, ERROR) << "aclrtDestroyStream fail";

@@ -53,7 +53,11 @@ fi
 _OAT_OK=$("$_PYTHON" -c "import importlib.util; print('ok' if importlib.util.find_spec('oat') else 'missing')" 2>/dev/null || echo "missing")
 if [ "$_OAT_OK" != "ok" ]; then
     echo "[OAT] oat-py not found. Installing oat-py>=1.0.1 ..."
-    "$_PYTHON" -m pip install --quiet "oat-py>=1.0.1"
+    # pip 安装失败不得终止脚本: 并发 pre-commit 进程同时安装 oat-py 存在竞争
+    # (撞上对方半安装目录报 OSError), 本脚本语义为安装失败时跳过检查;
+    # 失败后重试一次, 仍失败由下方 find_spec 复查决定跳过
+    "$_PYTHON" -m pip install --quiet "oat-py>=1.0.1" || \
+        "$_PYTHON" -m pip install --quiet "oat-py>=1.0.1" || true
     _OAT_OK=$("$_PYTHON" -c "import importlib.util; print('ok' if importlib.util.find_spec('oat') else 'missing')" 2>/dev/null || echo "missing")
     if [ "$_OAT_OK" != "ok" ]; then
         echo "[OAT] [WARNING] Failed to install oat-py. Please run: pip install oat-py>=1.0.1"

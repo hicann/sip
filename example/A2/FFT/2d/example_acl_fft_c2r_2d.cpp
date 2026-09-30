@@ -8,6 +8,7 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
+#include <cstdlib>
 #include <iostream>
 #include <vector>
 #include "asdsip.h"
@@ -84,6 +85,11 @@ int CreateAclTensor(const std::vector<T>& hostData, const std::vector<int64_t>& 
 int main()
 {
     int32_t deviceId = 0;
+    // 优先从环境变量 ASDSIP_DEVICE_ID 获取实际 device id(build.sh 按 CI 映射卡注入), 未设置时默认 0
+    const char* envDeviceId = std::getenv("ASDSIP_DEVICE_ID");
+    if (envDeviceId != nullptr) {
+        deviceId = std::atoi(envDeviceId);
+    }
     aclrtStream stream;
     auto ret = Init(deviceId, &stream);
     CHECK_RET(ret == ::ACL_SUCCESS, LOG_PRINT("Init acl failed. ERROR: %d\n", ret); return ret);
