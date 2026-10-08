@@ -4,16 +4,20 @@
 - [安装部署](installation_guide.md)
 - [算子使用指导](operator_usage_guide.md)
 - [API参考](./API_reference.md)
+  <!-- npu="950,A3,910b" id36 -->
   - [头文件和库文件说明](../../header_files_library_files.md)
+  <!-- end id36 -->
   - [base](./base.md)
-    <!-- npu="A3,910b" id1 -->
+     <!-- npu="A3,910b" id1 -->
     - [swapLast2Axes](../API_Reference/base/swapLast2Axes.md)
-    <!-- end id1 -->
+      <!-- end id1 -->
     <!-- npu="950,A3,910b" id2 -->
     - [asdMul](../API_Reference/base/asdMul.md)
     <!-- end id2 -->
   - [BLAS](./BLAS.md)
+    <!-- npu="A3,910b" id37 -->
     - [BLAS公共接口](../API_Reference/BLAS/BLAS公共接口.md)
+    <!-- end id37 -->
     <!-- npu="A3,910b" id3 -->
     - [Asum](../API_Reference/BLAS/Asum.md)
     <!-- end id3 -->
@@ -90,7 +94,9 @@
     - [CmatinvBatched](../API_Reference/BLAS/CmatinvBatched.md)
     <!-- end id27 -->
   - [FFT](./FFT.md)
+    <!-- npu="950,A3,910b" id38 -->
     - [FFT公共接口](../API_Reference/FFT/FFT公共接口.md)
+    <!-- end id38 -->
     <!-- npu="950,A3,910b" id28 -->
     - [FFT_1D](../API_Reference/FFT/FFT_1D.md)
     <!-- end id28 -->

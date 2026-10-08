@@ -239,6 +239,39 @@ function fn_build()
     fn_compile_and_pack "$CODE_ROOT" "$COMPILE_OPTIONS"
 }
 
+# 变更不触达代码时跳过 UT / smoke（CI 提效）：
+# 流水线 get_pr 阶段会生成 pr_filelist.txt 并随代码包放置到仓库根目录
+# （本脚本工作目录）。当 PR 修改的全部文件均为 Markdown 文档（*.md）或
+# 本脚本（build.sh，即 UT / smoke 的执行入口自身）时，跳过 ut / smoke
+# 分支并返回成功，节省 CI 时长。两类豁免依据：
+# 1. *.md 文档不参与编译与运行，代码行为零影响；
+# 2. build.sh 是 UT / smoke 的执行入口，入口脚本自身的修复类 PR 存在
+#    自举问题——旧入口执行的结果无法验证新入口，入口可用性只能靠
+#    Compile stage 与合入后实际运行验证。
+# 保守策略：清单缺失、内容为空、或含任意其他文件（含 docs/ 下的脚本、
+# 图片、源码）时保持原执行路径；CRLF 行尾的 \r 被空白类匹配，不影响
+# 后缀识别。
+function fn_skip_ut_smoke_needed()
+{
+    local pr_filelist="${CURRENT_DIR}/pr_filelist.txt"
+    if [[ ! -f "${pr_filelist}" ]]; then
+        echo "pr_filelist.txt not found, run as usual."
+        return 1
+    fi
+    local non_skippable=0
+    local total=0
+    # 豁免匹配精确 build.sh（^build\.sh$，仅仓库根的 UT/smoke 执行入口本身），
+    # scripts/build.sh 等其他同名脚本不豁免
+    non_skippable=$(grep -vE '(\.md|^build\.sh)[[:space:]]*$' "${pr_filelist}" | grep -cvE '^[[:space:]]*$' || true)
+    total=$(grep -cvE '^[[:space:]]*$' "${pr_filelist}" || true)
+    if [[ "${total}" -gt 0 && "${non_skippable}" -eq 0 ]]; then
+        echo "Skip: all ${total} changed files are docs-only or build.sh itself (see pr_filelist.txt), no UT/smoke needed."
+        return 0
+    fi
+    return 1
+}
+
+
 function help_info() {
     echo "Usage: bash build.sh [type] [options]"
     echo
@@ -324,20 +357,32 @@ function fn_main()
             fn_build
             ;;
         "ut")
+            if fn_skip_ut_smoke_needed; then
+                exit 0
+            fi
             fn_ut_test_needed
             fn_build
             fn_build_coverage
             ;;
         --ut)
+            if fn_skip_ut_smoke_needed; then
+                exit 0
+            fi
             fn_ut_test_needed
             fn_build
             fn_build_coverage
             ;;
         "smoke_pr")
+            if fn_skip_ut_smoke_needed; then
+                exit 0
+            fi
             fn_build
             bash $CODE_ROOT/scripts/build_test.sh example_test
             ;;
         "smoke_all")
+            if fn_skip_ut_smoke_needed; then
+                exit 0
+            fi
             fn_build
             bash $CODE_ROOT/scripts/build_test.sh default
             ;;
