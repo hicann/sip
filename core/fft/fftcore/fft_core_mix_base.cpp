@@ -8,6 +8,8 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
+#include <vector>
+
 #include <mki/utils/rt/rt.h>
 #include "log/log.h"
 #include "utils/assert.h"
@@ -25,16 +27,16 @@ constexpr int32_t RADIXVEC_MAX = 128;
 
 size_t FftCoreMixBase::EstimateWorkspaceSize()
 {
-    const KernelInfo &kernelInfo = kernel->GetKernelInfo();
+    const KernelInfo& kernelInfo = kernel->GetKernelInfo();
     return getAlignedSize(kernelInfo.GetTotalScratchSize());
 }
 
-void FftCoreMixBase::Run(Tensor &input, Tensor &output, void *stream, workspace::Workspace &workspace)
+void FftCoreMixBase::Run(Tensor& input, Tensor& output, void* stream, workspace::Workspace& workspace)
 {
-    const KernelInfo &kernelInfo = kernel->GetKernelInfo();
+    const KernelInfo& kernelInfo = kernel->GetKernelInfo();
     // set workspace
     size_t bufferSize = kernelInfo.GetTotalScratchSize();
-    runInfo.SetScratchDeviceAddr((uint8_t *)workspace.allocate(bufferSize));
+    runInfo.SetScratchDeviceAddr((uint8_t*)workspace.allocate(bufferSize));
 
     runInfo.SetStream(stream);
     launchParam.GetInTensor(0).data = input.data;
@@ -56,7 +58,7 @@ void FftCoreMixBase::Run(Tensor &input, Tensor &output, void *stream, workspace:
 void FftCoreMixBase::DestroyInDevice() const
 {
     // destroy tiling data in device
-    uint8_t *deviceLaunchBuffer = nullptr;
+    uint8_t* deviceLaunchBuffer = nullptr;
     deviceLaunchBuffer = runInfo.GetTilingDeviceAddr();
     if (deviceLaunchBuffer != nullptr) {
         MkiRtMemFreeDevice(deviceLaunchBuffer);
@@ -83,7 +85,8 @@ void FftCoreMixBase::InitRadix()
 
 bool FftCoreMixBase::PreAllocateC2CInDevice()
 {
-    if (InitMixRadixList(coreType, nFftC2c, problemDesc.forward, radixVec, radixList) != AsdSip::ErrorType::ACL_SUCCESS) {
+    if (InitMixRadixList(coreType, nFftC2c, problemDesc.forward, radixVec, radixList) !=
+        AsdSip::ErrorType::ACL_SUCCESS) {
         return false;
     }
 
@@ -92,7 +95,8 @@ bool FftCoreMixBase::PreAllocateC2CInDevice()
         return false;
     }
 
-    if (InitMixRadixTWMatrix(coreType, nFftC2c, problemDesc.forward, radixVec, twMatrixArray) != AsdSip::ErrorType::ACL_SUCCESS) {
+    if (InitMixRadixTWMatrix(coreType, nFftC2c, problemDesc.forward, radixVec, twMatrixArray) !=
+        AsdSip::ErrorType::ACL_SUCCESS) {
         return false;
     }
 
@@ -107,16 +111,18 @@ bool FftCoreMixBase::PreAllocateC2CInDevice()
 bool FftCoreMixBase::PreAllocateX2XInDevice()
 {
     // init orders
-    if (InitMixRadixList(coreType, nFftC2c, problemDesc.forward, radixVec, radixList) != AsdSip::ErrorType::ACL_SUCCESS) {
+    if (InitMixRadixList(coreType, nFftC2c, problemDesc.forward, radixVec, radixList) !=
+        AsdSip::ErrorType::ACL_SUCCESS) {
         return false;
     }
 
     if (InitMixRadixTwiddleMatrix(coreType, nFftC2c, problemDesc.batch, problemDesc.forward, radixVec,
-        dftMatrixArray) != AsdSip::ErrorType::ACL_SUCCESS) {
+                                  dftMatrixArray) != AsdSip::ErrorType::ACL_SUCCESS) {
         return false;
     }
 
-    if (InitMixRadixTWMatrix(coreType, nFftC2c, problemDesc.forward, radixVec, twMatrixArray) != AsdSip::ErrorType::ACL_SUCCESS) {
+    if (InitMixRadixTWMatrix(coreType, nFftC2c, problemDesc.forward, radixVec, twMatrixArray) !=
+        AsdSip::ErrorType::ACL_SUCCESS) {
         return false;
     }
 
@@ -131,7 +137,7 @@ bool FftCoreMixBase::PreAllocateX2XInDevice()
     if (InitTactic() != AsdSip::ErrorType::ACL_SUCCESS) {
         return false;
     }
-    
+
     ASDSIP_LOG(INFO) << "FftCoreMixBase PreAllocateX2XInDevice success.";
     return true;
 }
@@ -150,7 +156,7 @@ AspbStatus FftCoreMixBase::InitTactic()
 
     InitLaunchParam();
 
-    Operation *op = Ops::Instance().GetOperationByName(GetOpName());
+    Operation* op = Ops::Instance().GetOperationByName(GetOpName());
     if (op == nullptr) {
         return AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }
@@ -159,15 +165,15 @@ AspbStatus FftCoreMixBase::InitTactic()
     ASDSIP_ECHECK(kernel != nullptr, "Get best kernel failed", AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
     // allocate and initialize tiling workspace
-    uint8_t *deviceLaunchBuffer = nullptr;
+    uint8_t* deviceLaunchBuffer = nullptr;
     kernel->SetLaunchWithTiling(false);
     uint32_t launchBufferSize = kernel->GetTilingSize(launchParam);
     if (launchBufferSize == 0) {
         ASDSIP_LOG(ERROR) << "empty tiling size";
         return AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }
-    uint8_t hostLaunchBuffer[launchBufferSize];
-    kernel->SetTilingHostAddr(hostLaunchBuffer, launchBufferSize);
+    std::vector<uint8_t> hostLaunchBuffer(launchBufferSize);
+    kernel->SetTilingHostAddr(hostLaunchBuffer.data(), launchBufferSize);
     kernel->Init(launchParam);
 
     void* tempDevicePtr = nullptr;
@@ -176,8 +182,8 @@ AspbStatus FftCoreMixBase::InitTactic()
         ASDSIP_LOG(ERROR) << "malloc device memory fail";
         return AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }
-    deviceLaunchBuffer = static_cast<uint8_t *>(tempDevicePtr);
-    st = MkiRtMemCopy(deviceLaunchBuffer, launchBufferSize, hostLaunchBuffer, launchBufferSize,
+    deviceLaunchBuffer = static_cast<uint8_t*>(tempDevicePtr);
+    st = MkiRtMemCopy(deviceLaunchBuffer, launchBufferSize, hostLaunchBuffer.data(), launchBufferSize,
                       MKIRT_MEMCOPY_HOST_TO_DEVICE);
     if (st != MKIRT_SUCCESS) {
         MkiRtMemFreeDevice(deviceLaunchBuffer);

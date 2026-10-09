@@ -25,16 +25,16 @@ using namespace AsdSip;
 
 size_t DdCore::EstimateWorkspaceSize()
 {
-    const KernelInfo &kernelInfo = kernel->GetKernelInfo();
+    const KernelInfo& kernelInfo = kernel->GetKernelInfo();
     return getAlignedSize(kernelInfo.GetTotalScratchSize());
 }
 
-void DdCore::Run(Tensor &input, Tensor &output, void *stream, workspace::Workspace &workspace)
+void DdCore::Run(Tensor& input, Tensor& output, void* stream, workspace::Workspace& workspace)
 {
-    const KernelInfo &kernelInfo = kernel->GetKernelInfo();
+    const KernelInfo& kernelInfo = kernel->GetKernelInfo();
     // set workspace
     size_t bufferSize = kernelInfo.GetTotalScratchSize();
-    runInfo.SetScratchDeviceAddr((uint8_t *)workspace.allocate(bufferSize));
+    runInfo.SetScratchDeviceAddr((uint8_t*)workspace.allocate(bufferSize));
 
     runInfo.SetStream(stream);
     launchParam.GetInTensor(0).data = input.data;
@@ -65,7 +65,7 @@ AspbStatus DdCore::InitTactic()
     launchParam.AddInTensor(*qMatrix);
     launchParam.AddOutTensor(tensorOut);
 
-    Operation *op = Ops::Instance().GetOperationByName(std::string("DdOperation"));
+    Operation* op = Ops::Instance().GetOperationByName(std::string("DdOperation"));
     if (op == nullptr) {
         return AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }
@@ -74,21 +74,21 @@ AspbStatus DdCore::InitTactic()
     ASDSIP_ECHECK(kernel != nullptr, "Get best kernel failed", AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
     // allocate and initialize tiling workspace
-    uint8_t *deviceLaunchBuffer = nullptr;
+    uint8_t* deviceLaunchBuffer = nullptr;
     kernel->SetLaunchWithTiling(false);
     uint32_t launchBufferSize = kernel->GetTilingSize(launchParam);
     ASDSIP_ECHECK(launchBufferSize != 0, "empty tiling size", AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
-    uint8_t hostLaunchBuffer[launchBufferSize];
-    kernel->SetTilingHostAddr(hostLaunchBuffer, launchBufferSize);
+    std::vector<uint8_t> hostLaunchBuffer(launchBufferSize);
+    kernel->SetTilingHostAddr(hostLaunchBuffer.data(), launchBufferSize);
     kernel->Init(launchParam);
 
     void* tempDevicePtr = nullptr;
     int st = MkiRtMemMallocDevice(&tempDevicePtr, launchBufferSize, MKIRT_MEM_DEFAULT);
     ASDSIP_ECHECK(st == MKIRT_SUCCESS, "malloc device memory fail", AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
-    deviceLaunchBuffer = static_cast<uint8_t *>(tempDevicePtr);
-    st = MkiRtMemCopy(deviceLaunchBuffer, launchBufferSize, hostLaunchBuffer, launchBufferSize,
+    deviceLaunchBuffer = static_cast<uint8_t*>(tempDevicePtr);
+    st = MkiRtMemCopy(deviceLaunchBuffer, launchBufferSize, hostLaunchBuffer.data(), launchBufferSize,
                       MKIRT_MEMCOPY_HOST_TO_DEVICE);
     if (st != MKIRT_SUCCESS) {
         MkiRtMemFreeDevice(deviceLaunchBuffer);
@@ -134,7 +134,7 @@ bool DdCore::PreAllocateInDevice()
 
 void DdCore::DestroyInDevice() const
 {
-    uint8_t *deviceBuffer = runInfo.GetTilingDeviceAddr();
+    uint8_t* deviceBuffer = runInfo.GetTilingDeviceAddr();
     if (deviceBuffer != nullptr) {
         MkiRtMemFreeDevice(deviceBuffer);
     }

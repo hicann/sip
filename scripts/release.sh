@@ -19,7 +19,7 @@ function fn_install_cann_and_kernel()
 {
     cd $CANN_DIR
     chmod +x *.run
-    cann_install_path="/home/slave1/Ascend/ascend-toolkit"
+    cann_install_path=${CANN_INSTALL_PATH}
     if [ ! -d "$cann_install_path" ];then
         ./CANN-runtime-*.run --full --quiet --nox11 --install-path=${cann_install_path}
         ./CANN-compiler-*.run --full --pylocal --quiet --nox11 --install-path=${cann_install_path}
@@ -31,8 +31,8 @@ function fn_install_cann_and_kernel()
         ./CANN-hccl-*.run --full --quiet --nox11 --install-path=${cann_install_path}
     fi
     set +e
-    source /home/slave1/Ascend/ascend-toolkit/latest/bin/setenv.bash
-    export ASCEND_HOME_PATH=/home/slave1/Ascend/ascend-toolkit/latest
+    source ${CANN_INSTALL_PATH}/latest/bin/setenv.bash
+    export ASCEND_HOME_PATH=${CANN_INSTALL_PATH}/latest
     set -e
     cd -
 }
@@ -174,7 +174,7 @@ EOF
 
 function fn_build()
 {
-    export ASCEND_HOME_PATH=/home/slave1/Ascend/ascend-toolkit/latest
+    export ASCEND_HOME_PATH=${CANN_INSTALL_PATH}/latest
     export LD_LIBRARY_PATH=${ASCEND_HOME_PATH}/lib64:${LD_LIBRARY_PATH}
 
     source_file="${ASCEND_HOME_PATH}/lib64/libopapi.so"
@@ -209,14 +209,9 @@ function fn_build()
 
 function fn_init_cann_env()
 {
-    cann_default_install_path_1="/usr/local/Ascend/ascend-toolkit"
-    cann_default_install_path_2="/home/slave1/Ascend/ascend-toolkit/latest"
-
     set +e
-    if [ -d "${cann_default_install_path_1}" ];then
-        source /usr/local/Ascend/ascend-toolkit/set_env.sh
-    elif [ -d "${cann_default_install_path_2}" ]; then
-        source /home/slave1/Ascend/ascend-toolkit/latest/set_env.sh
+    if [[ -d ${CANN_INSTALL_PATH}/latest ]];then
+        source ${CANN_INSTALL_PATH}/latest/set_env.sh
     else
         fn_install_cann_and_kernel
         if [ -z $ASCEND_HOME_PATH ];then
@@ -310,6 +305,14 @@ RELEASE_DIR=$CODE_ROOT/ci/release
 VERSION="8.0.0"
 LOG_PATH="/var/log/cann_asdsip_log/"
 LOG_NAME="cann_asdsip_install.log"
+
+# CANN 工具包安装路径探测链：优先复用已导出的 ASCEND_HOME_PATH（剥去 /latest 后缀），
+# 其次使用可外部覆盖的 CANN_INSTALL_PATH，缺省回落通用安装路径 /usr/local/Ascend/ascend-toolkit
+if [[ -n ${ASCEND_HOME_PATH:-} ]]; then
+    CANN_INSTALL_PATH=${ASCEND_HOME_PATH%/latest}
+else
+    CANN_INSTALL_PATH=${CANN_INSTALL_PATH:-/usr/local/Ascend/ascend-toolkit}
+fi
 
 bep_env_init
 fn_main "$@"

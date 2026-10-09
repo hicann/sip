@@ -21,34 +21,34 @@
 
 #include "fftcore/ddd_core_sep.h"
 
-
 constexpr double K_PI = 3.14159265358979323846;
 constexpr double K_2PI = 2 * K_PI;
-
 
 using namespace AsdSip;
 
 size_t DddCoreSep::EstimateWorkspaceSize()
 {
-    const KernelInfo &kernelInfo = kernel->GetKernelInfo();
+    const KernelInfo& kernelInfo = kernel->GetKernelInfo();
     return getAlignedSize(kernelInfo.GetTotalScratchSize());
 }
 
-AspbStatus DddCoreSep::InitRotationMatrix(FFTCoreType coreType, int64_t fftN, std::shared_ptr<AsdSip::FFTensor> &rotMatPtr)
+AspbStatus DddCoreSep::InitRotationMatrix(FFTCoreType coreType, int64_t fftN,
+                                          std::shared_ptr<AsdSip::FFTensor>& rotMatPtr)
 {
     int64_t inSize = fftN * 3;
     int64_t outSize = fftN;
     float flag = problemDesc.forward ? 1 : -1;
 
-    // for simplicity, we construct one rotation matrix, the first half is real part, and the second half is the imag part.
-    std::function<FFTensor *()> func = [=]() -> FFTensor* {
-        FFTensor *rotationMatrixPtr = new FFTensor;
-        FFTensor &rotationMatrix_ = *rotationMatrixPtr;
+    // for simplicity, we construct one rotation matrix, the first half is real part, and the second half is the imag
+    // part.
+    std::function<FFTensor*()> func = [=]() -> FFTensor* {
+        FFTensor* rotationMatrixPtr = new FFTensor;
+        FFTensor& rotationMatrix_ = *rotationMatrixPtr;
 
-        float *dddRotationMatrixHost = nullptr;
+        float* dddRotationMatrixHost = nullptr;
         try {
             dddRotationMatrixHost = new float[outSize * inSize];
-        } catch(std::bad_alloc& e) {
+        } catch (std::bad_alloc& e) {
             delete rotationMatrixPtr;
             ASDSIP_LOG(ERROR) << "dddRotationMatrixHost malloc failed: ";
             throw std::runtime_error("dddRotationMatrixHost malloc failed:.");
@@ -63,8 +63,8 @@ AspbStatus DddCoreSep::InitRotationMatrix(FFTCoreType coreType, int64_t fftN, st
         // construct real part and imag part
         for (int64_t i = 0; i < fftN; i++) {
             for (int64_t j = 0; j < fftN; j++) {
-                *(dddRotationMatrixHost + i * fftN + j) = cosTable[(i * j) % fftN]; // a
-                *(dddRotationMatrixHost + fftN * fftN + i * fftN + j) = -1 * sinTable[(i * j) % fftN]; // b
+                *(dddRotationMatrixHost + i * fftN + j) = cosTable[(i * j) % fftN];                       // a
+                *(dddRotationMatrixHost + fftN * fftN + i * fftN + j) = -1 * sinTable[(i * j) % fftN];    // b
                 *(dddRotationMatrixHost + fftN * fftN * 2 + i * fftN + j) = 1 * sinTable[(i * j) % fftN]; // -b
             }
         }
@@ -84,10 +84,10 @@ AspbStatus DddCoreSep::InitRotationMatrix(FFTCoreType coreType, int64_t fftN, st
     return AsdSip::ErrorType::ACL_SUCCESS;
 }
 
-
-void DddCoreSep::Run(void *inputReal, void *inputImag, void *outputReal, void *outputImag, void *stream, workspace::Workspace &workspace)
+void DddCoreSep::Run(void* inputReal, void* inputImag, void* outputReal, void* outputImag, void* stream,
+                     workspace::Workspace& workspace)
 {
-    const Mki::KernelInfo &kernelInfo = kernel->GetKernelInfo();
+    const Mki::KernelInfo& kernelInfo = kernel->GetKernelInfo();
 
     launchParam.GetInTensor(0).data = inputReal;
     launchParam.GetInTensor(1).data = inputImag;
@@ -95,7 +95,7 @@ void DddCoreSep::Run(void *inputReal, void *inputImag, void *outputReal, void *o
     launchParam.GetOutTensor(1).data = outputImag;
 
     size_t bufferSize = kernelInfo.GetTotalScratchSize();
-    runInfo.SetScratchDeviceAddr((uint8_t *)workspace.allocate(bufferSize));
+    runInfo.SetScratchDeviceAddr((uint8_t*)workspace.allocate(bufferSize));
     runInfo.SetStream(stream);
 
     kernel->Run(launchParam, runInfo);
@@ -111,13 +111,21 @@ AspbStatus DddCoreSep::InitTactic()
     Tensor tensorInImag;
     Tensor tensorOutReal;
     Tensor tensorOutImag;
-    tensorInReal.desc = {
-        TENSOR_DTYPE_FLOAT, TENSOR_FORMAT_ND, {problemDesc.batchSize, problemDesc.fftX, problemDesc.fftY, problemDesc.fftZ}, {}, 0};
-    tensorInReal.dataSize = problemDesc.batchSize * problemDesc.fftX * problemDesc.fftY * problemDesc.fftZ * K_SIZE_OF_FLOAT;
+    tensorInReal.desc = {TENSOR_DTYPE_FLOAT,
+                         TENSOR_FORMAT_ND,
+                         {problemDesc.batchSize, problemDesc.fftX, problemDesc.fftY, problemDesc.fftZ},
+                         {},
+                         0};
+    tensorInReal.dataSize = problemDesc.batchSize * problemDesc.fftX * problemDesc.fftY * problemDesc.fftZ *
+                            K_SIZE_OF_FLOAT;
 
-    tensorInImag.desc = {
-        TENSOR_DTYPE_FLOAT, TENSOR_FORMAT_ND, {problemDesc.batchSize, problemDesc.fftX, problemDesc.fftY, problemDesc.fftZ}, {}, 0};
-    tensorInImag.dataSize = problemDesc.batchSize * problemDesc.fftX * problemDesc.fftY * problemDesc.fftZ * K_SIZE_OF_FLOAT;
+    tensorInImag.desc = {TENSOR_DTYPE_FLOAT,
+                         TENSOR_FORMAT_ND,
+                         {problemDesc.batchSize, problemDesc.fftX, problemDesc.fftY, problemDesc.fftZ},
+                         {},
+                         0};
+    tensorInImag.dataSize = problemDesc.batchSize * problemDesc.fftX * problemDesc.fftY * problemDesc.fftZ *
+                            K_SIZE_OF_FLOAT;
 
     launchParam.SetParam(param);
     launchParam.AddInTensor(tensorInReal);
@@ -130,7 +138,7 @@ AspbStatus DddCoreSep::InitTactic()
     launchParam.AddOutTensor(tensorOutReal);
     launchParam.AddOutTensor(tensorOutImag);
 
-    Operation *dddOp = Ops::Instance().GetOperationByName(std::string("DddSepOperation"));
+    Operation* dddOp = Ops::Instance().GetOperationByName(std::string("DddSepOperation"));
     if (dddOp == nullptr) {
         return AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }
@@ -139,21 +147,21 @@ AspbStatus DddCoreSep::InitTactic()
     ASDSIP_ECHECK(kernel != nullptr, "Get best kernel failed", AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
     // allocate and initialize tiling workspace
-    uint8_t *deviceBuffer = nullptr;
+    uint8_t* deviceBuffer = nullptr;
     kernel->SetLaunchWithTiling(false);
     uint32_t launchBufferSize = kernel->GetTilingSize(launchParam);
     ASDSIP_ECHECK(launchBufferSize != 0, "empty tiling size", AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
-    uint8_t hostLaunchBuffer[launchBufferSize];
-    kernel->SetTilingHostAddr(hostLaunchBuffer, launchBufferSize);
+    std::vector<uint8_t> hostLaunchBuffer(launchBufferSize);
+    kernel->SetTilingHostAddr(hostLaunchBuffer.data(), launchBufferSize);
     kernel->Init(launchParam);
 
     void* tempDevicePtr = nullptr;
     int st = MkiRtMemMallocDevice(&tempDevicePtr, launchBufferSize, MKIRT_MEM_DEFAULT);
     ASDSIP_ECHECK(st == MKIRT_SUCCESS, "malloc device memory fail", AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
-    deviceBuffer = static_cast<uint8_t *>(tempDevicePtr);
-    st = MkiRtMemCopy(deviceBuffer, launchBufferSize, hostLaunchBuffer, launchBufferSize,
+    deviceBuffer = static_cast<uint8_t*>(tempDevicePtr);
+    st = MkiRtMemCopy(deviceBuffer, launchBufferSize, hostLaunchBuffer.data(), launchBufferSize,
                       MKIRT_MEMCOPY_HOST_TO_DEVICE);
     if (st != MKIRT_SUCCESS) {
         MkiRtMemFreeDevice(deviceBuffer);
@@ -166,7 +174,6 @@ AspbStatus DddCoreSep::InitTactic()
     ASDSIP_LOG(INFO) << "DddCoreSep init tactic success.";
     return AsdSip::ErrorType::ACL_SUCCESS;
 }
-
 
 bool DddCoreSep::PreAllocateInDevice()
 {
@@ -192,7 +199,7 @@ bool DddCoreSep::PreAllocateInDevice()
 
 void DddCoreSep::DestroyInDevice() const
 {
-    uint8_t *deviceBuffer = runInfo.GetTilingDeviceAddr();
+    uint8_t* deviceBuffer = runInfo.GetTilingDeviceAddr();
     if (deviceBuffer != nullptr) {
         MkiRtMemFreeDevice(deviceBuffer);
     }

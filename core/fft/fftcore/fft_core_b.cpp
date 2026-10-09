@@ -8,6 +8,8 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
+#include <vector>
+
 #include <cmath>
 
 #include <mki/utils/platform/platform_info.h>
@@ -41,16 +43,16 @@ constexpr int64_t RADIXVEC_TWO = 2;
 
 size_t FFTCoreB::EstimateWorkspaceSize()
 {
-    const KernelInfo &kernelInfo = kernel->GetKernelInfo();
+    const KernelInfo& kernelInfo = kernel->GetKernelInfo();
     return getAlignedSize(kernelInfo.GetTotalScratchSize());
 }
 
-void FFTCoreB::Run(Tensor &input, Tensor &output, void *stream, workspace::Workspace &workspace)
+void FFTCoreB::Run(Tensor& input, Tensor& output, void* stream, workspace::Workspace& workspace)
 {
-    const KernelInfo &kernelInfo = kernel->GetKernelInfo();
+    const KernelInfo& kernelInfo = kernel->GetKernelInfo();
     // set workspace
     size_t bufferSize = kernelInfo.GetTotalScratchSize();
-    runInfo.SetScratchDeviceAddr((uint8_t *)workspace.allocate(bufferSize));
+    runInfo.SetScratchDeviceAddr((uint8_t*)workspace.allocate(bufferSize));
 
     runInfo.SetStream(stream);
     launchParam.GetInTensor(0).data = input.data;
@@ -65,7 +67,7 @@ void FFTCoreB::Run(Tensor &input, Tensor &output, void *stream, workspace::Works
 }
 
 // asdFftExecV2 实际调用的重载; stub 判空仅防护绕过 exec 的直接调用(缺失时走 internal)
-void FFTCoreB::Run(void *input, void *output, void *stream, workspace::Workspace &workspace)
+void FFTCoreB::Run(void* input, void* output, void* stream, workspace::Workspace& workspace)
 {
     if (AsdSip::UseOpsFftKernelBackend() && AsdSip::OpsFftBStubAvailable()) {
         RunViaOpsFft(input, output, stream, workspace);
@@ -74,17 +76,14 @@ void FFTCoreB::Run(void *input, void *output, void *stream, workspace::Workspace
     FftOperation::Run(input, output, stream, workspace);
 }
 
-bool FFTCoreB::OpsFftBackendStubReady() const
-{
-    return AsdSip::OpsFftBStubAvailable();
-}
+bool FFTCoreB::OpsFftBackendStubReady() const { return AsdSip::OpsFftBStubAvailable(); }
 
 // ops-fft kernel 直调后端: 常量/tiling 复用 sip plan 期产物, exec 仅一次 stub 调用
-void FFTCoreB::RunViaOpsFft(void *input, void *output, void *stream, workspace::Workspace &workspace)
+void FFTCoreB::RunViaOpsFft(void* input, void* output, void* stream, workspace::Workspace& workspace)
 {
     // 常量一次性上传 device (plan 级缓存, 首次 Run 触发)
     if (opsWMatrix == nullptr || opsTMatrix == nullptr || opsIndex == nullptr) {
-        auto upload = [](void **dev, void *host, size_t size) -> bool {
+        auto upload = [](void** dev, void* host, size_t size) -> bool {
             if (dev == nullptr || host == nullptr || size == 0) {
                 return false;
             }
@@ -110,27 +109,28 @@ void FFTCoreB::RunViaOpsFft(void *input, void *output, void *stream, workspace::
     }
 
     // workspace: 与 sip kernel 同源同尺寸 (SCRATCH_SIZES * needCoreNum)
-    const KernelInfo &kernelInfo = kernel->GetKernelInfo();
+    const KernelInfo& kernelInfo = kernel->GetKernelInfo();
     size_t bufferSize = kernelInfo.GetTotalScratchSize();
-    void *scratch = workspace.allocate(bufferSize);
+    void* scratch = workspace.allocate(bufferSize);
 
     // blocks / sync addr 一次性缓存 (plan 级)
     if (opsCachedBlocks == 0) {
         uint32_t maxCore = Mki::PlatformInfo::Instance().GetCoreNum(Mki::CoreType::CORE_TYPE_CUBE);
-        uint32_t needCoreNum = static_cast<uint32_t>(problemDesc.batch) > maxCore
-                                   ? maxCore : static_cast<uint32_t>(problemDesc.batch);
+        uint32_t needCoreNum = static_cast<uint32_t>(problemDesc.batch) > maxCore ?
+                                   maxCore :
+                                   static_cast<uint32_t>(problemDesc.batch);
         if (needCoreNum == 0) {
             needCoreNum = 1;
         }
         opsCachedBlocks = needCoreNum;
-        if (aclrtGetHardwareSyncAddr(reinterpret_cast<void **>(&opsCachedSync)) != 0 || opsCachedSync == nullptr) {
+        if (aclrtGetHardwareSyncAddr(reinterpret_cast<void**>(&opsCachedSync)) != 0 || opsCachedSync == nullptr) {
             ASDSIP_LOG(ERROR) << "ops-fft backend: get hardware sync addr failed";
             return;
         }
     }
 
-    fft_b(opsCachedBlocks, nullptr, stream, opsCachedSync, input, opsWMatrix, opsTMatrix,
-          opsIndex, output, scratch, runInfo.GetTilingDeviceAddr());
+    fft_b(opsCachedBlocks, nullptr, stream, opsCachedSync, input, opsWMatrix, opsTMatrix, opsIndex, output, scratch,
+          runInfo.GetTilingDeviceAddr());
 
     workspace.recycleLast();
     ASDSIP_LOG(INFO) << "FFTCoreB run via ops-fft kernel (blocks=" << opsCachedBlocks << ") success.";
@@ -155,7 +155,7 @@ AspbStatus FFTCoreB::InitTactic()
     launchParam.AddInTensor(*tMatrix);
     launchParam.AddInTensor(*index);
     launchParam.AddOutTensor(tensorOut);
-    Operation *op = Ops::Instance().GetOperationByName(std::string("FftBOperation"));
+    Operation* op = Ops::Instance().GetOperationByName(std::string("FftBOperation"));
     if (op == nullptr) {
         return AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }
@@ -164,15 +164,15 @@ AspbStatus FFTCoreB::InitTactic()
     ASDSIP_ECHECK(kernel != nullptr, "Get best kernel failed", AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
     // allocate and initialize tiling workspace
-    uint8_t *deviceLaunchBuffer = nullptr;
+    uint8_t* deviceLaunchBuffer = nullptr;
     kernel->SetLaunchWithTiling(false);
     uint32_t launchBufferSize = kernel->GetTilingSize(launchParam);
     if (launchBufferSize == 0) {
         ASDSIP_LOG(ERROR) << "empty tiling size";
         return AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }
-    uint8_t hostLaunchBuffer[launchBufferSize];
-    kernel->SetTilingHostAddr(hostLaunchBuffer, launchBufferSize);
+    std::vector<uint8_t> hostLaunchBuffer(launchBufferSize);
+    kernel->SetTilingHostAddr(hostLaunchBuffer.data(), launchBufferSize);
     kernel->Init(launchParam);
 
     void* tempDevicePtr = nullptr;
@@ -181,8 +181,8 @@ AspbStatus FFTCoreB::InitTactic()
         ASDSIP_LOG(ERROR) << "malloc device memory fail";
         return AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }
-    deviceLaunchBuffer = static_cast<uint8_t *>(tempDevicePtr);
-    st = MkiRtMemCopy(deviceLaunchBuffer, launchBufferSize, hostLaunchBuffer, launchBufferSize,
+    deviceLaunchBuffer = static_cast<uint8_t*>(tempDevicePtr);
+    st = MkiRtMemCopy(deviceLaunchBuffer, launchBufferSize, hostLaunchBuffer.data(), launchBufferSize,
                       MKIRT_MEMCOPY_HOST_TO_DEVICE);
     if (st != MKIRT_SUCCESS) {
         MkiRtMemFreeDevice(deviceLaunchBuffer);
@@ -201,7 +201,7 @@ void FFTCoreB::InitRadix()
     radixVec.clear();
     switch (problemDesc.nDoing) {
         case RADIX_256:
-            radixVec = {16, 16};  // {radix: 1iter, 2iter......}
+            radixVec = {16, 16}; // {radix: 1iter, 2iter......}
             break;
         case RADIX_512:
             radixVec = {16, 32};
@@ -243,11 +243,11 @@ void FFTCoreB::InitRadix()
 AspbStatus FFTCoreB::InitIndex()
 {
     int64_t n = problemDesc.nDoing;
-    std::vector<int64_t> &radixVecRef = radixVec;
+    std::vector<int64_t>& radixVecRef = radixVec;
 
-    std::function<AsdSip::FFTensor *()> func = [=]() -> AsdSip::FFTensor* {
-        AsdSip::FFTensor *indexMatrixPtr = new AsdSip::FFTensor;
-        AsdSip::FFTensor &indexMatrix = *indexMatrixPtr;
+    std::function<AsdSip::FFTensor*()> func = [=]() -> AsdSip::FFTensor* {
+        AsdSip::FFTensor* indexMatrixPtr = new AsdSip::FFTensor;
+        AsdSip::FFTensor& indexMatrix = *indexMatrixPtr;
 
         indexMatrix.desc.dtype = TENSOR_DTYPE_INT32;
         indexMatrix.desc.format = TENSOR_FORMAT_ND;
@@ -260,7 +260,7 @@ AspbStatus FFTCoreB::InitIndex()
             return nullptr;
         }
 
-        int32_t *indexMatrixHost = new(std::nothrow) int32_t[128 * 128];
+        int32_t* indexMatrixHost = new (std::nothrow) int32_t[128 * 128];
         if (indexMatrixHost == nullptr) {
             delete indexMatrixPtr;
             ASDSIP_LOG(ERROR) << "indexMatrixHost malloc failed: ";
@@ -288,13 +288,13 @@ AspbStatus FFTCoreB::InitIndex()
             if (radixVecRef[0] == radixVecRef[1] && radixVecRef[1] == 16) {
                 col = col / 2;
             }
-            for (int64_t batchId = 0; batchId < (col / nRadix); batchId++) {  // 总共虚实8192个数, 4096次循环
-                for (int64_t i = 0; i < (M / 2 / 2); i++) {  // 每个batch的列方向, 第一个2为虚实, 第二个2为两个AIV
-                    for (int64_t j = 0; j < nRadix; j++) {  // 每个batch的行方向, 即nRadix
-                        *(reinterpret_cast<int32_t *>(indexMatrixHost) + batchId * fftN + (i * nRadix + j) * 2) =
-                            (batchId * nRadix + i * col + j) * 4;
-                        *(reinterpret_cast<int32_t *>(indexMatrixHost) + batchId * fftN + (i * nRadix + j) * 2 + 1) =
-                            (M / 4 * col + batchId * nRadix + i * col + j) * 4;
+            for (int64_t batchId = 0; batchId < (col / nRadix); batchId++) { // 总共虚实8192个数, 4096次循环
+                for (int64_t i = 0; i < (M / 2 / 2); i++) { // 每个batch的列方向, 第一个2为虚实, 第二个2为两个AIV
+                    for (int64_t j = 0; j < nRadix; j++) { // 每个batch的行方向, 即nRadix
+                        *(reinterpret_cast<int32_t*>(indexMatrixHost) + batchId * fftN +
+                          (i * nRadix + j) * 2) = (batchId * nRadix + i * col + j) * 4;
+                        *(reinterpret_cast<int32_t*>(indexMatrixHost) + batchId * fftN + (i * nRadix + j) * 2 +
+                          1) = (M / 4 * col + batchId * nRadix + i * col + j) * 4;
                     }
                 }
             }
@@ -348,7 +348,7 @@ bool FFTCoreB::PreAllocateInDevice()
 
 void FFTCoreB::DestroyInDevice()
 {
-    uint8_t *deviceBuffer = runInfo.GetTilingDeviceAddr();
+    uint8_t* deviceBuffer = runInfo.GetTilingDeviceAddr();
     if (deviceBuffer != nullptr) {
         MkiRtMemFreeDevice(deviceBuffer);
     }

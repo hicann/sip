@@ -18,7 +18,6 @@ from torch.utils import cpp_extension
 import torch_npu
 from torch_npu.utils.cpp_extension import NpuExtension
 from setuptools import setup, find_packages
-from setuptools.command.build_ext import build_ext
 
 USE_NINJA = os.getenv("USE_NINJA") == "1"
 BASE_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -54,7 +53,7 @@ def get_dependency_paths():
             torch_npu_include,
             sip_include_dir,
             acl_include,
-            torch_include_paths,
+            *torch_include_paths,
             boost_comm_include,
             ascend_include,
             util_include_dir,

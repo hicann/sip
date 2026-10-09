@@ -8,6 +8,8 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
+#include <vector>
+
 #include <mki/utils/rt/rt.h>
 #include <mki/utils/platform/platform_info.h>
 #include "utils/assert.h"
@@ -31,19 +33,20 @@ size_t FftC2RCoreArch35::EstimateWorkspaceSize()
 {
     if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
         // C2R needs ping-pong buffers: 2 * batch * fftN * sizeof(complex<float>)
-        int64_t singleBufferSize = static_cast<int64_t>(problemDesc.batch) * static_cast<int64_t>(problemDesc.nDoing) * 2 * sizeof(float);
-        int64_t workspaceSize = 2 * singleBufferSize;  // ws0 + ws1
+        int64_t singleBufferSize = static_cast<int64_t>(problemDesc.batch) * static_cast<int64_t>(problemDesc.nDoing) *
+                                   2 * sizeof(float);
+        int64_t workspaceSize = 2 * singleBufferSize; // ws0 + ws1
         ASDSIP_LOG(INFO) << "ASCEND_950 FftC2RCoreArch35 workspace size: " << workspaceSize;
         return static_cast<size_t>(workspaceSize);
     }
-    const KernelInfo &kernelInfo = kernel->GetKernelInfo();
+    const KernelInfo& kernelInfo = kernel->GetKernelInfo();
     return getAlignedSize(kernelInfo.GetTotalScratchSize());
 }
 
 // ============================================================================
 // Run
 // ============================================================================
-void FftC2RCoreArch35::Run(void *input, void *output, void *stream, workspace::Workspace &workspace)
+void FftC2RCoreArch35::Run(void* input, void* output, void* stream, workspace::Workspace& workspace)
 {
     if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910B) {
         FftOperation::Run(input, output, stream, workspace);
@@ -59,7 +62,7 @@ void FftC2RCoreArch35::Run(void *input, void *output, void *stream, workspace::W
 // ============================================================================
 void FftC2RCoreArch35::DestroyInDevice() const
 {
-    uint8_t *deviceLaunchBuffer = runInfo.GetTilingDeviceAddr();
+    uint8_t* deviceLaunchBuffer = runInfo.GetTilingDeviceAddr();
     if (deviceLaunchBuffer != nullptr) {
         MkiRtMemFreeDevice(deviceLaunchBuffer);
     }
@@ -80,7 +83,7 @@ void FftC2RCoreArch35::InitRadix()
 {
     plan.clear();
 
-    int64_t tempN = static_cast<int64_t>(problemDesc.nDoing);  // Use full nDoing, NO nFftC2c
+    int64_t tempN = static_cast<int64_t>(problemDesc.nDoing); // Use full nDoing, NO nFftC2c
 
     if (tempN <= 0) {
         ASDSIP_LOG(ERROR) << "FftC2RCoreArch35 nDoing must be positive, got " << tempN;
@@ -101,13 +104,15 @@ void FftC2RCoreArch35::InitRadix()
         if (radix == 0) {
             std::string allowedStr;
             for (size_t i = 0; i < numRadices; i++) {
-                if (i > 0) allowedStr += ", ";
+                if (i > 0)
+                    allowedStr += ", ";
                 allowedStr += std::to_string(ALLOWED_RADICES[i]);
             }
-            ASDSIP_LOG(ERROR) << "FftC2RCoreArch35 nDoing contains prime factors other than "
-                              << allowedStr << ". Remaining: " << tempN;
+            ASDSIP_LOG(ERROR) << "FftC2RCoreArch35 nDoing contains prime factors other than " << allowedStr
+                              << ". Remaining: " << tempN;
             throw std::runtime_error("FftC2RCoreArch35: unsupported signal length. "
-                                     "Only prime factors " + allowedStr + " are allowed.");
+                                     "Only prime factors " +
+                                     allowedStr + " are allowed.");
         }
 
         int64_t M = tempN / radix;
@@ -154,13 +159,16 @@ AspbStatus FftC2RCoreArch35::BuildFftPlan()
     size_t radixListSize = planLen * sizeof(int32_t);
 
     auto radixListFunc = [=]() -> AsdSip::FFTensor* {
-        AsdSip::FFTensor *t = new AsdSip::FFTensor;
-        int32_t *host = new int32_t[planLen];
+        AsdSip::FFTensor* t = new AsdSip::FFTensor;
+        int32_t* host = new int32_t[planLen];
         for (size_t s = 0; s < planLen; s++) {
             host[s] = static_cast<int32_t>(plan[s].radix);
         }
-        t->desc = {Mki::TensorDType::TENSOR_DTYPE_INT32, Mki::TensorFormat::TENSOR_FORMAT_ND,
-                   {static_cast<int64_t>(planLen)}, {}, 0};
+        t->desc = {Mki::TensorDType::TENSOR_DTYPE_INT32,
+                   Mki::TensorFormat::TENSOR_FORMAT_ND,
+                   {static_cast<int64_t>(planLen)},
+                   {},
+                   0};
         t->hostData = host;
         t->dataSize = radixListSize;
         return t;
@@ -184,10 +192,10 @@ AspbStatus FftC2RCoreArch35::BuildFftPlan()
     size_t dftDataSize = totalDftFloats * sizeof(float);
 
     auto dftFunc = [=]() -> AsdSip::FFTensor* {
-        AsdSip::FFTensor *t = new AsdSip::FFTensor;
-        float *host = nullptr;
+        AsdSip::FFTensor* t = new AsdSip::FFTensor;
+        float* host = nullptr;
         try {
-            host = new float[totalDftFloats]();  // zero-initialized
+            host = new float[totalDftFloats](); // zero-initialized
         } catch (std::bad_alloc& e) {
             delete t;
             ASDSIP_LOG(ERROR) << "dftMatrixArray host malloc failed";
@@ -212,8 +220,11 @@ AspbStatus FftC2RCoreArch35::BuildFftPlan()
             offset += 2 * radix * radix;
         }
 
-        t->desc = {Mki::TensorDType::TENSOR_DTYPE_FLOAT, Mki::TensorFormat::TENSOR_FORMAT_ND,
-                   {static_cast<int64_t>(totalDftFloats)}, {}, 0};
+        t->desc = {Mki::TensorDType::TENSOR_DTYPE_FLOAT,
+                   Mki::TensorFormat::TENSOR_FORMAT_ND,
+                   {static_cast<int64_t>(totalDftFloats)},
+                   {},
+                   0};
         t->hostData = host;
         t->dataSize = dftDataSize;
         return t;
@@ -223,10 +234,10 @@ AspbStatus FftC2RCoreArch35::BuildFftPlan()
     size_t twDataSize = totalTwFloats * sizeof(float);
 
     auto twFunc = [=]() -> AsdSip::FFTensor* {
-        AsdSip::FFTensor *t = new AsdSip::FFTensor;
-        float *host = nullptr;
+        AsdSip::FFTensor* t = new AsdSip::FFTensor;
+        float* host = nullptr;
         try {
-            host = new float[totalTwFloats]();  // zero-initialized
+            host = new float[totalTwFloats](); // zero-initialized
         } catch (std::bad_alloc& e) {
             delete t;
             ASDSIP_LOG(ERROR) << "twMatrixArray host malloc failed";
@@ -234,7 +245,7 @@ AspbStatus FftC2RCoreArch35::BuildFftPlan()
         }
 
         size_t offset = 0;
-        int64_t tempN = static_cast<int64_t>(problemDesc.nDoing);  // Use full nDoing, NO nFftC2c
+        int64_t tempN = static_cast<int64_t>(problemDesc.nDoing); // Use full nDoing, NO nFftC2c
 
         for (size_t s = 0; s < planLen; s++) {
             int64_t radix = plan[s].radix;
@@ -256,8 +267,11 @@ AspbStatus FftC2RCoreArch35::BuildFftPlan()
             tempN = M;
         }
 
-        t->desc = {Mki::TensorDType::TENSOR_DTYPE_FLOAT, Mki::TensorFormat::TENSOR_FORMAT_ND,
-                   {static_cast<int64_t>(totalTwFloats)}, {}, 0};
+        t->desc = {Mki::TensorDType::TENSOR_DTYPE_FLOAT,
+                   Mki::TensorFormat::TENSOR_FORMAT_ND,
+                   {static_cast<int64_t>(totalTwFloats)},
+                   {},
+                   0};
         t->hostData = host;
         t->dataSize = twDataSize;
         return t;
@@ -270,9 +284,7 @@ AspbStatus FftC2RCoreArch35::BuildFftPlan()
     twMatrixArray = FFTensorCache::getCoeff(twKey, twFunc);
 
     ASDSIP_LOG(INFO) << "FftC2RCoreArch35 BuildFftPlan success. "
-                     << "planLen=" << planLen
-                     << ", dftFloats=" << totalDftFloats
-                     << ", twFloats=" << totalTwFloats;
+                     << "planLen=" << planLen << ", dftFloats=" << totalDftFloats << ", twFloats=" << totalTwFloats;
 
     return AsdSip::ErrorType::ACL_SUCCESS;
 }
@@ -302,10 +314,8 @@ AspbStatus FftC2RCoreArch35::InitTactic()
         ASDSIP_LOG(INFO) << "ASCEND_950 FftC2RCoreArch35 init tactic";
     }
 
-    OpParam::FftC2RArch35 param = {problemDesc.nDoing,
-                                    problemDesc.batch,
-                                    static_cast<int64_t>(plan.size()),
-                                    1 - int(problemDesc.forward)};
+    OpParam::FftC2RArch35 param = {problemDesc.nDoing, problemDesc.batch, static_cast<int64_t>(plan.size()),
+                                   1 - int(problemDesc.forward)};
     ASDSIP_LOG(DEBUG) << "OpDesc info: " << param.ToString();
 
     Tensor tensorIn;
@@ -313,13 +323,13 @@ AspbStatus FftC2RCoreArch35::InitTactic()
     // C2R input: complex64 [batch, fftN/2+1]
     int64_t inputN = problemDesc.nDoing / 2 + 1;
     tensorIn.desc = {TENSOR_DTYPE_COMPLEX64, TENSOR_FORMAT_ND, {problemDesc.batch, inputN}, {}, 0};
-    tensorIn.dataSize = static_cast<size_t>(problemDesc.batch) * static_cast<size_t>(inputN)
-                        * GetTensorElementSize(Mki::TensorDType::TENSOR_DTYPE_COMPLEX64);
+    tensorIn.dataSize = static_cast<size_t>(problemDesc.batch) * static_cast<size_t>(inputN) *
+                        GetTensorElementSize(Mki::TensorDType::TENSOR_DTYPE_COMPLEX64);
 
     // C2R output: float [batch, fftN]
     int64_t outputN = problemDesc.nDoing;
-    tensorOut.dataSize = static_cast<size_t>(problemDesc.batch) * static_cast<size_t>(outputN)
-                         * GetTensorElementSize(Mki::TensorDType::TENSOR_DTYPE_FLOAT);
+    tensorOut.dataSize = static_cast<size_t>(problemDesc.batch) * static_cast<size_t>(outputN) *
+                         GetTensorElementSize(Mki::TensorDType::TENSOR_DTYPE_FLOAT);
 
     launchParam.SetParam(param);
     // Input tensors: input, dftMatrixArray (W_R), twMatrixArray (T), radixList
@@ -329,7 +339,7 @@ AspbStatus FftC2RCoreArch35::InitTactic()
     launchParam.AddInTensor(*radixListTensor);
     launchParam.AddOutTensor(tensorOut);
 
-    Operation *op = Ops::Instance().GetOperationByName(opName);
+    Operation* op = Ops::Instance().GetOperationByName(opName);
     if (op == nullptr) {
         return AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }
@@ -338,21 +348,21 @@ AspbStatus FftC2RCoreArch35::InitTactic()
     ASDSIP_ECHECK(kernel != nullptr, "Get best kernel failed", AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
     // allocate and initialize tiling workspace
-    uint8_t *deviceLaunchBuffer = nullptr;
+    uint8_t* deviceLaunchBuffer = nullptr;
     kernel->SetLaunchWithTiling(false);
     uint32_t launchBufferSize = kernel->GetTilingSize(launchParam);
     ASDSIP_ECHECK(launchBufferSize != 0, "empty tiling size", AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
-    uint8_t hostLaunchBuffer[launchBufferSize];
-    kernel->SetTilingHostAddr(hostLaunchBuffer, launchBufferSize);
+    std::vector<uint8_t> hostLaunchBuffer(launchBufferSize);
+    kernel->SetTilingHostAddr(hostLaunchBuffer.data(), launchBufferSize);
     kernel->Init(launchParam);
 
     void* tempDevicePtr = nullptr;
     int st = MkiRtMemMallocDevice(&tempDevicePtr, launchBufferSize, MKIRT_MEM_DEFAULT);
     ASDSIP_ECHECK(st == MKIRT_SUCCESS, "malloc device memory fail", AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
-    deviceLaunchBuffer = static_cast<uint8_t *>(tempDevicePtr);
-    st = MkiRtMemCopy(deviceLaunchBuffer, launchBufferSize, hostLaunchBuffer, launchBufferSize,
+    deviceLaunchBuffer = static_cast<uint8_t*>(tempDevicePtr);
+    st = MkiRtMemCopy(deviceLaunchBuffer, launchBufferSize, hostLaunchBuffer.data(), launchBufferSize,
                       MKIRT_MEMCOPY_HOST_TO_DEVICE);
     if (st != MKIRT_SUCCESS) {
         MkiRtMemFreeDevice(deviceLaunchBuffer);

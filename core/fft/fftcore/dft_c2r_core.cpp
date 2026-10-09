@@ -8,6 +8,8 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
+#include <vector>
+
 #include <mki/utils/rt/rt.h>
 #include <mki/utils/platform/platform_info.h>
 #include "utils/assert.h"
@@ -77,22 +79,22 @@ AspbStatus DftC2RCore::InitRotationMatrix()
             throw std::runtime_error("rotation_matrix_host malloc failed:.");
         }
 
-        float cosTable[fftN];
-        float sinTable[fftN];
+        std::vector<float> cosTable(static_cast<size_t>(fftN));
+        std::vector<float> sinTable(static_cast<size_t>(fftN));
         for (size_t i = 0; i < fftN; i++) {
-            *(cosTable + i) = cos(K_2PI * i / fftN);
-            *(sinTable + i) = sin(K_2PI * i / fftN);
+            cosTable[i] = cos(K_2PI * i / fftN);
+            sinTable[i] = sin(K_2PI * i / fftN);
         }
         for (size_t i = 0; i < fftN; i++) {
             for (size_t j = 0; j < fftN; j++) {
                 if (i < (fftN / 2 + 1)) {
-                    *(rotation_matrix_host + (2 * i) * outSize + j) = *(cosTable + (i * j) % fftN);
+                    *(rotation_matrix_host + (2 * i) * outSize + j) = cosTable[(i * j) % fftN];
                     *(rotation_matrix_host + (2 * i + 1) * outSize + j) = (problemDesc.forward ? (1.0) : (-1.0)) *
-                                                                          (*(sinTable + (i * j) % fftN));
+                                                                          (sinTable[(i * j) % fftN]);
                 } else {
-                    *(rotation_matrix_host + (2 * (fftN - i)) * outSize + j) += *(cosTable + (i * j) % fftN);
+                    *(rotation_matrix_host + (2 * (fftN - i)) * outSize + j) += cosTable[(i * j) % fftN];
                     *(rotation_matrix_host + (2 * (fftN - i) + 1) * outSize +
-                      j) += (problemDesc.forward ? (-1.0) : (1.0)) * (*(sinTable + (i * j) % fftN));
+                      j) += (problemDesc.forward ? (-1.0) : (1.0)) * (sinTable[(i * j) % fftN]);
                 }
             }
         }
@@ -169,8 +171,8 @@ AspbStatus DftC2RCore::InitTactic()
     uint32_t launchBufferSize = kernel->GetTilingSize(launchParam);
     ASDSIP_ECHECK(launchBufferSize != 0, "empty tiling size", AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
-    uint8_t hostLaunchBuffer[launchBufferSize];
-    kernel->SetTilingHostAddr(hostLaunchBuffer, launchBufferSize);
+    std::vector<uint8_t> hostLaunchBuffer(launchBufferSize);
+    kernel->SetTilingHostAddr(hostLaunchBuffer.data(), launchBufferSize);
     kernel->Init(launchParam);
 
     void* tempDevicePtr = nullptr;
@@ -178,7 +180,7 @@ AspbStatus DftC2RCore::InitTactic()
     ASDSIP_ECHECK(st == MKIRT_SUCCESS, "malloc device memory fail", AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
     deviceLaunchBuffer = static_cast<uint8_t*>(tempDevicePtr);
-    st = MkiRtMemCopy(deviceLaunchBuffer, launchBufferSize, hostLaunchBuffer, launchBufferSize,
+    st = MkiRtMemCopy(deviceLaunchBuffer, launchBufferSize, hostLaunchBuffer.data(), launchBufferSize,
                       MKIRT_MEMCOPY_HOST_TO_DEVICE);
     if (st != MKIRT_SUCCESS) {
         MkiRtMemFreeDevice(deviceLaunchBuffer);

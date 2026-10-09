@@ -153,10 +153,10 @@ function fn_prepare_boost_comm()
 function fn_clean()
 {
     echo "[INFO] cleaning build artifacts ..."
-    rm -rf "${SCRIPT_DIR}/build" "${SCRIPT_DIR}/dist" "${SCRIPT_DIR}/*.egg-info"
+    rm -rf ${SCRIPT_DIR}/build ${SCRIPT_DIR}/dist ${SCRIPT_DIR}/*.egg-info
     find "${SCRIPT_DIR}" -maxdepth 4 -type d -name "__pycache__" -exec rm -rf {} + 2> /dev/null || true
-    # 仅当该目录是本脚本自动 clone 出来且未参与过 sip 仓编译时才清理
-    if [ -d "${BOOST_COMM_DIR}" ] && [ "${BOOST_COMM_DIR}" = "${THIRD_PARTY_DIR}/ascend-boost-comm" ]; then
+    # ascend-boost-comm 三方依赖目录默认保留（避免误删非本脚本管理的文件），如需清理请手动删除
+    if [[ -d ${BOOST_COMM_DIR} ]]; then
         echo "[INFO] keep ${BOOST_COMM_DIR} (delete it manually if not needed)"
     fi
     echo "[INFO] clean done."

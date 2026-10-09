@@ -8,6 +8,8 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
+#include <vector>
+
 #include <mki/utils/rt/rt.h>
 #include <mki/utils/platform/platform_info.h>
 #include "utils/assert.h"
@@ -77,17 +79,17 @@ AspbStatus DftR2CCore::InitRotationMatrix()
             throw std::runtime_error("rotationMatrixHost alloc failed:.");
         }
 
-        float cosTable[fftN];
-        float sinTable[fftN];
+        std::vector<float> cosTable(static_cast<size_t>(fftN));
+        std::vector<float> sinTable(static_cast<size_t>(fftN));
         for (int64_t i = 0; i < fftN; i++) {
-            *(cosTable + i) = cos(K_2PI * i / fftN);
-            *(sinTable + i) = sin(K_2PI * i / fftN);
+            cosTable[i] = cos(K_2PI * i / fftN);
+            sinTable[i] = sin(K_2PI * i / fftN);
         }
         for (int64_t i = 0; i < inSize; i++) {
             for (int64_t j = 0; j < (fftN / 2 + 1); j++) {
-                *(rotationMatrixHost + i * outSize + 2 * j) = *(cosTable + (i * j) % fftN);
+                *(rotationMatrixHost + i * outSize + 2 * j) = cosTable[(i * j) % fftN];
                 *(rotationMatrixHost + i * outSize + 2 * j + 1) = (problemDesc.forward ? (-1.0) : (1.0)) *
-                                                                  (*(sinTable + (i * j) % fftN));
+                                                                  (sinTable[(i * j) % fftN]);
             }
         }
 
@@ -161,8 +163,8 @@ AspbStatus DftR2CCore::InitTactic()
         ASDSIP_LOG(ERROR) << "empty tiling size";
         return AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }
-    uint8_t hostLaunchBuffer[launchBufferSize];
-    kernel->SetTilingHostAddr(hostLaunchBuffer, launchBufferSize);
+    std::vector<uint8_t> hostLaunchBuffer(launchBufferSize);
+    kernel->SetTilingHostAddr(hostLaunchBuffer.data(), launchBufferSize);
     kernel->Init(launchParam);
 
     void* tempDevicePtr = nullptr;
@@ -172,7 +174,7 @@ AspbStatus DftR2CCore::InitTactic()
         return AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }
     deviceLaunchBuffer = static_cast<uint8_t*>(tempDevicePtr);
-    st = MkiRtMemCopy(deviceLaunchBuffer, launchBufferSize, hostLaunchBuffer, launchBufferSize,
+    st = MkiRtMemCopy(deviceLaunchBuffer, launchBufferSize, hostLaunchBuffer.data(), launchBufferSize,
                       MKIRT_MEMCOPY_HOST_TO_DEVICE);
     if (st != MKIRT_SUCCESS) {
         MkiRtMemFreeDevice(deviceLaunchBuffer);

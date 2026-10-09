@@ -64,7 +64,7 @@ swapLast2Axes：交换Tensor的最后两维。
 
 ```Cpp
 AsdSip::AspbStatus swapLast2AxesGetWorkspaceSize(
-  size_t *size)
+  size_t &size)
 ```
 
 ```Cpp
@@ -96,7 +96,7 @@ AsdSip::AspbStatus swapLast2Axes(
       </tr></thead>
     <tbody>
     <tr>
-      <td>size（size_t *）</td>
+      <td>size（size_t &）</td>
       <td>输入/输出</td>
       <td>swapLast2Axes算子所需要的workspace。</td>
     </tr>

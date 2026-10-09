@@ -8,6 +8,8 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
+#include <vector>
+
 #include <memory>
 #include <mki/utils/rt/rt.h>
 #include "utils/assert.h"
@@ -172,8 +174,8 @@ AspbStatus DFTCoreSep::InitTactic()
         return AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }
 
-    uint8_t hostLaunchBuffer[launchBufferSize];
-    kernel->SetTilingHostAddr(hostLaunchBuffer, launchBufferSize);
+    std::vector<uint8_t> hostLaunchBuffer(launchBufferSize);
+    kernel->SetTilingHostAddr(hostLaunchBuffer.data(), launchBufferSize);
     kernel->Init(launchParam);
     void* tempDevicePtr = nullptr;
     int st = MkiRtMemMallocDevice(&tempDevicePtr, launchBufferSize, MKIRT_MEM_DEFAULT);
@@ -182,7 +184,8 @@ AspbStatus DFTCoreSep::InitTactic()
         return AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }
     device = static_cast<uint8_t*>(tempDevicePtr);
-    st = MkiRtMemCopy(device, launchBufferSize, hostLaunchBuffer, launchBufferSize, MKIRT_MEMCOPY_HOST_TO_DEVICE);
+    st = MkiRtMemCopy(device, launchBufferSize, hostLaunchBuffer.data(), launchBufferSize,
+                      MKIRT_MEMCOPY_HOST_TO_DEVICE);
     if (st != MKIRT_SUCCESS) {
         MkiRtMemFreeDevice(device);
         device = nullptr;

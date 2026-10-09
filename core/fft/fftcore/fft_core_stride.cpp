@@ -35,16 +35,16 @@ constexpr int N_DOING_262144 = 262144;
 
 size_t FFTCoreStride::EstimateWorkspaceSize()
 {
-    const KernelInfo &kernelInfo = kernel->GetKernelInfo();
+    const KernelInfo& kernelInfo = kernel->GetKernelInfo();
     return getAlignedSize(kernelInfo.GetTotalScratchSize());
 }
 
-void FFTCoreStride::Run(Tensor &input, Tensor &output, void *stream, workspace::Workspace &workspace)
+void FFTCoreStride::Run(Tensor& input, Tensor& output, void* stream, workspace::Workspace& workspace)
 {
-    const KernelInfo &kernelInfo = kernel->GetKernelInfo();
+    const KernelInfo& kernelInfo = kernel->GetKernelInfo();
     // set workspace
     size_t bufferSize = kernelInfo.GetTotalScratchSize();
-    runInfo.SetScratchDeviceAddr((uint8_t *)workspace.allocate(bufferSize));
+    runInfo.SetScratchDeviceAddr((uint8_t*)workspace.allocate(bufferSize));
 
     runInfo.SetStream(stream);
     launchParam.GetInTensor(0).data = input.data;
@@ -76,7 +76,7 @@ AspbStatus FFTCoreStride::InitTactic()
     launchParam.AddInTensor(*sMatrix);
     launchParam.AddOutTensor(tensorOut);
 
-    Operation *op = Ops::Instance().GetOperationByName(std::string("FftStrideOperation"));
+    Operation* op = Ops::Instance().GetOperationByName(std::string("FftStrideOperation"));
     if (op == nullptr) {
         return AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }
@@ -85,15 +85,15 @@ AspbStatus FFTCoreStride::InitTactic()
     ASDSIP_ECHECK(kernel != nullptr, "Get best kernel failed", AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
     // allocate and initialize tiling workspace
-    uint8_t *deviceLaunchBuffer = nullptr;
+    uint8_t* deviceLaunchBuffer = nullptr;
     kernel->SetLaunchWithTiling(false);
     uint32_t launchBufferSize = kernel->GetTilingSize(launchParam);
     if (launchBufferSize == 0) {
         ASDSIP_LOG(ERROR) << "empty tiling size";
         return AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }
-    uint8_t hostLaunchBuffer[launchBufferSize];
-    kernel->SetTilingHostAddr(hostLaunchBuffer, launchBufferSize);
+    std::vector<uint8_t> hostLaunchBuffer(launchBufferSize);
+    kernel->SetTilingHostAddr(hostLaunchBuffer.data(), launchBufferSize);
     kernel->Init(launchParam);
 
     void* tempDevicePtr = nullptr;
@@ -102,8 +102,8 @@ AspbStatus FFTCoreStride::InitTactic()
         ASDSIP_LOG(ERROR) << "malloc device memory fail";
         return AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }
-    deviceLaunchBuffer = static_cast<uint8_t *>(tempDevicePtr);
-    st = MkiRtMemCopy(deviceLaunchBuffer, launchBufferSize, hostLaunchBuffer, launchBufferSize,
+    deviceLaunchBuffer = static_cast<uint8_t*>(tempDevicePtr);
+    st = MkiRtMemCopy(deviceLaunchBuffer, launchBufferSize, hostLaunchBuffer.data(), launchBufferSize,
                       MKIRT_MEMCOPY_HOST_TO_DEVICE);
     if (st != MKIRT_SUCCESS) {
         MkiRtMemFreeDevice(deviceLaunchBuffer);
@@ -121,7 +121,7 @@ void FFTCoreStride::InitRadix()
     radixVec.clear();
     switch (problemDesc.nDoing) {
         case N_DOING_256:
-            radixVec = {16, 16};  // {radix: 1iter, 2iter......}
+            radixVec = {16, 16}; // {radix: 1iter, 2iter......}
             break;
         case N_DOING_512:
             radixVec = {16, 32};
@@ -181,7 +181,7 @@ bool FFTCoreStride::PreAllocateInDevice()
 
 void FFTCoreStride::DestroyInDevice() const
 {
-    uint8_t *deviceBuffer = runInfo.GetTilingDeviceAddr();
+    uint8_t* deviceBuffer = runInfo.GetTilingDeviceAddr();
     if (deviceBuffer != nullptr) {
         MkiRtMemFreeDevice(deviceBuffer);
     }

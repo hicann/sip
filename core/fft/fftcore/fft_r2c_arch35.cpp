@@ -8,6 +8,8 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
+#include <vector>
+
 #include <mki/utils/rt/rt.h>
 #include <mki/utils/platform/platform_info.h>
 #include "utils/assert.h"
@@ -30,18 +32,18 @@ size_t FftR2CCoreArch35::EstimateWorkspaceSize()
         // 偶数 N: 使用 N/2 计算
         // 奇数 N: 使用完整 N 计算
         bool isOdd = (static_cast<int64_t>(problemDesc.nDoing) % 2 != 0);
-        int64_t fftSize = isOdd ? static_cast<int64_t>(problemDesc.nDoing) 
-                                : (static_cast<int64_t>(problemDesc.nDoing) / 2);
+        int64_t fftSize = isOdd ? static_cast<int64_t>(problemDesc.nDoing) :
+                                  (static_cast<int64_t>(problemDesc.nDoing) / 2);
         int64_t singleBufferSize = static_cast<int64_t>(problemDesc.batch) * fftSize * 2 * sizeof(float);
         int64_t workspaceSize = 2 * singleBufferSize;
         ASDSIP_LOG(INFO) << "ASCEND_950 FftR2CCoreArch35 workspace size: " << workspaceSize;
         return static_cast<size_t>(workspaceSize);
     }
-    const KernelInfo &kernelInfo = kernel->GetKernelInfo();
+    const KernelInfo& kernelInfo = kernel->GetKernelInfo();
     return getAlignedSize(kernelInfo.GetTotalScratchSize());
 }
 
-void FftR2CCoreArch35::Run(void *input, void *output, void *stream, workspace::Workspace &workspace)
+void FftR2CCoreArch35::Run(void* input, void* output, void* stream, workspace::Workspace& workspace)
 {
     if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910B) {
         FftOperation::Run(input, output, stream, workspace);
@@ -54,7 +56,7 @@ void FftR2CCoreArch35::Run(void *input, void *output, void *stream, workspace::W
 
 void FftR2CCoreArch35::DestroyInDevice() const
 {
-    uint8_t *deviceLaunchBuffer = runInfo.GetTilingDeviceAddr();
+    uint8_t* deviceLaunchBuffer = runInfo.GetTilingDeviceAddr();
     if (deviceLaunchBuffer != nullptr) {
         MkiRtMemFreeDevice(deviceLaunchBuffer);
     }
@@ -67,8 +69,7 @@ void FftR2CCoreArch35::InitRadix()
     // 偶数 N: 使用 N/2 分解（Pack 优化）
     // 奇数 N: 使用完整 N 分解（无 Pack）
     bool isOdd = (static_cast<int64_t>(problemDesc.nDoing) % 2 != 0);
-    int64_t tempN = isOdd ? static_cast<int64_t>(problemDesc.nDoing) 
-                          : (static_cast<int64_t>(problemDesc.nDoing) / 2);
+    int64_t tempN = isOdd ? static_cast<int64_t>(problemDesc.nDoing) : (static_cast<int64_t>(problemDesc.nDoing) / 2);
 
     if (tempN <= 0) {
         ASDSIP_LOG(ERROR) << "FftR2CCoreArch35 N/2 must be positive, got " << tempN;
@@ -89,13 +90,15 @@ void FftR2CCoreArch35::InitRadix()
         if (radix == 0) {
             std::string allowedStr;
             for (size_t i = 0; i < numRadices; i++) {
-                if (i > 0) allowedStr += ", ";
+                if (i > 0)
+                    allowedStr += ", ";
                 allowedStr += std::to_string(ALLOWED_RADICES[i]);
             }
-            ASDSIP_LOG(ERROR) << "FftR2CCoreArch35 N/2 contains prime factors other than "
-                              << allowedStr << ". Remaining: " << tempN;
+            ASDSIP_LOG(ERROR) << "FftR2CCoreArch35 N/2 contains prime factors other than " << allowedStr
+                              << ". Remaining: " << tempN;
             throw std::runtime_error("FftR2CCoreArch35: unsupported signal length. "
-                                     "Only prime factors " + allowedStr + " are allowed.");
+                                     "Only prime factors " +
+                                     allowedStr + " are allowed.");
         }
 
         int64_t M = tempN / radix;
@@ -119,13 +122,16 @@ AspbStatus FftR2CCoreArch35::BuildFftPlan()
     size_t radixListSize = planLen * sizeof(int32_t);
 
     auto radixListFunc = [=]() -> AsdSip::FFTensor* {
-        AsdSip::FFTensor *t = new AsdSip::FFTensor;
-        int32_t *host = new int32_t[planLen];
+        AsdSip::FFTensor* t = new AsdSip::FFTensor;
+        int32_t* host = new int32_t[planLen];
         for (size_t s = 0; s < planLen; s++) {
             host[s] = static_cast<int32_t>(plan[s].radix);
         }
-        t->desc = {Mki::TensorDType::TENSOR_DTYPE_INT32, Mki::TensorFormat::TENSOR_FORMAT_ND,
-                   {static_cast<int64_t>(planLen)}, {}, 0};
+        t->desc = {Mki::TensorDType::TENSOR_DTYPE_INT32,
+                   Mki::TensorFormat::TENSOR_FORMAT_ND,
+                   {static_cast<int64_t>(planLen)},
+                   {},
+                   0};
         t->hostData = host;
         t->dataSize = radixListSize;
         return t;
@@ -146,8 +152,8 @@ AspbStatus FftR2CCoreArch35::BuildFftPlan()
     size_t dftDataSize = totalDftFloats * sizeof(float);
 
     auto dftFunc = [=]() -> AsdSip::FFTensor* {
-        AsdSip::FFTensor *t = new AsdSip::FFTensor;
-        float *host = nullptr;
+        AsdSip::FFTensor* t = new AsdSip::FFTensor;
+        float* host = nullptr;
         try {
             host = new float[totalDftFloats]();
         } catch (std::bad_alloc& e) {
@@ -171,8 +177,11 @@ AspbStatus FftR2CCoreArch35::BuildFftPlan()
             offset += 2 * radix * radix;
         }
 
-        t->desc = {Mki::TensorDType::TENSOR_DTYPE_FLOAT, Mki::TensorFormat::TENSOR_FORMAT_ND,
-                   {static_cast<int64_t>(totalDftFloats)}, {}, 0};
+        t->desc = {Mki::TensorDType::TENSOR_DTYPE_FLOAT,
+                   Mki::TensorFormat::TENSOR_FORMAT_ND,
+                   {static_cast<int64_t>(totalDftFloats)},
+                   {},
+                   0};
         t->hostData = host;
         t->dataSize = dftDataSize;
         return t;
@@ -181,8 +190,8 @@ AspbStatus FftR2CCoreArch35::BuildFftPlan()
     size_t twDataSize = totalTwFloats * sizeof(float);
 
     auto twFunc = [=]() -> AsdSip::FFTensor* {
-        AsdSip::FFTensor *t = new AsdSip::FFTensor;
-        float *host = nullptr;
+        AsdSip::FFTensor* t = new AsdSip::FFTensor;
+        float* host = nullptr;
         try {
             host = new float[totalTwFloats]();
         } catch (std::bad_alloc& e) {
@@ -195,8 +204,8 @@ AspbStatus FftR2CCoreArch35::BuildFftPlan()
         // 偶数 N: 使用 N/2 计算 Twiddle
         // 奇数 N: 使用完整 N 计算 Twiddle
         bool isOdd = (static_cast<int64_t>(problemDesc.nDoing) % 2 != 0);
-        int64_t tempN = isOdd ? static_cast<int64_t>(problemDesc.nDoing) 
-                              : (static_cast<int64_t>(problemDesc.nDoing) / 2);
+        int64_t tempN = isOdd ? static_cast<int64_t>(problemDesc.nDoing) :
+                                (static_cast<int64_t>(problemDesc.nDoing) / 2);
 
         for (size_t s = 0; s < planLen; s++) {
             int64_t radix = plan[s].radix;
@@ -214,8 +223,11 @@ AspbStatus FftR2CCoreArch35::BuildFftPlan()
             tempN = M;
         }
 
-        t->desc = {Mki::TensorDType::TENSOR_DTYPE_FLOAT, Mki::TensorFormat::TENSOR_FORMAT_ND,
-                   {static_cast<int64_t>(totalTwFloats)}, {}, 0};
+        t->desc = {Mki::TensorDType::TENSOR_DTYPE_FLOAT,
+                   Mki::TensorFormat::TENSOR_FORMAT_ND,
+                   {static_cast<int64_t>(totalTwFloats)},
+                   {},
+                   0};
         t->hostData = host;
         t->dataSize = twDataSize;
         return t;
@@ -232,8 +244,8 @@ AspbStatus FftR2CCoreArch35::BuildFftPlan()
     size_t twPostSize = D * 2 * sizeof(float);
 
     auto twPostFunc = [=]() -> AsdSip::FFTensor* {
-        AsdSip::FFTensor *t = new AsdSip::FFTensor;
-        float *host = nullptr;
+        AsdSip::FFTensor* t = new AsdSip::FFTensor;
+        float* host = nullptr;
         try {
             host = new float[D * 2]();
         } catch (std::bad_alloc& e) {
@@ -248,8 +260,7 @@ AspbStatus FftR2CCoreArch35::BuildFftPlan()
             host[k * 2 + 1] = static_cast<float>(sin(angle));
         }
 
-        t->desc = {Mki::TensorDType::TENSOR_DTYPE_FLOAT, Mki::TensorFormat::TENSOR_FORMAT_ND,
-                   {D * 2}, {}, 0};
+        t->desc = {Mki::TensorDType::TENSOR_DTYPE_FLOAT, Mki::TensorFormat::TENSOR_FORMAT_ND, {D * 2}, {}, 0};
         t->hostData = host;
         t->dataSize = twPostSize;
         return t;
@@ -259,9 +270,7 @@ AspbStatus FftR2CCoreArch35::BuildFftPlan()
     twPostProcess = FFTensorCache::getCoeff(twPostKey, twPostFunc);
 
     ASDSIP_LOG(INFO) << "FftR2CCoreArch35 BuildFftPlan success. "
-                     << "planLen=" << planLen
-                     << ", dftFloats=" << totalDftFloats
-                     << ", twFloats=" << totalTwFloats
+                     << "planLen=" << planLen << ", dftFloats=" << totalDftFloats << ", twFloats=" << totalTwFloats
                      << ", twPostSize=" << twPostSize;
 
     return AsdSip::ErrorType::ACL_SUCCESS;
@@ -288,25 +297,22 @@ AspbStatus FftR2CCoreArch35::InitTactic()
 
     // 判断是否为奇数 N
     bool isOdd = (static_cast<int64_t>(problemDesc.nDoing) % 2 != 0);
-    
-    OpParam::FftR2CArch35 param = {problemDesc.nDoing,
-                                    problemDesc.batch,
-                                    static_cast<int64_t>(plan.size()),
-                                    1 - int(problemDesc.forward),
-                                    static_cast<int32_t>(isOdd)};
+
+    OpParam::FftR2CArch35 param = {problemDesc.nDoing, problemDesc.batch, static_cast<int64_t>(plan.size()),
+                                   1 - int(problemDesc.forward), static_cast<int32_t>(isOdd)};
     ASDSIP_LOG(DEBUG) << "OpDesc info: " << param.ToString();
 
     Tensor tensorIn;
     Tensor tensorOut;
     int64_t inputN = problemDesc.nDoing;
     tensorIn.desc = {TENSOR_DTYPE_FLOAT, TENSOR_FORMAT_ND, {problemDesc.batch, inputN}, {}, 0};
-    tensorIn.dataSize = static_cast<size_t>(problemDesc.batch) * static_cast<size_t>(inputN)
-                        * GetTensorElementSize(Mki::TensorDType::TENSOR_DTYPE_FLOAT);
+    tensorIn.dataSize = static_cast<size_t>(problemDesc.batch) * static_cast<size_t>(inputN) *
+                        GetTensorElementSize(Mki::TensorDType::TENSOR_DTYPE_FLOAT);
 
     int64_t outputN = problemDesc.nDoing / 2 + 1;
     tensorOut.desc = {TENSOR_DTYPE_COMPLEX64, TENSOR_FORMAT_ND, {problemDesc.batch, outputN}, {}, 0};
-    tensorOut.dataSize = static_cast<size_t>(problemDesc.batch) * static_cast<size_t>(outputN)
-                         * GetTensorElementSize(Mki::TensorDType::TENSOR_DTYPE_COMPLEX64);
+    tensorOut.dataSize = static_cast<size_t>(problemDesc.batch) * static_cast<size_t>(outputN) *
+                         GetTensorElementSize(Mki::TensorDType::TENSOR_DTYPE_COMPLEX64);
 
     launchParam.SetParam(param);
     launchParam.AddInTensor(tensorIn);
@@ -316,7 +322,7 @@ AspbStatus FftR2CCoreArch35::InitTactic()
     launchParam.AddInTensor(*radixListTensor);
     launchParam.AddOutTensor(tensorOut);
 
-    Operation *op = Ops::Instance().GetOperationByName(opName);
+    Operation* op = Ops::Instance().GetOperationByName(opName);
     if (op == nullptr) {
         return AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }
@@ -324,21 +330,21 @@ AspbStatus FftR2CCoreArch35::InitTactic()
     kernel = std::unique_ptr<Kernel>(op->GetBestKernel(launchParam));
     ASDSIP_ECHECK(kernel != nullptr, "Get best kernel failed", AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
-    uint8_t *deviceLaunchBuffer = nullptr;
+    uint8_t* deviceLaunchBuffer = nullptr;
     kernel->SetLaunchWithTiling(false);
     uint32_t launchBufferSize = kernel->GetTilingSize(launchParam);
     ASDSIP_ECHECK(launchBufferSize != 0, "empty tiling size", AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
-    uint8_t hostLaunchBuffer[launchBufferSize];
-    kernel->SetTilingHostAddr(hostLaunchBuffer, launchBufferSize);
+    std::vector<uint8_t> hostLaunchBuffer(launchBufferSize);
+    kernel->SetTilingHostAddr(hostLaunchBuffer.data(), launchBufferSize);
     kernel->Init(launchParam);
 
     void* tempDevicePtr = nullptr;
     int st = MkiRtMemMallocDevice(&tempDevicePtr, launchBufferSize, MKIRT_MEM_DEFAULT);
     ASDSIP_ECHECK(st == MKIRT_SUCCESS, "malloc device memory fail", AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR);
 
-    deviceLaunchBuffer = static_cast<uint8_t *>(tempDevicePtr);
-    st = MkiRtMemCopy(deviceLaunchBuffer, launchBufferSize, hostLaunchBuffer, launchBufferSize,
+    deviceLaunchBuffer = static_cast<uint8_t*>(tempDevicePtr);
+    st = MkiRtMemCopy(deviceLaunchBuffer, launchBufferSize, hostLaunchBuffer.data(), launchBufferSize,
                       MKIRT_MEMCOPY_HOST_TO_DEVICE);
     if (st != MKIRT_SUCCESS) {
         MkiRtMemFreeDevice(deviceLaunchBuffer);

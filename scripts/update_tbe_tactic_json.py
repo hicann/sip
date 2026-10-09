@@ -53,7 +53,7 @@ def get_code_root():
 
 def get_tbe_kernel_path():
     result = True
-    tbe_kernel_path = os.getenv("ASDOPS_KERNEL_PATH")
+    tbe_kernel_path = os.getenv("ASDOPS_KERNEL_PATH", "")
     if not os.path.exists(tbe_kernel_path):
         result = False
     return tbe_kernel_path, result
@@ -109,7 +109,7 @@ def read_tbe_json_file(json_file_path):
                 )
                 ops_specification_list.append(json_info)
     except FileNotFoundError:
-        logging.error("file %s is not found!", json_file)
+        logging.error("file %s is not found!", json_file_path)
         result = False
     except json.decoder.JSONDecodeError:
         logging.error("file %s is not json file!", json_file)

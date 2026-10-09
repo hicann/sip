@@ -179,8 +179,8 @@ AspbStatus FFTCoreN::InitTactic()
         ASDSIP_LOG(ERROR) << "empty tiling size";
         return AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }
-    uint8_t hostLaunchBuffer[launchBufferSize];
-    kernel->SetTilingHostAddr(hostLaunchBuffer, launchBufferSize);
+    std::vector<uint8_t> hostLaunchBuffer(launchBufferSize);
+    kernel->SetTilingHostAddr(hostLaunchBuffer.data(), launchBufferSize);
     kernel->Init(launchParam);
 
     void* tempDevicePtr = nullptr;
@@ -190,7 +190,7 @@ AspbStatus FFTCoreN::InitTactic()
         return AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }
     deviceLaunchBuffer = static_cast<uint8_t*>(tempDevicePtr);
-    st = MkiRtMemCopy(deviceLaunchBuffer, launchBufferSize, hostLaunchBuffer, launchBufferSize,
+    st = MkiRtMemCopy(deviceLaunchBuffer, launchBufferSize, hostLaunchBuffer.data(), launchBufferSize,
                       MKIRT_MEMCOPY_HOST_TO_DEVICE);
     if (st != MKIRT_SUCCESS) {
         MkiRtMemFreeDevice(deviceLaunchBuffer);

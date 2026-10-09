@@ -409,16 +409,20 @@ uint64_t CalcHashId();
     do {                                                                                                          \
         auto sip_stream = c10_npu::getCurrentNPUStream().stream(false);                                           \
         AsdSip::asdBlasHandle handle = op_api::getBlasHandle(#ops_api, planParam, makePlanFunc);                  \
+        TORCH_CHECK(handle != nullptr, "getBlasHandle failed for ", #ops_api);                                    \
         size_t workspace_size = 0;                                                                                \
         void* workspace_addr = nullptr;                                                                           \
         at::Tensor workspace_tensor;                                                                              \
-        AsdSip::asdBlasGetWorkspaceSize(handle, workspace_size);                                                  \
+        auto wsStatus = AsdSip::asdBlasGetWorkspaceSize(handle, workspace_size);                                  \
+        TORCH_CHECK(wsStatus == 0, "asdBlasGetWorkspaceSize failed, status: ", wsStatus);                         \
         if (workspace_size > 0) {                                                                                 \
             workspace_tensor = at_npu::native::allocate_workspace(static_cast<long>(workspace_size), sip_stream); \
             workspace_addr = const_cast<void*>(workspace_tensor.storage().data());                                \
         }                                                                                                         \
-        AsdSip::asdBlasSetWorkspace(handle, workspace_addr);                                                      \
-        AsdSip::asdBlasSetStream(handle, sip_stream);                                                             \
+        auto wsSetStatus = AsdSip::asdBlasSetWorkspace(handle, workspace_addr);                                   \
+        TORCH_CHECK(wsSetStatus == 0, "asdBlasSetWorkspace failed, status: ", wsSetStatus);                       \
+        auto streamSetStatus = AsdSip::asdBlasSetStream(handle, sip_stream);                                      \
+        TORCH_CHECK(streamSetStatus == 0, "asdBlasSetStream failed, status: ", streamSetStatus);                  \
         EXEC_FUNC(ops_api, handle, __VA_ARGS__);                                                                  \
     } while (false)
 
@@ -426,16 +430,20 @@ uint64_t CalcHashId();
     do {                                                                                                          \
         auto sip_stream = c10_npu::getCurrentNPUStream().stream(false);                                           \
         AsdSip::asdFftHandle handle = op_api::getFftHandle(fftParam);                                             \
+        TORCH_CHECK(handle != nullptr, "getFftHandle failed for ", #ops_api);                                     \
         size_t workspace_size = 0;                                                                                \
-        AsdSip::asdFftGetWorkspaceSize(handle, workspace_size);                                                   \
         void* workspace_addr = nullptr;                                                                           \
         at::Tensor workspace_tensor;                                                                              \
+        auto wsStatus = AsdSip::asdFftGetWorkspaceSize(handle, workspace_size);                                   \
+        TORCH_CHECK(wsStatus == 0, "asdFftGetWorkspaceSize failed, status: ", wsStatus);                          \
         if (workspace_size > 0) {                                                                                 \
             workspace_tensor = at_npu::native::allocate_workspace(static_cast<long>(workspace_size), sip_stream); \
             workspace_addr = const_cast<void*>(workspace_tensor.storage().data());                                \
         }                                                                                                         \
-        AsdSip::asdFftSetWorkspace(handle, workspace_addr);                                                       \
-        AsdSip::asdFftSetStream(handle, sip_stream);                                                              \
+        auto wsSetStatus = AsdSip::asdFftSetWorkspace(handle, workspace_addr);                                    \
+        TORCH_CHECK(wsSetStatus == 0, "asdFftSetWorkspace failed, status: ", wsSetStatus);                        \
+        auto streamSetStatus = AsdSip::asdFftSetStream(handle, sip_stream);                                       \
+        TORCH_CHECK(streamSetStatus == 0, "asdFftSetStream failed, status: ", streamSetStatus);                   \
         EXEC_FUNC(ops_api, handle, __VA_ARGS__);                                                                  \
     } while (false)
 #endif // PYTORCH_NPU_HELPER_HPP_

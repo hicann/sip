@@ -7,6 +7,8 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
+#include <vector>
+
 #include <cmath>
 #include <mki/utils/platform/platform_info.h>
 #include <mki/utils/rt/rt.h>
@@ -39,7 +41,7 @@ constexpr double K_PI = 3.14159265358979323846;
 constexpr double K_2PI = 2 * K_PI;
 
 namespace {
-int64_t GetTMatrixColForSep(std::vector<int64_t> &radixVec, int64_t iter)
+int64_t GetTMatrixColForSep(std::vector<int64_t>& radixVec, int64_t iter)
 {
     int64_t col = 1;
     for (int64_t i = iter + 1; i < static_cast<int64_t>(radixVec.size()); ++i) {
@@ -48,7 +50,7 @@ int64_t GetTMatrixColForSep(std::vector<int64_t> &radixVec, int64_t iter)
     return col;
 }
 
-int64_t GetAllWMatrixSizeForSep(std::vector<int64_t> &radixVec)
+int64_t GetAllWMatrixSizeForSep(std::vector<int64_t>& radixVec)
 {
     int64_t size = 0;
     int64_t tempN;
@@ -62,7 +64,7 @@ int64_t GetAllWMatrixSizeForSep(std::vector<int64_t> &radixVec)
     return size;
 }
 
-int64_t GetAllTMatrixSizeForSep(std::vector<int64_t> &radixVec)
+int64_t GetAllTMatrixSizeForSep(std::vector<int64_t>& radixVec)
 {
     int64_t size = 0;
     int64_t tempRow;
@@ -78,20 +80,20 @@ int64_t GetAllTMatrixSizeForSep(std::vector<int64_t> &radixVec)
 
     return size;
 }
-}
+} // namespace
 
 size_t FFTCoreBSep::EstimateWorkspaceSize()
 {
-    const KernelInfo &kernelInfo = kernel->GetKernelInfo();
+    const KernelInfo& kernelInfo = kernel->GetKernelInfo();
     return getAlignedSize(kernelInfo.GetTotalScratchSize());
 }
 
-
-void FFTCoreBSep::Run(void *inputReal, void *inputImag, void *outputReal, void *outputImag, void *stream, workspace::Workspace &workspace)
+void FFTCoreBSep::Run(void* inputReal, void* inputImag, void* outputReal, void* outputImag, void* stream,
+                      workspace::Workspace& workspace)
 {
-    const Mki::KernelInfo &kernelInfo = kernel->GetKernelInfo();
+    const Mki::KernelInfo& kernelInfo = kernel->GetKernelInfo();
     size_t bufferSize = kernelInfo.GetTotalScratchSize();
-    runInfo.SetScratchDeviceAddr((uint8_t *)workspace.allocate(bufferSize));
+    runInfo.SetScratchDeviceAddr((uint8_t*)workspace.allocate(bufferSize));
     runInfo.SetStream(stream);
 
     launchParam.GetInTensor(0).data = inputReal;
@@ -102,19 +104,15 @@ void FFTCoreBSep::Run(void *inputReal, void *inputImag, void *outputReal, void *
     workspace.recycleLast();
 }
 
-AspbStatus FFTCoreBSep::InitWMatrix(
-    FFTCoreType coreType,
-    std::vector<int64_t> &radixVec,
-    int64_t n,
-    bool forward)
+AspbStatus FFTCoreBSep::InitWMatrix(FFTCoreType coreType, std::vector<int64_t>& radixVec, int64_t n, bool forward)
 {
     (void)forward;
-    std::function<AsdSip::FFTensor *()> func = [=]() mutable -> AsdSip::FFTensor* {
-        AsdSip::FFTensor *wMatrixPtr = new AsdSip::FFTensor;
-        AsdSip::FFTensor &wMatrix_ = *wMatrixPtr;
+    std::function<AsdSip::FFTensor*()> func = [=]() mutable -> AsdSip::FFTensor* {
+        AsdSip::FFTensor* wMatrixPtr = new AsdSip::FFTensor;
+        AsdSip::FFTensor& wMatrix_ = *wMatrixPtr;
 
         int64_t size = GetAllWMatrixSizeForSep(radixVec);
-        float *wMatrixHost = new(std::nothrow) float[size];
+        float* wMatrixHost = new (std::nothrow) float[size];
         if (wMatrixHost == nullptr) {
             delete wMatrixPtr;
             ASDSIP_LOG(ERROR) << "wMatrixHost malloc failed: ";
@@ -125,7 +123,7 @@ AspbStatus FFTCoreBSep::InitWMatrix(
         int64_t currRadix;
         int64_t currSize;
         int64_t offset = 0;
-        
+
         for (int64_t it = 0; it < static_cast<int64_t>(radixVec.size()); ++it) {
             currRadix = radixVec[it];
             currSize = currRadix * currRadix * 3; // real part, imag part, and neg imag part
@@ -138,15 +136,15 @@ AspbStatus FFTCoreBSep::InitWMatrix(
                 for (int64_t j = 0; j < currRadix; j++) {
                     wMatrixHost[realOffset + i * currRadix + j] = cos(-1.0 * K_2PI * (i * j) / currRadix); // real part
                     wMatrixHost[imagOffset + i * currRadix + j] = sin(-1.0 * K_2PI * (i * j) / currRadix); // imag part
-                    wMatrixHost[negImagOffset + i * currRadix + j] = -1.0 * sin(-1.0 * K_2PI * (i * j) / currRadix); // neg imag part
+                    wMatrixHost[negImagOffset + i * currRadix + j] = -1.0 * sin(-1.0 * K_2PI * (i * j) /
+                                                                                currRadix); // neg imag part
                 }
             }
 
             offset += currSize;
         }
 
-        wMatrix_.desc = {
-            Mki::TensorDType::TENSOR_DTYPE_FLOAT, Mki::TensorFormat::TENSOR_FORMAT_ND, {size}, {}, 0};
+        wMatrix_.desc = {Mki::TensorDType::TENSOR_DTYPE_FLOAT, Mki::TensorFormat::TENSOR_FORMAT_ND, {size}, {}, 0};
         wMatrix_.hostData = wMatrixHost;
         wMatrix_.dataSize = sizeof(float) * size;
         return wMatrixPtr;
@@ -159,17 +157,13 @@ AspbStatus FFTCoreBSep::InitWMatrix(
     return AsdSip::ErrorType::ACL_SUCCESS;
 }
 
-AspbStatus FFTCoreBSep::InitTMatrix(
-    FFTCoreType coreType,
-    std::vector<int64_t> &radixVec,
-    int64_t n,
-    bool forward)
+AspbStatus FFTCoreBSep::InitTMatrix(FFTCoreType coreType, std::vector<int64_t>& radixVec, int64_t n, bool forward)
 {
     (void)forward;
-    std::function<AsdSip::FFTensor *()> func = [=]() mutable -> AsdSip::FFTensor* {
-        AsdSip::FFTensor *tMatrixPtr = new AsdSip::FFTensor;
-        AsdSip::FFTensor &tMatrix_ = *tMatrixPtr;
-    
+    std::function<AsdSip::FFTensor*()> func = [=]() mutable -> AsdSip::FFTensor* {
+        AsdSip::FFTensor* tMatrixPtr = new AsdSip::FFTensor;
+        AsdSip::FFTensor& tMatrix_ = *tMatrixPtr;
+
         int64_t eleNum = GetAllTMatrixSizeForSep(radixVec);
 
         tMatrix_.desc.dtype = TENSOR_DTYPE_FLOAT;
@@ -181,7 +175,7 @@ AspbStatus FFTCoreBSep::InitTMatrix(
             throw std::runtime_error("Invalid malloc size");
         }
 
-        float *tMatrixHost = new(std::nothrow) float[eleNum];
+        float* tMatrixHost = new (std::nothrow) float[eleNum];
         if (tMatrixHost == nullptr) {
             delete tMatrixPtr;
             ASDSIP_LOG(ERROR) << "tMatrixHost malloc failed: ";
@@ -203,8 +197,10 @@ AspbStatus FFTCoreBSep::InitTMatrix(
 
             for (int64_t i = 0; i < currRadix; i++) {
                 for (int64_t j = 0; j < remain; j++) {
-                    tMatrixHost[realOffset + remain * i + j] = cos(-1.0 * K_2PI * (i * j) / (currRadix * remain)); // real part
-                    tMatrixHost[imagOffset + remain * i + j] = sin(-1.0 * K_2PI * (i * j) / (currRadix * remain)); // real part
+                    tMatrixHost[realOffset + remain * i + j] = cos(-1.0 * K_2PI * (i * j) /
+                                                                   (currRadix * remain)); // real part
+                    tMatrixHost[imagOffset + remain * i + j] = sin(-1.0 * K_2PI * (i * j) /
+                                                                   (currRadix * remain)); // real part
                 }
             }
             offset += currSize;
@@ -217,7 +213,6 @@ AspbStatus FFTCoreBSep::InitTMatrix(
     tMatrix = FFTensorCache::getCoeff(key, func);
     return AsdSip::ErrorType::ACL_SUCCESS;
 }
-
 
 AspbStatus FFTCoreBSep::InitTactic()
 {
@@ -242,7 +237,7 @@ AspbStatus FFTCoreBSep::InitTactic()
     launchParam.AddInTensor(*tMatrix);
     launchParam.AddOutTensor(tensorOutReal);
     launchParam.AddOutTensor(tensorOutImag);
-    Operation *opFftBSep = Ops::Instance().GetOperationByName(std::string("FftBSepOperation"));
+    Operation* opFftBSep = Ops::Instance().GetOperationByName(std::string("FftBSepOperation"));
     if (opFftBSep == nullptr) {
         return AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }
@@ -250,15 +245,15 @@ AspbStatus FFTCoreBSep::InitTactic()
     kernel = std::unique_ptr<Kernel>(opFftBSep->GetBestKernel(launchParam));
     ASDSIP_ECHECK(kernel != nullptr, "Get best kernel failed", AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR);
     // allocate and initialize tiling workspace
-    uint8_t *buffer = nullptr;
+    uint8_t* buffer = nullptr;
     kernel->SetLaunchWithTiling(false);
     uint32_t launchBufferSize = kernel->GetTilingSize(launchParam);
     if (launchBufferSize == 0) {
         ASDSIP_LOG(ERROR) << "empty tiling size";
         return AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }
-    uint8_t hostLaunchBuffer[launchBufferSize];
-    kernel->SetTilingHostAddr(hostLaunchBuffer, launchBufferSize);
+    std::vector<uint8_t> hostLaunchBuffer(launchBufferSize);
+    kernel->SetTilingHostAddr(hostLaunchBuffer.data(), launchBufferSize);
     kernel->Init(launchParam);
 
     void* tempDevicePtr = nullptr;
@@ -267,8 +262,8 @@ AspbStatus FFTCoreBSep::InitTactic()
         ASDSIP_LOG(ERROR) << "malloc device memory fail";
         return AsdSip::ErrorType::ACL_ERROR_INTERNAL_ERROR;
     }
-    buffer = static_cast<uint8_t *>(tempDevicePtr);
-    st = MkiRtMemCopy(buffer, launchBufferSize, hostLaunchBuffer, launchBufferSize,
+    buffer = static_cast<uint8_t*>(tempDevicePtr);
+    st = MkiRtMemCopy(buffer, launchBufferSize, hostLaunchBuffer.data(), launchBufferSize,
                       MKIRT_MEMCOPY_HOST_TO_DEVICE);
     if (st != MKIRT_SUCCESS) {
         MkiRtMemFreeDevice(buffer);
@@ -316,7 +311,7 @@ void FFTCoreBSep::InitRadix()
             radixVec = {16, 32};
             break;
         case RADIX_256:
-            radixVec = {16, 16};  // {radix: 1iter, 2iter......}
+            radixVec = {16, 16}; // {radix: 1iter, 2iter......}
             break;
         default:
             ASDSIP_LOG(ERROR) << "FFTCoreBSep fftN is not in [2^8, 2^18] or not 2^n,init_radix failed";
@@ -324,7 +319,6 @@ void FFTCoreBSep::InitRadix()
             break;
     }
 }
-
 
 bool FFTCoreBSep::PreAllocateInDevice()
 {
@@ -345,7 +339,7 @@ bool FFTCoreBSep::PreAllocateInDevice()
 
 void FFTCoreBSep::DestroyInDevice() const
 {
-    uint8_t *deviceBuffer = runInfo.GetTilingDeviceAddr();
+    uint8_t* deviceBuffer = runInfo.GetTilingDeviceAddr();
     if (deviceBuffer != nullptr) {
         MkiRtMemFreeDevice(deviceBuffer);
     }

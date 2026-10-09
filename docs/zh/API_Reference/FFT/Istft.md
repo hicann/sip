@@ -96,7 +96,7 @@ AspbStatus asdFftExecIstft(
     <tr>
       <td>input（aclTensor *）</td>
       <td>输入</td>
-      <td><ul><li>对应公式中的'x'。</li><li>数据格式支持ND，格式预期与stft输出相同。</li><li>数据类型仅支持COMPLEX64。</li><li>shape为(B, N, T)<ul><li>'B'是批处理维度。</li><li>N是频率样本的数量，当onesidedOpt为true时， 为 (nFft // 2) + 1，当onesidedOpt为false时，为nFft。</li><li>T是帧的数量，对于中心填充的STFT，取值为“1 + lengthOpt // hopLengthOpt”，其他场景取值为 “1 + (lengthOpt - nFft) // hopLengthOpt”。</li></ul></li></ul></td>
+      <td><ul><li>对应公式中的'x'。</li><li>数据格式支持ND，格式预期与stft输出相同。</li><li>数据类型仅支持COMPLEX64。</li><li>shape为(B, N, T)<ul><li>'B'是批处理维度。</li><li>N是频率样本的数量，当前版本仅支持onesidedOpt为false，此时N为nFft（onesidedOpt为true时N为 (nFft // 2) + 1，暂不支持）。</li><li>T是帧的数量，对于中心填充的STFT，取值为“1 + lengthOpt // hopLengthOpt”，其他场景取值为 “1 + (lengthOpt - nFft) // hopLengthOpt”。</li></ul></li></ul></td>
     </tr>
     <tr>
       <td>nFft（int64_t）</td>
@@ -168,7 +168,7 @@ AspbStatus asdFftExecIstft(
     <tr>
       <td>input（aclTensor *）</td>
       <td>输入</td>
-      <td><ul><li>对应公式中的'x'。</li><li>数据格式支持ND，格式预期与stft输出相同。</li><li>数据类型仅支持COMPLEX64。</li><li>shape为(B, N, T)<ul><li>'B'是批处理维度。</li><li>N 是频率样本的数量，对于onesidedOpt为true， 输入为 (nFft // 2) + 1，否则为nFft。</li><li>T是帧的数量，对于中心填充的stft为 1 + length // hopLengthOpt，否则为 1 + (length - nFft) // hopLengthOpt。</li></ul></li></ul></td>
+      <td><ul><li>对应公式中的'x'。</li><li>数据格式支持ND，格式预期与stft输出相同。</li><li>数据类型仅支持COMPLEX64。</li><li>shape为(B, N, T)<ul><li>'B'是批处理维度。</li><li>N 是频率样本的数量，当前版本仅支持onesidedOpt为false，此时N为nFft（onesidedOpt为true时N为 (nFft // 2) + 1，暂不支持）。</li><li>T是帧的数量，对于中心填充的stft为 1 + length // hopLengthOpt，否则为 1 + (length - nFft) // hopLengthOpt。</li></ul></li></ul></td>
     </tr>
     <tr>
       <td>windowOpt（aclTensor *）</td>
