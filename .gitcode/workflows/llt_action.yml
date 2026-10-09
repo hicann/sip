@@ -42,6 +42,6 @@ jobs:
           bash ${{ steps.process_checkout.outputs.path }}/ut.sh
 
     if: "${{ default() }}"
-    runs-on: [ 'self-hosted','npu=1','smoke=204' ]
+    runs-on: [ 'self-hosted','npu=1','smoke=201' ]
     container:
         image: swr.cn-north-4.myhuaweicloud.com/hw-ascend/${{ inputs.image_version }}
