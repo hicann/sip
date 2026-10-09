@@ -373,8 +373,9 @@ function fn_resolve_device_env()
             timeout 5 npu-smi info 2>/dev/null | sed 's/^/[ERROR]   /' || echo "[ERROR]   npu-smi not available"
             echo "[ERROR] please check container device mounts/permission and driver-runtime compatibility on this machine"
             echo "================================================================================"
-            # 不在此处终止: 由 fn_main 按构建模式决定跳过(ut/smoke 临时返回成功)或继续(纯编译路径)
-            echo "[WARN] no usable NPU device on this machine; UT/smoke will be skipped (see fn_main guard)."
+            # 该环境任何 deviceId 均无法打开设备, UT/example 必然失败: 立即终止
+            # (诊断信息已输出, 便于定位容器设备挂载/驱动运行时兼容性问题)
+            exit 1
         else
             export ASDSIP_DEVICE_ID=${RESOLVED_CARDS[0]}
             echo "run device id: ${ASDSIP_DEVICE_ID} (probe unavailable, fall back to first candidate, source=${DEVICE_ENV_SOURCE})"
@@ -517,7 +518,8 @@ function fn_probe_device_ids()
             ASCEND_GLOBAL_LOG_LEVEL=1 "${CACHE_DIR}/dev_probe" "${cands[@]}" 2>&1 || true)
         local verbose_tail=""
         if [ -n "${verbose_log}" ]; then
-            verbose_tail=$(echo "${verbose_log}" | grep -E "\[ERROR\]|\[WARNING\]" | tail -n 12)
+            # 同时抓取设备侧驻留 aicpu 包的 hash 与 checkcode 比对结果(定位版本不一致问题)
+            verbose_tail=$(echo "${verbose_log}" | grep -E "\[ERROR\]|\[WARNING\]|hash value|checkcode" | tail -n 16)
             if [ -z "${verbose_tail}" ]; then
                 verbose_tail=$(echo "${verbose_log}" | tail -n 10)
             fi
@@ -544,12 +546,16 @@ function fn_probe_device_ids()
 function fn_run_unittest_proc()
 {
     # $1 = deviceId(空串表示不注入, 沿用全局 ASDSIP_DEVICE_ID 或用例默认值), 其余为命令及参数
+    # 运行时 ERROR 级日志打印到 stdout: 用例失败时可直接在 CI 日志看到库级错误原因
+    # (如 asdFftExecIstft 内部哪个 ACL 调用失败), 正常通过时无额外输出
     local dev_id="$1"
     shift
     if [ -n "${dev_id}" ]; then
-        env -u ASCEND_RT_VISIBLE_DEVICES ASDSIP_DEVICE_ID=${dev_id} "$@"
+        env -u ASCEND_RT_VISIBLE_DEVICES ASDSIP_DEVICE_ID=${dev_id} \
+            ASCEND_SLOG_PRINT_TO_STDOUT=1 ASCEND_GLOBAL_LOG_LEVEL=3 "$@"
     else
-        env -u ASCEND_RT_VISIBLE_DEVICES "$@"
+        env -u ASCEND_RT_VISIBLE_DEVICES \
+            ASCEND_SLOG_PRINT_TO_STDOUT=1 ASCEND_GLOBAL_LOG_LEVEL=3 "$@"
     fi
 }
 
@@ -801,21 +807,6 @@ function fn_main()
     # 运行环境补齐(驱动库路径)与设备解析(须在派发构建/UT/example 前完成, 详见函数注释)
     fn_supplement_driver_lib_path
     fn_resolve_device_env
-
-    # 临时策略(设备环境修复前生效): CI NPU 容器驱动安装不完整(TSD 无法加载设备侧软件包,
-    # rtSetDevice 507033, 诊断见上方), 探针实测无可用设备时 UT/smoke 直接跳过并返回成功,
-    # 不阻塞流水线与代码上库; 本地/健康环境探针通过, UT/smoke 照常真实执行, 不影响本地验证。
-    # 设备环境修复后探针自动通过、UT/smoke 自动恢复真实执行; 恢复"失败即红"语义时删除本分支。
-    if [ "${PROBE_STATUS:-}" = "failed" ]; then
-        case "${arg1}" in
-            ut|--ut|smoke_pr|smoke_all)
-                echo "[SKIP] ${arg1}: temporarily skipped - no usable NPU device on this machine (probe failed, see diagnostics above)."
-                echo "[SKIP] exit success to keep CI green while the NPU container environment is broken;"
-                echo "[SKIP] remove this guard in build.sh (fn_main) to restore real execution / fast-fail after the environment is fixed."
-                exit 0
-                ;;
-        esac
-    fi
 
     COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_CXX11_ABI=$USE_CXX11_ABI"
     COMPILE_OPTIONS="${COMPILE_OPTIONS} -DCMAKE_BUILD_TYPE=Release"
