@@ -321,7 +321,7 @@ python asd_mul.py
        m.def("asd_add(Tensor x, Tensor y) -> Tensor");
    }
 
-   TORCH_LIBRARY_IMPL(TorchSip, NPU, m) {
+   TORCH_LIBRARY_IMPL(TorchSip, PrivateUse1, m) {
        m.impl("asd_add", &asd_add);
    }
    ```
