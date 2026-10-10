@@ -287,23 +287,23 @@ python asd_mul.py
 
    ```python
    def asd_blas_ctrmv(mat_a, vec_x, uplo="L", trans="N", diag="N"):
-   """
-   Args:
-     mat_a: (N, N) 复数三角矩阵
-     vec_x: (N,) 复数向量
-     uplo: "L" (下三角), "U" (上三角)
-     trans: "N" (无转置), "T" (转置) 或 "C" (共轭转置)
-     diag: "N" (非单位对角) 或 "U" (单位对角，对角线元素视为1)
-   """
-   uplo_map = {"L": 0, "U": 1}
-   trans_map = {"N": 0, "T": 1, "C": 2}
-   diag_map = {"N": 0, "U": 1}
+       """
+       Args:
+         mat_a: (N, N) 复数三角矩阵
+         vec_x: (N,) 复数向量
+         uplo: "L" (下三角), "U" (上三角)
+         trans: "N" (无转置), "T" (转置) 或 "C" (共轭转置)
+         diag: "N" (非单位对角) 或 "U" (单位对角，对角线元素视为1)
+       """
+       uplo_map = {"L": 0, "U": 1}
+       trans_map = {"N": 0, "T": 1, "C": 2}
+       diag_map = {"N": 0, "U": 1}
 
-   u_val = uplo_map.get(uplo.upper(), 0)
-   t_val = trans_map.get(trans.upper(), 0)
-   d_val = diag_map.get(diag.upper(), 0)
+       u_val = uplo_map.get(uplo.upper(), 0)
+       t_val = trans_map.get(trans.upper(), 0)
+       d_val = diag_map.get(diag.upper(), 0)
 
-   return torch.ops.torch_sip.asd_blas_ctrmv(mat_a, vec_x, u_val, t_val, d_val)
+       return torch.ops.torch_sip.asd_blas_ctrmv(mat_a, vec_x, u_val, t_val, d_val)
    ```
 
 ## 添加新算子
