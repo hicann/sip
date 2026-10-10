@@ -379,9 +379,10 @@ uint64_t CalcHashId();
         static const auto opApiFuncAddr = GetAsdSipApiFuncAddr(#ops_api_name);                          \
         TORCH_CHECK(opApiFuncAddr != nullptr, #ops_api_name, " not found.");                            \
         auto converted_params = ConvertTypes(__VA_ARGS__);                                              \
-        auto acl_call = [converted_params]() -> int {                                                   \
+        auto acl_call = [converted_params]() mutable -> int {                                           \
             static auto opsFunc = ConvertToOpApiFunc(converted_params, opApiFuncAddr);                  \
             auto opsStats = call(opsFunc, converted_params);                                            \
+            ReleaseConvertTypes(converted_params);                                                      \
             TORCH_CHECK(opsStats == 0, "call " #ops_api_name " failed, detail:", aclGetRecentErrMsg()); \
             return opsStats;                                                                            \
         };                                                                                              \
@@ -394,8 +395,9 @@ uint64_t CalcHashId();
 #define EXEC_FUNC(ops_api, ...)                                                                    \
     do {                                                                                           \
         auto converted_params = ConvertTypes(__VA_ARGS__);                                         \
-        auto acl_call = [converted_params]() -> int {                                              \
+        auto acl_call = [converted_params]() mutable -> int {                                      \
             auto opsStats = call(ops_api, converted_params);                                       \
+            ReleaseConvertTypes(converted_params);                                                 \
             TORCH_CHECK(opsStats == 0, "call " #ops_api " failed, detail:", aclGetRecentErrMsg()); \
             return opsStats;                                                                       \
         };                                                                                         \
