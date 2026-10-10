@@ -10,13 +10,13 @@
 - 计算公式：
     设有一个三维离散信号：
 
-     ![公式](../../../../docs/zh/API_Reference/figures/FFT_3D_1.png)
+     ![公式](../../../../docs/zh/API_Reference/figures/fft_3d_1.png)
 
     它的三维离散傅里叶变换定义为：\
-      ![公式](../../../../docs/zh/API_Reference/figures/FFT_3D_2.png)
+      ![公式](../../../../docs/zh/API_Reference/figures/fft_3d_2.png)
 
     其中：\
-     ![公式](../../../../docs/zh/API_Reference/figures/FFT_3D_3.png)
+     ![公式](../../../../docs/zh/API_Reference/figures/fft_3d_3.png)
 
 ## 使用说明
 
