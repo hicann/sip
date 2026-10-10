@@ -29,8 +29,9 @@ class InterpolationAIV {
 public:
     __aicore__ inline InterpolationAIV(){};
     __aicore__ inline void Init(InterpolationKernelParam kernelParam, GM_ADDR workspace,
-                                AsdSip::InterpByCoeffTilingData *tilingData);
+                                AsdSip::InterpByCoeffTilingData* tilingData);
     __aicore__ inline void Process();
+
 private:
     __aicore__ inline void Compute(int64_t batchOffset, int64_t nOffset, int64_t length);
     template <typename T1, typename T2>
@@ -82,7 +83,7 @@ private:
 
 template <typename T>
 __aicore__ inline void InterpolationAIV<T>::Init(InterpolationKernelParam kernelParam, GM_ADDR workspace,
-                                                AsdSip::InterpByCoeffTilingData *tilingData)
+                                                 AsdSip::InterpByCoeffTilingData* tilingData)
 {
     blockIdx = GetBlockIdx();
     subblockIdx = blockIdx % 2;
@@ -106,13 +107,13 @@ __aicore__ inline void InterpolationAIV<T>::Init(InterpolationKernelParam kernel
     subRs = rs / 2;
     subOffset = 0;
     if (subblockIdx == 1) {
-        subOffset +=  subRs;
+        subOffset += subRs;
         subRs = rs - subRs;
     }
 
-    inTensorsGM.SetGlobalBuffer((__gm__ T *)kernelParam.x);
-    workspcaeGM.SetGlobalBuffer((__gm__ T *)workspace + baseBlockIdx * workspaceSize * 2 / sizeof(T));
-    outGM.SetGlobalBuffer((__gm__ T *)kernelParam.out);
+    inTensorsGM.SetGlobalBuffer((__gm__ T*)kernelParam.x);
+    workspcaeGM.SetGlobalBuffer((__gm__ T*)workspace + baseBlockIdx * workspaceSize * 2 / sizeof(T));
+    outGM.SetGlobalBuffer((__gm__ T*)kernelParam.out);
     pipe.InitBuffer(dataQueue, BUFFER_NUM, splitLength * sizeof(T) * subRs);
     pipe.InitBuffer(outQueue, BUFFER_NUM, splitLength * sizeof(T) * subRs * 2);
     pipe.InitBuffer(calcQueue, splitLength * sizeof(uint32_t));
@@ -156,6 +157,7 @@ __aicore__ inline void InterpolationAIV<T>::Process()
                 Compute(batchOffset, nOffset, length);
                 nOffset += length;
             }
+            batchOffset++;
         }
     }
 
@@ -215,7 +217,8 @@ __aicore__ inline void InterpolationAIV<T>::Compute(int64_t batchOffset, int64_t
         PipeBarrier<PIPE_V>();
         Gather(outLocal[(i * 2 + 1) * calCount], dataLocal[i * calCount], gatherOffset, 0, calCount);
         PipeBarrier<PIPE_V>();
-        Muls(outLocal[(i * 2 + 1) * calCount], outLocal[(i * 2 + 1) * calCount], T(-1), mulMask, repeatTimes, {1, 1, 8, 8});
+        Muls(outLocal[(i * 2 + 1) * calCount], outLocal[(i * 2 + 1) * calCount], T(-1), mulMask, repeatTimes,
+             {1, 1, 8, 8});
         PipeBarrier<PIPE_V>();
     }
     dataQueue.FreeTensor(dataLocal);
@@ -238,5 +241,5 @@ __aicore__ inline void InterpolationAIV<T>::Compute(int64_t batchOffset, int64_t
     AscendC::CrossCoreWaitFlag(AIC_FINISH_FLAG_ID);
 }
 
-}
-#endif  // INTERPBYCOEFF_AIV_H
+} // namespace InterpByCoeff
+#endif // INTERPBYCOEFF_AIV_H

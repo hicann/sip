@@ -25,7 +25,7 @@ class InterpolationAIC {
 public:
     __aicore__ inline InterpolationAIC(){};
     __aicore__ inline void Init(InterpolationKernelParam kernelParam, GM_ADDR workspace,
-                                AsdSip::InterpByCoeffTilingData *tilingData);
+                                AsdSip::InterpByCoeffTilingData* tilingData);
     __aicore__ inline void Process();
     __aicore__ inline void MmCompute(int64_t offA, int64_t offN, int64_t matSizeN, int64_t offC);
 
@@ -58,19 +58,20 @@ private:
     int64_t startN = 0;
     int64_t pingPongFlag = 0;
     int64_t totalCompute = 0;
-private:
-    __gm__ T *__restrict__ coeffGM;
-    __gm__ T *__restrict__ workspaceGM;
-    __gm__ T *__restrict__ outGM;
 
-    GlobalTensor<T> matA;  // 系数矩阵
-    GlobalTensor<T> matB;  // 插值关联点
+private:
+    __gm__ T* __restrict__ coeffGM;
+    __gm__ T* __restrict__ workspaceGM;
+    __gm__ T* __restrict__ outGM;
+
+    GlobalTensor<T> matA; // 系数矩阵
+    GlobalTensor<T> matB; // 插值关联点
     GlobalTensor<T> matC;
 };
 
 template <typename T>
 __aicore__ inline void InterpolationAIC<T>::Init(InterpolationKernelParam kernelParam, GM_ADDR workspace,
-                                                 AsdSip::InterpByCoeffTilingData *tilingData)
+                                                 AsdSip::InterpByCoeffTilingData* tilingData)
 {
     baseBlockIdx = GetBlockIdx();
 
@@ -105,9 +106,9 @@ __aicore__ inline void InterpolationAIC<T>::Init(InterpolationKernelParam kernel
         totalCompute += blocksPerCore;
     }
 
-    coeffGM = (__gm__ T *__restrict__)(kernelParam.coeff);
-    workspaceGM = (__gm__ T *__restrict__)workspace + workspaceSize * baseBlockIdx * 2 / sizeof(T);
-    outGM = (__gm__ T *__restrict__)(kernelParam.out);
+    coeffGM = (__gm__ T* __restrict__)(kernelParam.coeff);
+    workspaceGM = (__gm__ T* __restrict__)workspace + workspaceSize * baseBlockIdx * 2 / sizeof(T);
+    outGM = (__gm__ T* __restrict__)(kernelParam.out);
 }
 
 template <typename T>
@@ -125,6 +126,8 @@ __aicore__ inline void InterpolationAIC<T>::Process()
                 MmCompute(offsetA, nOffset, length, offsetC);
                 nOffset += length;
             }
+            offsetA += coeffStridePerBatch;
+            offsetC += outStridePerBatch;
         }
     }
 
@@ -166,6 +169,6 @@ __aicore__ inline void InterpolationAIC<T>::MmCompute(int64_t offA, int64_t offN
     AscendC::CrossCoreSetFlag<SYNC_MODE_GROUP, PIPE_FIX>(AIC_FINISH_FLAG_ID);
 }
 
-}
+} // namespace InterpByCoeff
 
-#endif  // INTERPBYCOEFF_AIC_H
+#endif // INTERPBYCOEFF_AIC_H
