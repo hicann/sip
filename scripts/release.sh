@@ -240,21 +240,25 @@ function fn_init_cann_env()
 function bep_env_init() {
     # bep 消除二进制
     local bep_env_config=$ASDSIP_DIR/scripts/bep_env.conf
-    # 检查BepKit预置环境
+    # 检查BepKit预置环境: 按 $SECBEPKIT_HOME/bep_env.sh 优先、PATH 中 bep_env.sh 次之
+    # 的顺序解析脚本路径 (issue #398: 原逻辑倒置, SECBEPKIT_HOME 未设置时拼出无效
+    # 路径 /bep_env.sh, 在 set -e 下直接中断构建)
     local bep_sh=$(which bep_env.sh)
     echo "has bep sh :${bep_sh}"
-    # 执行bep脚本
-    if [ ! -d "${SECBEPKIT_HOME}" ] && [ ! -f "$bep_sh" ]; then
-        echo "BepKit is uninstalled, Please install the tool and configure the env var \$SECBEPKIT_HOME"
-    else
-        source ${SECBEPKIT_HOME}/bep_env.sh -s $bep_env_config
-        if [ $? -ne 0 ]; then
-            echo "build bep failed!"
-            exit 1
-        else
-            echo "build bep success."
-        fi
+    local bep_script=""
+    if [ -f "${SECBEPKIT_HOME}/bep_env.sh" ]; then
+        bep_script="${SECBEPKIT_HOME}/bep_env.sh"
+    elif [ -f "$bep_sh" ]; then
+        bep_script="$bep_sh"
     fi
+    if [ -z "$bep_script" ]; then
+        # BepKit 未安装: 显式 WARN 跳过 (不静默), 发布包不含 BepKit 加固产物
+        echo "WARNING: BepKit is uninstalled, skip binary hardening. Please install the tool and configure the env var \$SECBEPKIT_HOME"
+        return 0
+    fi
+    # set -e 下失败兜底: || 使检查可达 (原 if [ $? -ne 0 ] 在 set -e 下为死代码)
+    source "$bep_script" -s $bep_env_config || { echo "build bep failed!"; exit 1; }
+    echo "build bep success."
 }
 
 function fn_main()
