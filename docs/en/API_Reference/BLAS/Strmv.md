@@ -38,7 +38,9 @@
   The input `uplo` is: U, the input `trans` is: T, and the input `diag` is: N. \
 The input `n` is: 2, the input `lda` is: 2, and the input `incx` is: 1. \
 After the `asdBlasStrmv` operator is called, the output `x` is: \
-[7,10]
+[1,10]
+
+`uplo=U` selects only the upper triangle of A. Transposing that triangular matrix and multiplying by the original vector gives `[1,10]`.
 
 ## Function Prototype
 
