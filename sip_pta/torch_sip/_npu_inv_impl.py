@@ -25,7 +25,11 @@ See LICENSE in the root of the software repository for the full text of the Lice
 #   快速域 (性能优先):  实数 N < 32 且 B <= 3000 (Smatinv kernel 域)
 #                      复数 N <= 256 且 B <= 3000 (Cmatinv kernel 域)
 #   保底域 (能跑通):   超出上述范围 -> 分块批处理 (batch 维切块) / 大 N LU 分块求逆
+import logging
+
 import torch
+
+logger = logging.getLogger(__name__)
 
 # ---- 快速域限制 (kernel 直调) ----
 _BATCH_LIMIT = 3000
@@ -233,10 +237,13 @@ def _lu_inv_large_n(a):
     """
     b, n, _ = a.shape
     dev = a.device
-    # LU 分解 (NPU 支持, 无则回退 CPU 由 torch 自身处理)
+    # LU 分解 (NPU 支持): 仅显存不足等预期内可恢复异常回退 CPU, 其余异常保留原始栈直接抛出。
+    # torch_npu 对 NPU OOM 抛 torch.OutOfMemoryError (NPUException.h TORCH_CHECK_WITH);
+    # 裸捕获 Exception 会把设备断言/dispatch 错误等真实故障一并吞掉, 掩盖 NPU 路径失效
     try:
         lu, piv = torch.linalg.lu_factor(a)
-    except Exception:
+    except torch.OutOfMemoryError as e:
+        logger.warning("LU factorization failed on NPU (OOM), fallback to CPU: %s", e)
         lu, piv = torch.linalg.lu_factor(a.cpu())
         lu, piv = lu.to(dev), piv.to(dev)
     # eye: NPU 的 eye 不支持 complex —— CPU 构造再上传 (保底路径, 性能不敏感)
