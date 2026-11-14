@@ -37,8 +37,8 @@ The input `transa` is: N, and the input `transb` is: T.\
 The input `m` is: 2, the input `n` is: 2, the input `k` is: 2, the input `alpha` is: 1+i, and `beta` is: 2+2i.\
 The input `lda` is: 2, the input `ldb` is: 2, and the input `ldc` is: 2.\
 After the `Cgemm` operator is called, the output `outTensor` is:\
-[   [ -15+19i, -27+19i ],
-    [ -37+21i, -57+13i ]  ]
+[   [ -6+16i, -18+16i ],
+    [ -24+22i, -44+14i ]  ]
 
 ## Function Prototype
 
