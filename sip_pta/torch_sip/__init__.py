@@ -591,14 +591,17 @@ class _SolveFn(torch.autograd.Function):
 
 def _solve_check(A: torch.Tensor, B: torch.Tensor) -> None:
     """范围校验须在 op 调用之前: mki 异常后 OpCommand 会跳过后续 handler(返回假成功)."""
+    # 结构/维度错误交由 C++ 绑定层拦截, 保持报错语义 (issue #400): 高维 size 访问
+    # 必须在 dim 守卫之后, 否则 2D 等维度不足输入会先触发裸 IndexError
+    if A.dim() != 3 or B.dim() != 3:
+        return
     if A.size(0) < 1:
         raise RuntimeError("solve: batch must be >= 1")
     if A.size(1) < 2 or A.size(1) > 256:
         raise RuntimeError(f"solve: n must be in [2, 256], got {A.size(1)}")
     if B.size(2) < 1:
         raise RuntimeError("solve: cols(nrhs) must be >= 1")
-    # 仅在 A/B 均为 3D 时比较 batch (结构/维度错误交由 C++ 绑定层拦截, 保持报错语义)
-    if A.dim() == 3 and B.dim() == 3 and B.size(0) != A.size(0) and B.size(0) != 1:
+    if B.size(0) != A.size(0) and B.size(0) != 1:
         raise RuntimeError(
             f"solve: B batch must be {A.size(0)} or 1 (broadcast), got {B.size(0)}"
         )
