@@ -52,8 +52,12 @@ protected:
 
             outTensors[0].desc.dtype = TENSOR_DTYPE_COMPLEX64;
             outTensors[0].desc.format = launchParam.GetInTensor(0).desc.format;
-            int64_t batch = launchParam.GetInTensor(0).desc.dims[0];
-            outTensors[0].desc.dims = {batch, *(launchParam.GetInTensor(0).desc.dims.end() - 1)};
+            // 空 dims 防护（issue #397）：0 维输入时 dims[0] 为越界读，先拒绝
+            const auto& inDims = launchParam.GetInTensor(0).desc.dims;
+            ASDSIP_CHECK(!inDims.empty(), "input dims is empty",
+                         return Status::FailStatus(ERROR_INFERSHAPE_ERROR, "input dims is empty."));
+            int64_t batch = inDims[0];
+            outTensors[0].desc.dims = {batch, *(inDims.end() - 1)};
         }
 
         ASDSIP_CHECK(launchParam.GetInTensor(0).desc.dtype == TENSOR_DTYPE_COMPLEX64, "error dataDype",

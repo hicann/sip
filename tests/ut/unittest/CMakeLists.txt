@@ -69,6 +69,10 @@ add_library(test_src_ffttensorcache_neg OBJECT
 add_library(test_src_convolve_neg OBJECT
             ${CMAKE_CURRENT_LIST_DIR}/filter/convolve/test_convolve_negative.cpp)
 
+# fft InferShape 空 dims 负向用例（issue #397）
+add_library(test_src_fft_zerodim_neg OBJECT
+            ${CMAKE_CURRENT_LIST_DIR}/fft/fftzerodim/test_fft_zerodim_negative.cpp)
+
 aux_source_directory(${CMAKE_CURRENT_LIST_DIR}/base/asd_mul TEST_SRC_ASD_MUL)
 add_library(test_src_asd_mul OBJECT ${TEST_SRC_ASD_MUL})
 
@@ -222,6 +226,7 @@ add_executable(ops_unittest
     $<TARGET_OBJECTS:test_src_swaplast2axes_neg>
     $<TARGET_OBJECTS:test_src_ffttensorcache_neg>
     $<TARGET_OBJECTS:test_src_convolve_neg>
+    $<TARGET_OBJECTS:test_src_fft_zerodim_neg>
     # $<TARGET_OBJECTS:test_src_swaplast2axes>
     # $<TARGET_OBJECTS:test_src_function>
     $<TARGET_OBJECTS:test_src_conj>

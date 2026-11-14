@@ -21,33 +21,37 @@ constexpr int64_t INPUT_NUM = 2;
 
 class DftR2COperation : public OperationBase {
 public:
-    explicit DftR2COperation(const std::string &opName) noexcept : OperationBase(opName) {}
+    explicit DftR2COperation(const std::string& opName) noexcept : OperationBase(opName) {}
 
-    Kernel *GetBestKernel(const LaunchParam &launchParam) const override
+    Kernel* GetBestKernel(const LaunchParam& launchParam) const override
     {
         ASDSIP_CHECK(IsConsistent(launchParam), "Failed to check consistent", return nullptr);
         return GetKernelByName("DftR2CC64Kernel");
     }
 
-    int64_t GetInputNum(const Any &specificParam) const override
+    int64_t GetInputNum(const Any& specificParam) const override
     {
         ASDSIP_CHECK(specificParam.Type() == typeid(OpParam::DftR2C), "OpParam is invalid", return 0);
         return INPUT_NUM;
     }
 
 protected:
-    Status InferShapeImpl(const LaunchParam &launchParam, SVector<Tensor> &outTensors) const override
+    Status InferShapeImpl(const LaunchParam& launchParam, SVector<Tensor>& outTensors) const override
     {
         ASDSIP_CHECK(launchParam.GetParam().Type() == typeid(OpParam::DftR2C), "OpParam is invalid",
-                  return Status::FailStatus(ERROR_INFERSHAPE_ERROR, "no match specificParam type."));
+                     return Status::FailStatus(ERROR_INFERSHAPE_ERROR, "no match specificParam type."));
 
         outTensors[0].desc.dtype = TENSOR_DTYPE_COMPLEX64;
         outTensors[0].desc.format = launchParam.GetInTensor(0).desc.format;
-        int64_t batch = launchParam.GetInTensor(0).desc.dims[0];
-        outTensors[0].desc.dims = {batch, *(launchParam.GetInTensor(0).desc.dims.end() - 1) / 2 + 1};
+        // 空 dims 防护（issue #397）：0 维输入时 dims[0] 为越界读，先拒绝
+        const auto& inDims = launchParam.GetInTensor(0).desc.dims;
+        ASDSIP_CHECK(!inDims.empty(), "input dims is empty",
+                     return Status::FailStatus(ERROR_INFERSHAPE_ERROR, "input dims is empty."));
+        int64_t batch = inDims[0];
+        outTensors[0].desc.dims = {batch, *(inDims.end() - 1) / 2 + 1};
 
         return Status::OkStatus();
     }
 };
 REG_OPERATION(DftR2COperation);
-}  //    namespace AsdOps
+} // namespace AsdSip
