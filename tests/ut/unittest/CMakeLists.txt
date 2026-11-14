@@ -76,6 +76,10 @@ add_library(test_src_fft_zerodim_neg OBJECT
 aux_source_directory(${CMAKE_CURRENT_LIST_DIR}/base/asd_mul TEST_SRC_ASD_MUL)
 add_library(test_src_asd_mul OBJECT ${TEST_SRC_ASD_MUL})
 
+# KaiserWindow host C API 参数校验/视图分支/边界/缓存负向与一致性用例（issue #396）
+aux_source_directory(${CMAKE_CURRENT_LIST_DIR}/base/kaiser_window TEST_SRC_KAISER_WINDOW)
+add_library(test_src_kaiser_window OBJECT ${TEST_SRC_KAISER_WINDOW})
+
 # aux_source_directory(${CMAKE_CURRENT_LIST_DIR}/base/swaplast2axes TEST_SRC_SWAPLAST2AXES)
 # add_library(test_src_swaplast2axes OBJECT ${TEST_SRC_SWAPLAST2AXES})
 
@@ -218,6 +222,7 @@ add_executable(ops_unittest
 # ${CMAKE_CURRENT_LIST_DIR}/custom_main.cpp
     $<TARGET_OBJECTS:test_src>
     $<TARGET_OBJECTS:test_src_asd_mul>
+    $<TARGET_OBJECTS:test_src_kaiser_window>
     $<TARGET_OBJECTS:test_src_fft_c2c_2d>
     $<TARGET_OBJECTS:test_src_fft_c2c_3d>
     $<TARGET_OBJECTS:test_src_fft_istft>
