@@ -55,6 +55,12 @@ at::Tensor asdKaiserWindow(int64_t windowLength, bool periodic, double beta, c10
                         "asd_kaiser_window: kernel launch failed, status: ", status);
             return status;
         };
+        // RunOpApiV2 错误契约（torch_npu OpCommand.h 已核实, issue #399）：签名为
+        // `static void RunOpApiV2(const string&, const PROC_FUNC&, bool sync = false)`，
+        // 以 void 返回、无错误码返回值；失败上报走 handler 内部异常（此处 TORCH_CHECK）
+        // 与 NPU 任务队列自身的异步错误回调，故无需接收返回值。
+        // handler 在入队期间于调用线程内同步执行（与 EXEC_FUNC 的 SetCustomHandler
+        // 同线程模型），core 侧 thread_local 上下文缓存键在该模型下成立。
         at_npu::native::OpCommand::RunOpApiV2("asdKaiserWindow", handler);
     }
     if (requiresGrad) {

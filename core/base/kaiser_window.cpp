@@ -101,6 +101,9 @@ AspbStatus PrepareKaiserKernel(const OpParam::KaiserWindow& param, aclTensor* ou
 {
     // Bounded host-only cache: no output tensor or GM allocation is retained.
     // A thread owns its launch arguments; a context change invalidates tiling.
+    // 线程模型假设（issue #399 已核实并在 PTA 侧注释固化）：handler 在入队期间于
+    // 调用线程内同步执行，thread_local + 当前 context 作缓存键在该模型下成立；
+    // 若后续引入异步 handler 投递（非调用线程执行），此处键需改为显式 device 绑定。
     thread_local KaiserKernelCache cache;
     aclrtContext context = nullptr;
     CHECK_STATUS_WITH_ACL_RETURN(aclrtGetCurrentContext(&context), "KaiserWindow: get current context");
