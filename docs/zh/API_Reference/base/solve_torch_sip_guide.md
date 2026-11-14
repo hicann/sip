@@ -64,7 +64,7 @@ b = torch.randn(batch, n, nrhs).npu()
 x = torch_sip.solve(a, b)                                  # [196, 3, 16384]
 ```
 
-与 `torch.linalg.solve` 语义一致（同样要求 A 可逆、B 与 A 的 batch/n 匹配），区别是本接口固定计算在 NPU 上且仅支持 fp32；不支持 `out=` 参数。
+与 `torch.linalg.solve` 语义一致（同样要求 A 可逆），B 的 batch 可与 A 相同或为 1（广播形态，kernel 原生共享 B[0]，见上方"batch 广播"约束）；区别是本接口固定计算在 NPU 上且仅支持 fp32；不支持 `out=` 参数。
 
 ## 4. 反向用法
 
@@ -79,7 +79,9 @@ a = a.requires_grad_(True)
 b = b.requires_grad_(True)
 x = torch_sip.solve(a, b)
 x.backward(torch.randn_like(x))               # 上游梯度 dL/dX
-# a.grad = gA [batch, n, n], b.grad = gB [batch, n, nrhs]
+# a.grad = gA [batch, n, n]
+# b.grad = gB [1, n, nrhs]（B 为广播形态 [1, n, nrhs] 时沿 batch 归约，与实现 ctx.b_bcast 门控一致；
+#          B 与 A 同 batch 时为 [batch, n, nrhs]）
 ```
 
 ### 4.2 手动两阶段（推理/训练混合场景，省一次前向记录）
