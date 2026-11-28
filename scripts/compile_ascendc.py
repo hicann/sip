@@ -588,8 +588,10 @@ def compile_ascendc_operation(args):
 if __name__ == "__main__":
     input_args = parse_args()
     output_dir = os.path.dirname(input_args.dst)
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
+    # --dst 为当前目录下的裸文件名时 output_dir 为空字符串，此时无需创建目录；
+    # exist_ok=True 兼容并发编译场景下目录已由其他进程创建的情况
+    if output_dir:
+        os.makedirs(output_dir, exist_ok=True)
     res = compile_ascendc_operation(input_args)
     if res != 0:
         logging.error("compile ascend C failed!")
