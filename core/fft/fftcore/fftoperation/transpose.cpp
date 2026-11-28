@@ -12,6 +12,7 @@
 #include <cstdint>
 #include <limits>
 #include <stdexcept>
+#include <string>
 #include <vector>
 #include <mki/utils/platform/platform_info.h>
 #include <mki/utils/rt/rt.h>
@@ -24,6 +25,49 @@
 using namespace AsdSip;
 
 constexpr int DIM_TWO = 2;
+
+namespace {
+
+// 小算子返回码检查：底层失败时抛出异常，由 asdFftExec 系列入口的 try/catch
+// 统一翻译为错误码，避免底层失败被静默吞掉后仍返回 ACL_SUCCESS（issue #567）
+void CheckOpStatus(AspbStatus status, const char* opName)
+{
+    if (status != AsdSip::ErrorType::ACL_SUCCESS) {
+        ASDSIP_LOG(ERROR) << "fft op " << opName << " failed, status " << status << ".";
+        throw std::runtime_error(std::string("fft op ") + opName + " failed, status " + std::to_string(status));
+    }
+}
+
+// 兜底路径 RAII 守卫（issue #381 不变量）：调用方 input 描述被就地改写、workspace 已
+// 分配后，任何异常退出（allocate 容量超限、AsStrided 失败）都必须与正常返回对称地
+// 恢复描述并回收本路径分配；MarkAllocated 在 allocate 成功后登记，allocate 失败时
+// 不回收、不误伤外层 pending 分配
+class FallbackGuard {
+public:
+    explicit FallbackGuard(workspace::Workspace& ws, Mki::TensorDesc* descToRestore = nullptr,
+                           const Mki::TensorDesc& backup = Mki::TensorDesc())
+        : ws_{ws}, descToRestore_{descToRestore}, backup_{backup}
+    {}
+    ~FallbackGuard()
+    {
+        if (allocated_ && ws_.CanRecycle()) {
+            ws_.recycleLast();
+        }
+        if (descToRestore_ != nullptr) {
+            *descToRestore_ = backup_;
+        }
+    }
+    void MarkAllocated() { allocated_ = true; }
+
+private:
+    workspace::Workspace& ws_;
+    Mki::TensorDesc* descToRestore_ = nullptr;
+    Mki::TensorDesc backup_;
+    bool allocated_ = false;
+};
+
+} // namespace
+
 Transpose::Transpose(int axis0, int axis1, Mki::SVector<int64_t> dims) : axis0_{axis0}, axis1_{axis1}, dims_{dims} {}
 
 Transpose::~Transpose()
@@ -155,11 +199,12 @@ void Transpose::Run(Tensor& input, Tensor& output, void* stream, workspace::Work
     if (!input.IsContiguous() || input.desc.offset != 0) {
         throw std::invalid_argument("transpose fallback requires a contiguous input without storage offset");
     }
-    // 就地改写 input.desc（FLOAT 重解释 + 追加末维）前先备份，返回前恢复，
-    // 避免调用方 Tensor 描述被永久污染（issue #381）
+    // 就地改写 input.desc（FLOAT 重解释 + 追加末维）前先备份；守卫保证包括异常退出
+    // 在内的所有路径都恢复描述并回收分配，避免调用方 Tensor 描述被永久污染（issue #381）
     const Mki::TensorDesc inputDescBackup = input.desc;
     input.desc.dtype = Mki::TensorDType::TENSOR_DTYPE_FLOAT;
     input.desc.dims.push_back(DIM_TWO);
+    FallbackGuard fallbackGuard(workspace, &input.desc, inputDescBackup);
 
     int axis0 = axis0_;
     if (axis0_ < 0) {
@@ -171,6 +216,7 @@ void Transpose::Run(Tensor& input, Tensor& output, void* stream, workspace::Work
     }
 
     uint8_t* deviceBuffer = (uint8_t*)workspace.allocate(ASYNC_WORKSPACE_SIZE);
+    fallbackGuard.MarkAllocated();
 
     Mki::SVector<int64_t> shapes = input.desc.dims;
     Mki::SVector<int64_t> strides(shapes.size(), 1);
@@ -183,13 +229,10 @@ void Transpose::Run(Tensor& input, Tensor& output, void* stream, workspace::Work
     strides[axis0] = strides[axis1];
     shapes[axis1] = shapeTmp;
     strides[axis1] = stridesTmp;
-    AsStrided(input, output, shapes, strides, stream, 0, deviceBuffer);
-    workspace.recycleLast();
+    CheckOpStatus(AsStrided(input, output, shapes, strides, stream, 0, deviceBuffer), "AsStrided");
 
     output.desc.dtype = Mki::TensorDType::TENSOR_DTYPE_COMPLEX64;
     output.desc.dims.erase(output.desc.dims.end() - 1);
-    // 返回前恢复调用方 input 描述（issue #381）
-    input.desc = inputDescBackup;
 }
 
 size_t Transpose::EstimateWorkspaceSize() { return getAlignedSize(ASYNC_WORKSPACE_SIZE); }
@@ -210,7 +253,10 @@ void Transpose::Run(void* input, void* output, void* stream, workspace::Workspac
         axis1 = static_cast<int>(tmpDims.size()) - 1 + axis1_;
     }
 
+    // 异常安全守卫：AsStrided 失败等异常退出路径，析构统一回收本路径 workspace 分配
+    FallbackGuard fallbackGuard(workspace);
     uint8_t* deviceBuffer = (uint8_t*)workspace.allocate(ASYNC_WORKSPACE_SIZE);
+    fallbackGuard.MarkAllocated();
 
     Tensor tensorIn;
     Tensor tensorOut;
@@ -228,7 +274,5 @@ void Transpose::Run(void* input, void* output, void* stream, workspace::Workspac
     strides[axis0] = strides[axis1];
     tmpDims[axis1] = shapeTmp;
     strides[axis1] = stridesTmp;
-    AsStrided(tensorIn, tensorOut, tmpDims, strides, stream, 0, deviceBuffer);
-
-    workspace.recycleLast();
+    CheckOpStatus(AsStrided(tensorIn, tensorOut, tmpDims, strides, stream, 0, deviceBuffer), "AsStrided");
 }

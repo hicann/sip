@@ -13,6 +13,7 @@
 #include <vector>
 #include <numeric>
 #include <complex>
+#include <string>
 
 #include <mki/utils/rt/rt.h>
 #include <mki/utils/platform/platform_info.h>
@@ -53,6 +54,17 @@ constexpr int64_t TENSOR_THREE_DIMENSION = 3;
 
 using namespace AsdSip;
 namespace {
+
+// 小算子返回码检查：底层失败时抛出异常，由 asdFftExec 系列入口的 try/catch
+// 统一翻译为错误码，避免底层失败被静默吞掉后仍返回 ACL_SUCCESS（issue #567）
+void CheckOpStatus(AspbStatus status, const char* opName)
+{
+    if (status != AsdSip::ErrorType::ACL_SUCCESS) {
+        ASDSIP_LOG(ERROR) << "fft op " << opName << " failed, status " << status << ".";
+        throw std::runtime_error(std::string("fft op ") + opName + " failed, status " + std::to_string(status));
+    }
+}
+
 template <typename E, typename T>
 void CopyVector(const std::vector<E>& in, std::vector<T>& out)
 {
@@ -173,7 +185,7 @@ void Permute(Mki::Tensor& input, Mki::Tensor& output, std::vector<int64_t> dimPe
     for (auto i : dimPermute) {
         tempPermute.push_back(input.desc.dims[i]);
     }
-    AsStrided(input, output, tempPermute, stride_, stream, 0, deviceBuffer);
+    CheckOpStatus(AsStrided(input, output, tempPermute, stride_, stream, 0, deviceBuffer), "AsStrided");
 }
 
 SVector<int64_t> GetStride(Mki::Tensor& input)
@@ -323,7 +335,7 @@ void FFTCoreAny::Run(Mki::Tensor& inTensor, Mki::Tensor& outTensor, void* stream
         tmpC2r.dataSize = tmpPing.dataSize * DOUBLE_SIZE_OF_DATASIZE;
 
         if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910B) {
-            Conj(self, tmpPing, stream, deviceBuffer);
+            CheckOpStatus(Conj(self, tmpPing, stream, deviceBuffer), "Conj");
         } else if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
             tmpPing.desc.dims = self.desc.dims;
         }
@@ -349,25 +361,29 @@ void FFTCoreAny::Run(Mki::Tensor& inTensor, Mki::Tensor& outTensor, void* stream
             conjImag.data = static_cast<void*>(static_cast<uint8_t*>(tmpC2r.data) + selfConj.dataSize / 2);
             conjImag.dataSize = selfConj.dataSize / 2;
 
-            Slice(selfConj, conjImag, selfConj.desc.dims.size() - 1, 1, TENSOR_TWO_DIMENSION, 1, stream, deviceBuffer);
+            CheckOpStatus(Slice(selfConj, conjImag, selfConj.desc.dims.size() - 1, 1, TENSOR_TWO_DIMENSION, 1, stream,
+                                deviceBuffer),
+                          "Slice");
 
-            Muls(conjImag, float(-1.0), conjReal, stream, deviceBuffer);
+            CheckOpStatus(Muls(conjImag, float(-1.0), conjReal, stream, deviceBuffer), "Muls");
 
-            Slice(selfConj, conjImag, selfConj.desc.dims.size() - 1, 0, 1, 1, stream, deviceBuffer);
-            Concat(conjImag, conjReal, tmpPing, selfConj.desc.dims.size() - 1, stream, deviceBuffer);
+            CheckOpStatus(Slice(selfConj, conjImag, selfConj.desc.dims.size() - 1, 0, 1, 1, stream, deviceBuffer),
+                          "Slice");
+            CheckOpStatus(Concat(conjImag, conjReal, tmpPing, selfConj.desc.dims.size() - 1, stream, deviceBuffer),
+                          "Concat");
         }
         auto stridePing = GetStride(tmpPing);
         auto asStridedShape = tmpPing.desc.dims;
 
         asStridedShape[asStridedShape.size() - TENSOR_TWO_DIMENSION]--;
 
-        AsStrided(tmpPing, tmpC2r, asStridedShape, stridePing, stream, 2, deviceBuffer);
+        CheckOpStatus(AsStrided(tmpPing, tmpC2r, asStridedShape, stridePing, stream, 2, deviceBuffer), "AsStrided");
 
         if (problemDesc.nDoing % TENSOR_TWO_DIMENSION == 0) {
             auto strideC2r = GetStride(tmpC2r);
             asStridedShape[asStridedShape.size() - TENSOR_TWO_DIMENSION]--;
 
-            AsStrided(tmpC2r, tmpPing, asStridedShape, strideC2r, stream, 0, deviceBuffer);
+            CheckOpStatus(AsStrided(tmpC2r, tmpPing, asStridedShape, strideC2r, stream, 0, deviceBuffer), "AsStrided");
 
             if (Reverse(tmpPing, tmpC2r, {static_cast<int64_t>(tmpPing.desc.dims.size() - TENSOR_TWO_DIMENSION)},
                         stream, deviceBuffer) != AsdSip::ErrorType::ACL_SUCCESS) {
@@ -402,7 +418,9 @@ void FFTCoreAny::Run(Mki::Tensor& inTensor, Mki::Tensor& outTensor, void* stream
     SVector<Tensor> tmpPingpong;
     if (mode == asdFftType::ASCEND_FFT_C2R) {
         if (problemDesc.nDoing % TENSOR_TWO_DIMENSION == 0) {
-            Concat(self, tmpC2r, tmpPing, self.desc.dims.size() - TENSOR_TWO_DIMENSION, stream, deviceBuffer);
+            CheckOpStatus(
+                Concat(self, tmpC2r, tmpPing, self.desc.dims.size() - TENSOR_TWO_DIMENSION, stream, deviceBuffer),
+                "Concat");
             stride = GetStride(tmpPing);
 
             Permute(tmpPing, tmpC2r, dimPermute, stride, stream, deviceBuffer);
@@ -410,7 +428,9 @@ void FFTCoreAny::Run(Mki::Tensor& inTensor, Mki::Tensor& outTensor, void* stream
             tmpPingpong.push_back(tmpC2r);
             tmpPingpong.push_back(tmpPing);
         } else {
-            Concat(self, tmpPing, tmpC2r, self.desc.dims.size() - TENSOR_TWO_DIMENSION, stream, deviceBuffer);
+            CheckOpStatus(
+                Concat(self, tmpPing, tmpC2r, self.desc.dims.size() - TENSOR_TWO_DIMENSION, stream, deviceBuffer),
+                "Concat");
             stride = GetStride(tmpC2r);
             Permute(tmpC2r, tmpPing, dimPermute, stride, stream, deviceBuffer);
 
@@ -549,7 +569,9 @@ void FFTCoreAny::Run(Mki::Tensor& inTensor, Mki::Tensor& outTensor, void* stream
                 strideNew.push_back(tmp_stride);
             }
         }
-        AsStrided(tmpPingpong.at(pong), tmpPingpong.at(ping), tmpOutSize, strideNew, stream, 0, deviceBuffer);
+        CheckOpStatus(
+            AsStrided(tmpPingpong.at(pong), tmpPingpong.at(ping), tmpOutSize, strideNew, stream, 0, deviceBuffer),
+            "AsStrided");
         ping = 1 - ping;
         pong = 1 - pong;
     }
