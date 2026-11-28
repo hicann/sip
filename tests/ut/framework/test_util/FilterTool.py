@@ -146,7 +146,8 @@ class BranchFilter:
         cppLine = FilterTemplates(cppLine)
         self.DEBUG_LOG(cppLine)
         for macro in self.macroList:
-            if re.match(".*" + macro + ".*", cppLine):
+            # 宏名来自源码解析，可能含正则元字符（括号/星号等），必须转义后匹配
+            if re.match(".*" + re.escape(macro) + ".*", cppLine):
                 return True
 
         if WhetherConditionals(cppLine):
@@ -170,12 +171,18 @@ class BranchFilter:
         Conditions above decides whether this infoLine should be push_back
         """
         while cppLineNumber == currentCppLineNumber:
-            self.DEBUG_LOG(infoLines[self.iter_][0:-1])
+            self.DEBUG_LOG(infoLines[self.iter_].rstrip("\r\n"))
             # push_back or not
             if Flag:
                 newInfoData += infoLines[self.iter_]
             self.iter_ += 1
-            cppLineNumber = self.GetBranchInfo(infoLines[self.iter_][0:-1])
+            # BRDA 块结束后（EOF 或非 BRDA 行）终止：越界索引或对 end_of_record
+            # 等非分支行做 int 解析都会抛异常
+            if self.iter_ >= len(infoLines):
+                break
+            if not infoLines[self.iter_].startswith("BRDA"):
+                break
+            cppLineNumber = self.GetBranchInfo(infoLines[self.iter_].rstrip("\r\n"))
 
         return newInfoData
 
@@ -183,10 +190,13 @@ class BranchFilter:
         """
         load the cpp file and delete some branches in info file
         """
-        fileAbsPath = line[3:-1]
+        fileAbsPath = line.rstrip("\r\n")[3:]
         cppLines = self.LoadFile(fileAbsPath)
 
-        while infoLines[self.iter_][0:13] != "end_of_record":
+        while (
+            self.iter_ < len(infoLines)
+            and infoLines[self.iter_][0:13] != "end_of_record"
+        ):
             prefix = infoLines[self.iter_][0:4]
             if prefix == "BRDA":  # prefix 'BRF:' or prefix 'BRH:' is not useful!
                 newInfoData = self.ProcessOneLine(infoLines, cppLines, newInfoData)
