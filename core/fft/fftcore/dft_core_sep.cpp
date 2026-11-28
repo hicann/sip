@@ -47,7 +47,11 @@ void DFTCoreSep::Run(void* inputReal, void* inputImag, void* outputReal, void* o
     launchParam.GetInTensor(1).data = inputImag;
 
     runInfo.SetStream(stream);
-    kernel->Run(launchParam, runInfo);
+    // 下发失败抛出异常，由 exec 入口 try/catch 统一翻译为错误码（issue #568）
+    if (!kernel->Run(launchParam, runInfo).Ok()) {
+        ASDSIP_LOG(ERROR) << "DFTCoreSep kernel launch failed.";
+        throw std::runtime_error("DFTCoreSep kernel launch failed.");
+    }
     workspace.recycleLast();
 }
 

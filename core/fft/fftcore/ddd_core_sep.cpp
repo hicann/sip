@@ -98,7 +98,11 @@ void DddCoreSep::Run(void* inputReal, void* inputImag, void* outputReal, void* o
     runInfo.SetScratchDeviceAddr((uint8_t*)workspace.allocate(bufferSize));
     runInfo.SetStream(stream);
 
-    kernel->Run(launchParam, runInfo);
+    // 下发失败抛出异常，由 exec 入口 try/catch 统一翻译为错误码（issue #568）
+    if (!kernel->Run(launchParam, runInfo).Ok()) {
+        ASDSIP_LOG(ERROR) << "DddCoreSep kernel launch failed.";
+        throw std::runtime_error("DddCoreSep kernel launch failed.");
+    }
     workspace.recycleLast();
 }
 

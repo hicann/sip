@@ -87,7 +87,11 @@ void DFTCore::Run(Tensor& input, Tensor& output, void* stream, workspace::Worksp
         return;
     }
     output.desc = launchParam.GetOutTensor(0).desc;
-    kernel->Run(launchParam, runInfo);
+    // 下发失败抛出异常，由 exec 入口 try/catch 统一翻译为错误码（issue #568）
+    if (!kernel->Run(launchParam, runInfo).Ok()) {
+        ASDSIP_LOG(ERROR) << "DFTCore kernel launch failed.";
+        throw std::runtime_error("DFTCore kernel launch failed.");
+    }
 
     workspace.recycleLast();
 
