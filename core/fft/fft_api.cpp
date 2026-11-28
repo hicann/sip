@@ -1541,6 +1541,30 @@ bool LeadingExtentMatchesBatch(const int64_t* dims, int64_t leadingDimCount, int
     return leadingExtent == planBatch;
 }
 
+// 1D C2C plan 的张量契约校验（issue #471/#472）：rank 恰为 2，横向 (batchSize,
+// fftSize)、纵向 (fftSize, batchSize)。仅比对尾维既不校验 rank 也不校验 batch 维：
+// [1, fftSize]、[7, batch, fftSize] 等错误张量会通过 match 直达内核按 plan 的 batch
+// 规模读写造成设备越界（issue #471）；纵向 plan 尾维是 batch 维，仅比对尾维会把
+// 合法的 (fftSize, batchSize) 误判为不匹配（issue #472）。
+bool matchC2C1D_(const FFTPlan& plan, const int64_t* dims, uint64_t tensorDimSize)
+{
+    if (tensorDimSize != 2) {
+        return false;
+    }
+    // 纵向 plan（batch 记录在 fftStrides[0]、plan.batchSize 置 1，见 Setup1dBatchLayout）：
+    // 接受文档承诺的 (fftSize, batchSize)。
+    if (plan.batchSize == 1 && plan.fftStrides[0] != 1) {
+        return (dims[0] == plan.fftSizes[0]) && (dims[1] == plan.fftStrides[0]);
+    }
+    // 纵向 batchSize==1 退化为 fftStrides={1}，与横向 plan 内部描述一致、数值等价，
+    // 无法从 plan 字段反推布局：(batchSize, fftSize) 与 (fftSize, batchSize) 两种
+    // 形状均接受；横向 batchSize>1 时仅接受 (batchSize, fftSize)。
+    if (plan.batchSize == 1 && plan.fftStrides[0] == 1) {
+        return (dims[0] == 1 && dims[1] == plan.fftSizes[0]) || (dims[0] == plan.fftSizes[0] && dims[1] == 1);
+    }
+    return (dims[0] == plan.batchSize) && (dims[1] == plan.fftSizes[0]);
+}
+
 bool matchC2C_(const FFTPlan& plan, const aclTensor* input)
 {
     if (input == nullptr || plan.fftStrides.empty() || plan.fftSizes.empty()) {
@@ -1560,6 +1584,13 @@ bool matchC2C_(const FFTPlan& plan, const aclTensor* input)
         delete[] dims;
         dims = nullptr;
         return false;
+    }
+
+    if (plan.fftSizes.size() == 1) {
+        bool matched = matchC2C1D_(plan, dims, tensorDimSize);
+        delete[] dims;
+        dims = nullptr;
+        return matched;
     }
 
     // 尾维形状比较与 stride 语义正交：纵向（strided）plan 不能跳过——否则
@@ -1742,6 +1773,15 @@ AsdSip::AspbStatus asdFftExecC2C(asdFftHandle handle, const aclTensor* input, co
     if (!matchC2C_(plan, output)) {
         ASDSIP_LOG(ERROR) << "output does not match plan.";
         return ErrorType::ACL_ERROR_INVALID_PARAM;
+    }
+
+    // 纵向 stride>1 的 1D C2C 核心存在数值缺陷（910B/CANN 9.3.0 实测纵向输出与
+    // 横向参照 maxRelErr 约 4.3e11，见 issue #472 评论）：修复合入前在 API 边界显式
+    // 拒绝执行，与 Setup1dBatchLayout 对 950 平台纵向 stride 的 API_NOT_SUPPORT
+    // 口径一致，避免 ACL_SUCCESS 下的静默数据错误（检视意见：不静默放行）。
+    if (plan.fftSizes.size() == 1 && plan.batchSize == 1 && plan.fftStrides[0] > 1) {
+        ASDSIP_LOG(ERROR) << "1D C2C with vertical stride > 1 is not supported until the stride kernel is fixed.";
+        return ErrorType::ACL_ERROR_API_NOT_SUPPORT;
     }
 
     return asdFftExecV2(plan, input, output);

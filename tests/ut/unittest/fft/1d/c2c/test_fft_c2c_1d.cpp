@@ -10,6 +10,7 @@
 
 #include <gtest/gtest.h>
 #include <filesystem>
+#include <algorithm>
 #include <cmath>
 #include <complex>
 #include <fstream>
@@ -665,3 +666,161 @@ TEST(TestFftPlanNegative, ExecR2CInputMissingBatchDimRejected)
 {
     RunRealExecBatchMismatchCase(asdFftType::ASCEND_FFT_R2C, {64}, {8, 33});
 }
+
+namespace {
+void RunC2CShapeMismatchCase(const std::vector<int64_t>& inShape, const std::vector<int64_t>& outShape,
+                             asdFft1dDimType dimType, int64_t batchSize, AsdSip::ErrorType expectedExec)
+{
+    auto shapeNumel = [](const std::vector<int64_t>& shape) {
+        int64_t numel = 1;
+        for (auto d : shape) {
+            numel *= d;
+        }
+        return numel;
+    };
+    int deviceId = 0;
+    MkiRtStream stream = OpTestInit(deviceId);
+
+    void* inAddr = nullptr;
+    void* outAddr = nullptr;
+    aclTensor* aclIn = nullptr;
+    aclTensor* aclOut = nullptr;
+    std::vector<std::complex<float>> inHost(shapeNumel(inShape), std::complex<float>(1.0f, 0.0f));
+    std::vector<std::complex<float>> outHost(shapeNumel(outShape), std::complex<float>(0.0f, 0.0f));
+    ASSERT_EQ(CreateAclTensor(inHost, inShape, &inAddr, aclDataType::ACL_COMPLEX64, &aclIn), 0);
+    ASSERT_EQ(CreateAclTensor(outHost, outShape, &outAddr, aclDataType::ACL_COMPLEX64, &aclOut), 0);
+
+    asdFftHandle handle;
+    ASSERT_EQ(asdFftCreate(handle), AsdSip::ErrorType::ACL_SUCCESS);
+    ASSERT_EQ(asdFftMakePlan1D(handle, 256, asdFftType::ASCEND_FFT_C2C, asdFftDirection::ASCEND_FFT_FORWARD, batchSize,
+                               dimType),
+              AsdSip::ErrorType::ACL_SUCCESS);
+    EXPECT_EQ(asdFftExecC2C(handle, aclIn, aclOut), expectedExec);
+    asdFftDestroy(handle);
+
+    aclDestroyTensor(aclIn);
+    aclDestroyTensor(aclOut);
+    aclrtFree(inAddr);
+    aclrtFree(outAddr);
+
+    TensorContext context;
+    OpTestEnd(deviceId, context, stream);
+}
+
+// 横向 plan 接受错误 batch：(1, 256) 尾维 256 == fftSize 但首维 1 != plan.batchSize 128（issue #471）
+TEST(TestFftPlanNegative, ExecC2CHorizontalBatchMismatchRejected)
+{
+    RunC2CShapeMismatchCase({1, 256}, {128, 256}, asdFft1dDimType::ASCEND_FFT_HORIZONTAL, 128,
+                            AsdSip::ErrorType::ACL_ERROR_INVALID_PARAM);
+}
+
+// 横向 plan 接受额外 leading 维：rank 不符的张量被静默放行（issue #471）
+TEST(TestFftPlanNegative, ExecC2CHorizontalExtraRankRejected)
+{
+    RunC2CShapeMismatchCase({7, 128, 256}, {7, 128, 256}, asdFft1dDimType::ASCEND_FFT_HORIZONTAL, 128,
+                            AsdSip::ErrorType::ACL_ERROR_INVALID_PARAM);
+}
+
+// 纵向 plan 收到横向布局 (batchSize, fftSize)：修复前尾维 == fftSize 通过 match，
+// 内核按 stride 布局处理得到错误结果；修复后按纵向布局契约拒绝
+TEST(TestFftPlanNegative, ExecC2CVerticalSwappedShapeRejected)
+{
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
+        GTEST_SKIP() << "vertical 1D FFT with batchSize > 1 is unsupported on Ascend950.";
+    }
+    RunC2CShapeMismatchCase({128, 256}, {128, 256}, asdFft1dDimType::ASCEND_FFT_VERTICAL, 128,
+                            AsdSip::ErrorType::ACL_ERROR_INVALID_PARAM);
+}
+
+// 纵向 stride>1 plan 的合法 (fftSize, batchSize) 张量：match 按纵向契约接受（#472 拦截侧修复），
+// 但纵向 stride 核心数值缺陷修复前在 API 边界显式拒绝执行（API_NOT_SUPPORT，
+// 与 Setup1dBatchLayout 对 950 平台的拦截口径一致）；950 平台建 plan 即被拦，同上跳过
+TEST(TestFftPlanNegative, ExecC2CVerticalStrideNotSupported)
+{
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
+        GTEST_SKIP() << "vertical 1D FFT with batchSize > 1 is unsupported on Ascend950.";
+    }
+    RunC2CShapeMismatchCase({256, 128}, {256, 128}, asdFft1dDimType::ASCEND_FFT_VERTICAL, 128,
+                            AsdSip::ErrorType::ACL_ERROR_API_NOT_SUPPORT);
+}
+
+// 单次 1D C2C batch==1 执行并回读输出：batch==1 时纵向退化为 stride==1 plan，
+// 与横向内部描述一致，用于纵向/横向两种布局的形状等价比对
+void RunC2CBatch1Exec(MkiRtStream stream, asdFft1dDimType dimType, const std::vector<int64_t>& shape,
+                      std::vector<std::complex<float>>& outHost)
+{
+    int64_t numel = 1;
+    for (auto d : shape) {
+        numel *= d;
+    }
+    std::vector<std::complex<float>> inHost(numel, std::complex<float>(1.0f, 0.5f));
+    outHost.assign(numel, std::complex<float>(0.0f, 0.0f));
+
+    void* inAddr = nullptr;
+    void* outAddr = nullptr;
+    void* workspaceAddr = nullptr;
+    aclTensor* aclIn = nullptr;
+    aclTensor* aclOut = nullptr;
+    size_t workSize = 0;
+
+    ASSERT_EQ(CreateAclTensor(inHost, shape, &inAddr, aclDataType::ACL_COMPLEX64, &aclIn), 0);
+    ASSERT_EQ(CreateAclTensor(outHost, shape, &outAddr, aclDataType::ACL_COMPLEX64, &aclOut), 0);
+    asdFftHandle handle;
+    ASSERT_EQ(asdFftCreate(handle), AsdSip::ErrorType::ACL_SUCCESS);
+    ASSERT_EQ(
+        asdFftMakePlan1D(handle, 256, asdFftType::ASCEND_FFT_C2C, asdFftDirection::ASCEND_FFT_FORWARD, 1, dimType),
+        AsdSip::ErrorType::ACL_SUCCESS);
+    ASSERT_EQ(asdFftGetWorkspaceSize(handle, workSize), AsdSip::ErrorType::ACL_SUCCESS);
+    if (workSize > 0) {
+        ASSERT_EQ(aclrtMalloc(&workspaceAddr, static_cast<int64_t>(workSize), ACL_MEM_MALLOC_HUGE_FIRST),
+                  ::ACL_SUCCESS);
+        ASSERT_EQ(asdFftSetWorkspace(handle, (uint8_t*)workspaceAddr), AsdSip::ErrorType::ACL_SUCCESS);
+    }
+    ASSERT_EQ(asdFftSetStream(handle, static_cast<aclrtStream>(stream)), AsdSip::ErrorType::ACL_SUCCESS);
+    ASSERT_EQ(asdFftExecC2C(handle, aclIn, aclOut), AsdSip::ErrorType::ACL_SUCCESS);
+    ASSERT_EQ(asdFftSynchronize(handle), AsdSip::ErrorType::ACL_SUCCESS);
+    ASSERT_EQ(aclrtMemcpy(outHost.data(), outHost.size() * sizeof(std::complex<float>), outAddr,
+                          outHost.size() * sizeof(std::complex<float>), ACL_MEMCPY_DEVICE_TO_HOST),
+              ::ACL_SUCCESS);
+    asdFftDestroy(handle);
+    aclDestroyTensor(aclIn);
+    aclDestroyTensor(aclOut);
+    aclrtFree(inAddr);
+    aclrtFree(outAddr);
+    if (workSize > 0) {
+        aclrtFree(workspaceAddr);
+    }
+}
+
+// 纵向 batchSize==1 退化为 stride==1 plan：文档纵向形状 (fftSize, batchSize)=(256, 1)
+// 与横向退化形状 (1, 256) 数值等价，两种形状均应被接受且执行结果一致
+// （检视意见：batchSize==1 时无法从 plan 字段反推布局，(256, 1) 曾被误拒）
+TEST(TestFftPlanNegative, ExecC2CVerticalBatch1SwappedShapeExecutes)
+{
+    int deviceId = 0;
+    MkiRtStream stream = OpTestInit(deviceId);
+
+    std::vector<std::complex<float>> outHorizontal;
+    RunC2CBatch1Exec(stream, asdFft1dDimType::ASCEND_FFT_HORIZONTAL, {1, 256}, outHorizontal);
+    std::vector<std::complex<float>> outVerticalSwapped;
+    RunC2CBatch1Exec(stream, asdFft1dDimType::ASCEND_FFT_VERTICAL, {256, 1}, outVerticalSwapped);
+    std::vector<std::complex<float>> outVerticalPlain;
+    RunC2CBatch1Exec(stream, asdFft1dDimType::ASCEND_FFT_VERTICAL, {1, 256}, outVerticalPlain);
+
+    ASSERT_EQ(outHorizontal.size(), outVerticalSwapped.size());
+    for (size_t i = 0; i < outHorizontal.size(); i++) {
+        std::complex<float> diff = outHorizontal[i] - outVerticalSwapped[i];
+        double relErr = std::abs(diff) / (std::abs(outHorizontal[i]) + 1e-10);
+        ASSERT_LT(relErr, 1e-5) << "index " << i << " relErr " << relErr;
+    }
+    ASSERT_EQ(outHorizontal.size(), outVerticalPlain.size());
+    for (size_t i = 0; i < outHorizontal.size(); i++) {
+        std::complex<float> diff = outHorizontal[i] - outVerticalPlain[i];
+        double relErr = std::abs(diff) / (std::abs(outHorizontal[i]) + 1e-10);
+        ASSERT_LT(relErr, 1e-5) << "index " << i << " relErr " << relErr;
+    }
+
+    TensorContext context;
+    OpTestEnd(deviceId, context, stream);
+}
+} // namespace
