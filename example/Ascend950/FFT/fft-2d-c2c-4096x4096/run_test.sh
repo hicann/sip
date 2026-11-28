@@ -1,4 +1,13 @@
 #!/bin/bash
+# -----------------------------------------------------------------------------------------------------------
+# Copyright (c) 2026 Huawei Technologies Co., Ltd.
+# This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+# CANN Open Software License Agreement Version 2.0 (the "License").
+# Please refer to the License for details. You may not use this file except in compliance with the License.
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+# INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE in the root of the software repository for the full text of the License.
+# -----------------------------------------------------------------------------------------------------------
 set -e
 
 DEVICE_ID="${1:-3}"
@@ -15,6 +24,9 @@ echo "============================================"
 echo ""
 echo "[1/3] Generating input and golden (numpy.fft2)..."
 mkdir -p "$DATA_DIR"
+# 清理上次运行残留的输出，保证首次 gen_data.py 仅生成输入与 golden；
+# 精度比对在设备程序执行后的第二次 gen_data.py 中进行
+rm -f "$DATA_DIR"/output_*.bin
 for DIRECTION in -1 1; do
     python3 "$SCRIPT_DIR/gen_data.py" "$DIRECTION" 42 "$DATA_DIR"
 done

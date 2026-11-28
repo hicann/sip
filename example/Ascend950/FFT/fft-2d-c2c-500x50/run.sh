@@ -37,6 +37,10 @@ bash "$SCRIPT_DIR/build.sh"
 
 mkdir -p "$DATA_DIR"
 
+# Clean stale NPU outputs from previous runs so the first gen_data.py only
+# generates inputs + golden; the precision gate runs after the NPU binary.
+rm -f "$DATA_DIR"/output_*.bin
+
 # Generate input + golden (numpy.fft.fft2, seed 42) for both directions.
 python3 "$SCRIPT_DIR/gen_data.py" 500 -1 12000 50
 python3 "$SCRIPT_DIR/gen_data.py" 500 1 12000 50
